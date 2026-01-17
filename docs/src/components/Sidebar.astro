@@ -51,14 +51,37 @@ const currentPath = Astro.url.pathname;
         <h3 class="nav-section-title">{section.title}</h3>
         <ul class="nav-section-items">
           {section.items.map((item) => {
-            // Check for exact match first
-            const exactMatch = currentPath === item.href;
-            // Check if current path starts with this href (for parent pages)
-            const startsWithMatch = currentPath.startsWith(item.href + '/');
-            // Only use startsWith if there's no exact match for any item
-            const allNavItems = navItems.flatMap(s => s.items);
-            const hasAnyExactMatch = allNavItems.some(navItem => currentPath === navItem.href);
-            const isActive = exactMatch || (startsWithMatch && !hasAnyExactMatch);
+            // Normalize paths for comparison (remove trailing slashes and base path)
+            const normalizePath = (path: string) => {
+              // Remove base path if present
+              let normalized = path.replace(base, '/');
+              // Remove trailing slash
+              normalized = normalized.replace(/\/$/, '');
+              // Ensure it starts with /
+              if (!normalized.startsWith('/')) normalized = '/' + normalized;
+              return normalized;
+            };
+            
+            const normalizedCurrentPath = normalizePath(currentPath);
+            const normalizedItemHref = normalizePath(item.href);
+            
+            // Check for exact match
+            const isExactMatch = normalizedCurrentPath === normalizedItemHref;
+            
+            // Check if current path is a child of this item
+            const isChildPath = normalizedCurrentPath.startsWith(normalizedItemHref + '/');
+            
+            // Check if any other item in the same section is a more specific match
+            const hasMoreSpecificMatch = section.items.some(otherItem => {
+              if (otherItem.href === item.href) return false; // Skip self
+              const normalizedOtherHref = normalizePath(otherItem.href);
+              return normalizedCurrentPath === normalizedOtherHref || 
+                     normalizedCurrentPath.startsWith(normalizedOtherHref + '/');
+            });
+            
+            // Item is active if it's an exact match, or if it's a parent match and no child is more specific
+            const isActive = isExactMatch || (isChildPath && !hasMoreSpecificMatch);
+            
             return (
               <li>
                 <a 
