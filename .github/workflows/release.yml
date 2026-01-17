@@ -69,6 +69,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -78,7 +80,7 @@ jobs:
 
       - name: Create checksums
         run: |
-          find . -type f -name 'nokvault-*' -exec shasum -a 256 {} \; > checksums.txt
+          find . -type f -name 'nokvault-*' -exec sha256sum {} \; > checksums.txt
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -86,5 +88,6 @@ jobs:
           files: |
             **/nokvault-*
             checksums.txt
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

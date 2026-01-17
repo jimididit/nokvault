@@ -153,6 +153,13 @@ nokvault encrypt ./files --dry-run
 nokvault encrypt ./files -v
 ```
 
+## Known Limitations
+
+- **`protect` command**: Directory protection (archive mode) is not yet fully implemented. Use `encrypt` for individual files or directories.
+- **Package managers**: Homebrew, Scoop, and APT support is planned but not yet available. Download binaries from [GitHub Releases](https://github.com/jimididit/nokvault/releases).
+- **Edge cases**: Some edge cases may need additional testing. Please report any issues you encounter.
+- **CLI flag persistence**: In test environments, Cobra flags may persist between test runs (does not affect normal usage).
+
 ## Security
 
 - **Encryption**: AES-256-GCM authenticated encryption
