@@ -36,6 +36,10 @@ A modern, feature-rich CLI tool for encrypting and protecting local folders and 
 ```bash
 git clone https://github.com/jimididit/nokvault.git
 cd nokvault
+# Windows
+go build -o nokvault.exe ./cmd/nokvault
+
+# Linux/macOS
 go build -o nokvault ./cmd/nokvault
 ```
 

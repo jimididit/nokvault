@@ -42,6 +42,11 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
       <h3>Build Steps</h3>
       <CodeBlock code={`git clone https://github.com/jimididit/nokvault.git
 cd nokvault
+
+# Windows
+go build -o nokvault.exe ./cmd/nokvault
+
+# Linux/macOS
 go build -o nokvault ./cmd/nokvault`} lang="bash" />
       <p class="text-dark-text-muted mt-4">
         The binary will be created in the current directory. Move it to a location in your PATH to use it system-wide.

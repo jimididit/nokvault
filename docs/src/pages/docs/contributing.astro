@@ -64,6 +64,9 @@ go mod download
 go test ./...
 
 # Build the project
+# Windows
+go build -o nokvault.exe ./cmd/nokvault
+# Linux/macOS  
 go build -o nokvault ./cmd/nokvault
 
 # Run with your changes

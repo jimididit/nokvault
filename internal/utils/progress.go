@@ -14,9 +14,17 @@ type ProgressBar struct {
 	p   *mpb.Progress
 }
 
-// NewProgressBar creates a new progress bar
+// NewProgressBar creates a new progress bar with its own container
+// Each progress bar gets its own container to avoid rendering conflicts
 func NewProgressBar(total int64, description string) *ProgressBar {
-	p := mpb.New(mpb.WithWidth(64), mpb.WithOutput(os.Stderr))
+	// Create a new progress container for this bar
+	// Using WithOutput to stderr and suppressing refresh rate to avoid duplicates
+	p := mpb.New(
+		mpb.WithWidth(64),
+		mpb.WithOutput(os.Stderr),
+		mpb.WithRefreshRate(100), // Refresh every 100ms to reduce flicker
+	)
+
 	bar := p.AddBar(total,
 		mpb.PrependDecorators(
 			decor.Name(description),
@@ -45,8 +53,18 @@ func (pb *ProgressBar) SetTotal(total int64) {
 	pb.bar.SetTotal(total, false)
 }
 
-// Wait waits for the progress bar to complete
+// Wait waits for the progress bar to complete and cleans up
 func (pb *ProgressBar) Wait() {
+	if pb.bar == nil || pb.p == nil {
+		return
+	}
+
+	// Complete the bar by setting total to current value (marks as complete)
+	current := pb.bar.Current()
+	pb.bar.SetTotal(current, true)
+
+	// Wait for the progress container to finish rendering
+	// This ensures the final state is displayed before cleanup
 	pb.p.Wait()
 }
 

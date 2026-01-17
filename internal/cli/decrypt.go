@@ -205,14 +205,18 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 
 	// Create progress bar
 	progressBar := utils.NewProgressBar(int64(totalFiles), "Decrypting files")
-	defer progressBar.Wait()
 
 	// For directory decryption, we need to handle key derivation per file
 	// Each file may have a different salt, so we derive the key per file
 	// This is a simplified version - in practice, we'd want to optimize this
+	var failedFiles []string
+	var successCount int
+
 	err = fileHandler.WalkDirectory(inputPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return fmt.Errorf("error accessing %s: %w", path, err)
+			// Log error but continue processing
+			PrintError(fmt.Sprintf("Error accessing %s: %v", path, err))
+			return nil // Continue with other files
 		}
 
 		// Skip directories and non-.nokvault files
@@ -223,7 +227,10 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		// Get relative path
 		relPath, err := fileHandler.GetRelativePath(inputPath, path)
 		if err != nil {
-			return fmt.Errorf("failed to get relative path: %w", err)
+			PrintError(fmt.Sprintf("Failed to get relative path for %s: %v", path, err))
+			progressBar.Increment(1)
+			failedFiles = append(failedFiles, relPath)
+			return nil // Continue with other files
 		}
 
 		// Remove .nokvault extension
@@ -233,34 +240,50 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		// Ensure output directory exists
 		outputFileDir := filepath.Dir(outputFilePath)
 		if err := fileHandler.EnsureDirectory(outputFileDir); err != nil {
-			return fmt.Errorf("failed to create output directory: %w", err)
+			PrintError(fmt.Sprintf("Failed to create output directory for %s: %v", relPath, err))
+			progressBar.Increment(1)
+			failedFiles = append(failedFiles, relPath)
+			return nil // Continue with other files
 		}
 
 		// Read header to get salt
 		inputFile, err := os.Open(path)
 		if err != nil {
-			return fmt.Errorf("failed to open file: %w", err)
+			PrintError(fmt.Sprintf("Failed to open file %s: %v", relPath, err))
+			progressBar.Increment(1)
+			failedFiles = append(failedFiles, relPath)
+			return nil // Continue with other files
 		}
 		defer inputFile.Close()
 
 		header, _, err := fileHandler.ReadHeaderWithMetadata(inputFile)
 		if err != nil {
-			return fmt.Errorf("failed to read header: %w", err)
+			PrintError(fmt.Sprintf("Failed to read header for %s: %v", relPath, err))
+			progressBar.Increment(1)
+			failedFiles = append(failedFiles, relPath)
+			return nil // Continue with other files
 		}
 
 		// Derive key from password and salt
 		keyManager := encryptionService.GetKeyManager()
 		key, err := keyManager.DeriveKeyFromPasswordAndSalt(password, header.Salt[:])
 		if err != nil {
-			return fmt.Errorf("failed to derive key: %w", err)
+			PrintError(fmt.Sprintf("Failed to derive key for %s: %v", relPath, err))
+			progressBar.Increment(1)
+			failedFiles = append(failedFiles, relPath)
+			return nil // Continue with other files
 		}
 		defer utils.ZeroizeKey(key)
 
 		// Decrypt single file
 		if err := decryptSingleFile(path, outputFilePath, key, encryptionService, fileHandler); err != nil {
-			return fmt.Errorf("failed to decrypt %s: %w", relPath, err)
+			PrintError(fmt.Sprintf("Failed to decrypt %s: %v", relPath, err))
+			progressBar.Increment(1)
+			failedFiles = append(failedFiles, relPath)
+			return nil // Continue with other files instead of stopping
 		}
 
+		successCount++
 		progressBar.Increment(1)
 		if decryptVerbose {
 			PrintInfo(fmt.Sprintf("Decrypted: %s", outputRelPath))
@@ -269,12 +292,27 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		return nil
 	})
 
-	if err != nil {
-		PrintError(fmt.Sprintf("Directory decryption failed: %v", err))
-		return err
+	// Report results
+	if len(failedFiles) > 0 {
+		PrintError(fmt.Sprintf("Failed to decrypt %d file(s):", len(failedFiles)))
+		for _, file := range failedFiles {
+			PrintError(fmt.Sprintf("  - %s", file))
+		}
+		if successCount > 0 {
+			PrintInfo(fmt.Sprintf("Successfully decrypted %d file(s)", successCount))
+		}
+		return fmt.Errorf("directory decryption completed with %d error(s) out of %d file(s)", len(failedFiles), totalFiles)
 	}
 
-	PrintSuccess(fmt.Sprintf("Decrypted %d files: %s -> %s", totalFiles, inputPath, outputPath))
+	if successCount == 0 && totalFiles > 0 {
+		progressBar.Wait()
+		return fmt.Errorf("failed to decrypt any files - check password and file integrity")
+	}
+
+	// Complete and wait for progress bar before printing success message
+	progressBar.Wait()
+
+	PrintSuccess(fmt.Sprintf("Decrypted %d files: %s -> %s", successCount, inputPath, outputPath))
 	return nil
 }
 

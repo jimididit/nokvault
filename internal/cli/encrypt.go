@@ -212,7 +212,6 @@ func encryptDirectoryWithCompression(inputPath, outputPath string, key, salt []b
 
 	// Create progress bar
 	progressBar := utils.NewProgressBar(int64(totalFiles), "Encrypting files")
-	defer progressBar.Wait()
 
 	// Create directory encryptor
 	encryptor := core.NewDirectoryEncryptor(encryptionService, encryptVerbose)
@@ -225,6 +224,9 @@ func encryptDirectoryWithCompression(inputPath, outputPath string, key, salt []b
 			PrintInfo(fmt.Sprintf("[%d/%d] %s", current, total, currentFile))
 		}
 	})
+
+	// Complete and wait for progress bar before printing success message
+	progressBar.Wait()
 
 	if err != nil {
 		PrintError(fmt.Sprintf("Directory encryption failed: %v", err))
