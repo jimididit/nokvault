@@ -5,6 +5,27 @@ All notable changes to Nokvault will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-01-17
+
+### Fixed
+
+- Fixed duplicate progress bars appearing during encryption/decryption operations
+- Fixed deadlock issue when decrypting large files (>1MB) with progress bars
+- Fixed output directory auto-creation when using custom output paths (`-o` flag)
+- Improved error handling: directory decryption now continues processing remaining files even if some files fail
+- Fixed Windows build output: explicitly specify `.exe` extension in build commands
+
+### Changed
+
+- Removed progress bars for single-file operations (not useful since files are read entirely at once)
+- Progress bars now only appear for directory operations where they provide meaningful feedback
+- Improved error messages for failed file operations during directory decryption
+
+### Documentation
+
+- Updated build instructions in README and documentation to show Windows-specific commands
+- Added internal testing documentation
+
 ## [0.1.0] - 2026-01-16
 
 ### Added
