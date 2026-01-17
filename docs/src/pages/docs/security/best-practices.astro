@@ -1,0 +1,180 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+import CodeBlock from '../../../components/CodeBlock.astro';
+---
+
+<DocsLayout title="Security Best Practices - Nokvault">
+  <div class="prose prose-invert max-w-none">
+    <h1>Security Best Practices</h1>
+    <p class="text-xl text-dark-text-muted mb-8">
+      Follow these guidelines to maximize the security of your encrypted data.
+    </p>
+
+    <section class="mb-8">
+      <h2>Use Keyfiles Instead of Passwords</h2>
+      <p class="text-dark-text-muted mb-4">
+        Keyfiles are more secure than passwords because they:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Are longer and more random than typical passwords</li>
+        <li>Don't require typing (reducing risk of keyloggers)</li>
+        <li>Can be stored securely using your OS keychain</li>
+      </ul>
+      <CodeBlock code={`# Generate a secure keyfile
+openssl rand -out ~/.keys/master.key 32
+
+# Store it securely (use OS keychain or encrypted storage)
+# Then use it for encryption
+nokvault encrypt file.txt --keyfile ~/.keys/master.key`} lang="bash" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Secure Keyfile Storage</h2>
+      <p class="text-dark-text-muted mb-4">
+        Protect your keyfiles:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Store keyfiles in a secure location (not in the same directory as encrypted files)</li>
+        <li>Use file system permissions: <code>chmod 600 ~/.keys/master.key</code></li>
+        <li>Consider encrypting keyfiles themselves</li>
+        <li>Back up keyfiles securely (encrypted backup, separate location)</li>
+        <li>Never commit keyfiles to version control</li>
+      </ul>
+    </section>
+
+    <section class="mb-8">
+      <h2>Rotate Keys Periodically</h2>
+      <p class="text-dark-text-muted mb-4">
+        Regularly rotate encryption keys, especially if:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>A key might have been compromised</li>
+        <li>Someone with access to the key no longer needs it</li>
+        <li>Following a security incident</li>
+        <li>As part of regular security maintenance</li>
+      </ul>
+      <CodeBlock code={`# Rotate key without re-encrypting data
+nokvault rotate-key file.nokvault \\
+  --old-keyfile ~/.keys/old.key \\
+  --new-keyfile ~/.keys/new.key`} lang="bash" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Use Secure Deletion</h2>
+      <p class="text-dark-text-muted mb-4">
+        When deleting sensitive unencrypted files, use secure deletion:
+      </p>
+      <CodeBlock code={`# Securely delete sensitive files
+nokvault secure-delete sensitive-file.txt --passes 7
+
+# This overwrites the file multiple times before deletion`} lang="bash" />
+      <p class="text-dark-text-muted mt-4">
+        Regular file deletion only removes file system references; the data remains on disk until overwritten.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Version Control Best Practices</h2>
+      <p class="text-dark-text-muted mb-4">
+        Never commit sensitive data to version control:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Add <code>*.key</code>, <code>*.pem</code>, and keyfile patterns to <code>.gitignore</code></li>
+        <li>Never commit passwords or keyfiles</li>
+        <li>Use environment variables or secure secret management for CI/CD</li>
+        <li>Consider encrypting entire repositories if they contain sensitive data</li>
+      </ul>
+      <CodeBlock code={`# .gitignore
+*.key
+*.pem
+*.nokvault
+.env
+secrets/`} lang="text" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Automation Security</h2>
+      <p class="text-dark-text-muted mb-4">
+        When automating encryption tasks:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Use environment variables instead of hardcoded passwords</li>
+        <li>Restrict environment variable access</li>
+        <li>Use keyfiles with restricted permissions</li>
+        <li>Log operations without logging sensitive data</li>
+      </ul>
+      <CodeBlock code={`# Use environment variables (not hardcoded passwords)
+export NOKVAULT_PASSWORD="secure-password"
+nokvault encrypt file.txt --no-prompt
+unset NOKVAULT_PASSWORD
+
+# Or use keyfiles
+nokvault encrypt file.txt --keyfile ~/.keys/automation.key --no-prompt`} lang="bash" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Backup Strategy</h2>
+      <p class="text-dark-text-muted mb-4">
+        Implement a secure backup strategy:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Back up encrypted files regularly</li>
+        <li>Store keyfiles separately from encrypted data</li>
+        <li>Use multiple backup locations</li>
+        <li>Test restoration procedures</li>
+        <li>Consider encrypting backups themselves</li>
+      </ul>
+    </section>
+
+    <section class="mb-8">
+      <h2>Keep Software Updated</h2>
+      <p class="text-dark-text-muted mb-4">
+        Security vulnerabilities are discovered and patched regularly:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Update Nokvault to the latest version</li>
+        <li>Subscribe to security advisories</li>
+        <li>Review changelogs for security fixes</li>
+        <li>Update dependencies regularly</li>
+      </ul>
+    </section>
+
+    <section class="mb-8">
+      <h2>Access Control</h2>
+      <p class="text-dark-text-muted mb-4">
+        Limit access to encrypted files and keyfiles:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Use appropriate file system permissions</li>
+        <li>Limit who has access to keyfiles</li>
+        <li>Use separate keyfiles for different projects or users</li>
+        <li>Audit access logs if available</li>
+      </ul>
+    </section>
+  </div>
+</DocsLayout>
+
+<style>
+  .prose {
+    color: #e5e5e5;
+  }
+  .prose h1 {
+    color: #fff;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .prose h2 {
+    color: #fff;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+  .prose code {
+    background-color: #1f1f1f;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+  }
+</style>

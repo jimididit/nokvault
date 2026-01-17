@@ -1,0 +1,121 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+---
+
+<DocsLayout title="Installation - Nokvault">
+  <div class="prose prose-invert max-w-none">
+    <h1>Installation</h1>
+    <p class="text-xl text-dark-text-muted mb-8">
+      Get Nokvault installed on your system. Choose the method that works best for you.
+    </p>
+
+    <section class="mb-8">
+      <h2>Download Pre-built Binaries</h2>
+      <p class="text-dark-text-muted mb-4">
+        The easiest way to get started is to download a pre-built binary for your platform from GitHub Releases.
+      </p>
+      <ol class="list-decimal list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Visit <a href="https://github.com/jimididit/nokvault/releases" class="text-blue-400 hover:underline" target="_blank">GitHub Releases</a></li>
+        <li>Download the appropriate binary for your platform (Windows, Linux, or macOS)</li>
+        <li>Make it executable (Linux/macOS): <code>chmod +x nokvault</code></li>
+        <li>Move it to a directory in your PATH, or use it directly</li>
+      </ol>
+    </section>
+
+    <section class="mb-8">
+      <h2>Build from Source</h2>
+      <p class="text-dark-text-muted mb-4">
+        Build Nokvault from source if you want the latest features or need to customize the build.
+      </p>
+      <h3>Prerequisites</h3>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Go 1.21 or later</li>
+        <li>Git</li>
+      </ul>
+      <h3>Build Steps</h3>
+      <CodeBlock code={`git clone https://github.com/jimididit/nokvault.git
+cd nokvault
+go build -o nokvault ./cmd/nokvault`} lang="bash" />
+      <p class="text-dark-text-muted mt-4">
+        The binary will be created in the current directory. Move it to a location in your PATH to use it system-wide.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Cross-Compilation</h2>
+      <p class="text-dark-text-muted mb-4">
+        Build binaries for different platforms from your current machine.
+      </p>
+      <CodeBlock code={`# Windows (64-bit)
+GOOS=windows GOARCH=amd64 go build -o nokvault-windows-amd64.exe ./cmd/nokvault
+
+# Linux (64-bit)
+GOOS=linux GOARCH=amd64 go build -o nokvault-linux-amd64 ./cmd/nokvault
+
+# macOS (Intel)
+GOOS=darwin GOARCH=amd64 go build -o nokvault-darwin-amd64 ./cmd/nokvault
+
+# macOS (Apple Silicon)
+GOOS=darwin GOARCH=arm64 go build -o nokvault-darwin-arm64 ./cmd/nokvault`} lang="bash" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Package Managers</h2>
+      <p class="text-dark-text-muted mb-4">
+        Package manager support is coming soon! For now, download binaries from <a href="https://github.com/jimididit/nokvault/releases" class="text-blue-400 hover:underline" target="_blank">GitHub Releases</a>.
+      </p>
+      <CodeBlock code={`# Homebrew (macOS) - Coming soon
+# brew install nokvault
+
+# Scoop (Windows) - Coming soon  
+# scoop install nokvault
+
+# APT (Debian/Ubuntu) - Coming soon
+# sudo apt install nokvault`} lang="bash" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Verify Installation</h2>
+      <p class="text-dark-text-muted mb-4">
+        After installation, verify that Nokvault is working correctly:
+      </p>
+      <CodeBlock code="nokvault --version" lang="bash" />
+      <p class="text-dark-text-muted mt-4">
+        You should see the version number. If you get a "command not found" error, make sure the binary is in your PATH.
+      </p>
+    </section>
+  </div>
+</DocsLayout>
+
+<style>
+  .prose {
+    color: #e5e5e5;
+  }
+  .prose h1 {
+    color: #fff;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .prose h2 {
+    color: #fff;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+  .prose h3 {
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .prose code {
+    background-color: #1f1f1f;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+  }
+</style>

@@ -1,0 +1,205 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+---
+
+<DocsLayout title="FAQ - Nokvault">
+  <div class="prose prose-invert max-w-none">
+    <h1>Frequently Asked Questions</h1>
+    <p class="text-xl text-dark-text-muted mb-8">
+      Common questions and answers about Nokvault.
+    </p>
+
+    <div class="space-y-8">
+      <section>
+        <h2>General</h2>
+        
+        <div class="mb-6">
+          <h3>What is Nokvault?</h3>
+          <p class="text-dark-text-muted">
+            Nokvault is a modern CLI tool for encrypting and protecting local folders and files. It uses AES-256-GCM encryption with Argon2id key derivation to provide strong security for your data.
+          </p>
+        </div>
+
+        <div class="mb-6">
+          <h3>Is Nokvault free to use?</h3>
+          <p class="text-dark-text-muted">
+            Yes! Nokvault is open source and free to use under the MIT License. You can use it for personal or commercial purposes.
+          </p>
+        </div>
+
+        <div class="mb-6">
+          <h3>What platforms does Nokvault support?</h3>
+          <p class="text-dark-text-muted">
+            Nokvault supports Windows, Linux, and macOS. Pre-built binaries are available for all platforms on the <a href="https://github.com/jimididit/nokvault/releases" class="text-blue-400 hover:underline" target="_blank">GitHub Releases page</a>.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2>Security</h2>
+
+        <div class="mb-6">
+          <h3>How secure is Nokvault?</h3>
+          <p class="text-dark-text-muted">
+            Nokvault uses industry-standard encryption:
+          </p>
+          <ul class="list-disc list-inside space-y-2 text-dark-text-muted mt-2">
+            <li>AES-256-GCM authenticated encryption</li>
+            <li>Argon2id key derivation (winner of Password Hashing Competition)</li>
+            <li>Unique initialization vectors for each file</li>
+            <li>Memory zeroization for sensitive data</li>
+            <li>Constant-time operations to prevent timing attacks</li>
+          </ul>
+        </div>
+
+        <div class="mb-6">
+          <h3>Can encrypted files be recovered if I lose my password?</h3>
+          <p class="text-dark-text-muted">
+            No. Nokvault does not store passwords or provide password recovery. If you lose your password or keyfile, encrypted data cannot be recovered. Always keep secure backups of your keyfiles.
+          </p>
+        </div>
+
+        <div class="mb-6">
+          <h3>Is my data sent to any servers?</h3>
+          <p class="text-dark-text-muted">
+            No. Nokvault works entirely locally. All encryption and decryption happens on your machine. No data is ever transmitted over the network.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2>Usage</h2>
+
+        <div class="mb-6">
+          <h3>Can I encrypt entire directories?</h3>
+          <p class="text-dark-text-muted">
+            Yes! Nokvault supports recursive directory encryption. Simply provide a directory path:
+          </p>
+          <CodeBlock code="nokvault encrypt ./documents" lang="bash" />
+        </div>
+
+        <div class="mb-6">
+          <h3>What happens to the original files after encryption?</h3>
+          <p class="text-dark-text-muted">
+            By default, original files remain unchanged. Encrypted versions are created with a <code>.nokvault</code> extension. You can manually delete originals after verifying the encrypted files work correctly.
+          </p>
+        </div>
+
+        <div class="mb-6">
+          <h3>Can I use Nokvault in scripts and automation?</h3>
+          <p class="text-dark-text-muted">
+            Yes! Use the <code>--no-prompt</code> flag with environment variables or keyfiles:
+          </p>
+          <CodeBlock code={`export NOKVAULT_PASSWORD="your-password"
+nokvault encrypt file.txt --no-prompt`} lang="bash" />
+        </div>
+
+        <div class="mb-6">
+          <h3>How do I decrypt multiple files at once?</h3>
+          <p class="text-dark-text-muted">
+            You can use shell loops or provide a directory path:
+          </p>
+          <CodeBlock code={`# Decrypt entire directory
+nokvault decrypt ./encrypted-documents
+
+# Or use a loop
+for file in *.nokvault; do
+  nokvault decrypt "$file" --keyfile ~/.keys/master.key --no-prompt
+done`} lang="bash" />
+        </div>
+      </section>
+
+      <section>
+        <h2>Troubleshooting</h2>
+
+        <div class="mb-6">
+          <h3>I'm getting "authentication failed" errors</h3>
+          <p class="text-dark-text-muted">
+            This usually means:
+          </p>
+          <ul class="list-disc list-inside space-y-2 text-dark-text-muted mt-2">
+            <li>Incorrect password or keyfile</li>
+            <li>Keyfile path is wrong</li>
+            <li>File was encrypted with a different key</li>
+            <li>File may be corrupted</li>
+          </ul>
+          <p class="text-dark-text-muted mt-2">
+            Double-check your credentials and ensure you're using the same keyfile/password used for encryption.
+          </p>
+        </div>
+
+        <div class="mb-6">
+          <h3>The binary won't run on my system</h3>
+          <p class="text-dark-text-muted">
+            Make sure you downloaded the correct binary for your platform and architecture. On Linux/macOS, ensure the binary is executable:
+          </p>
+          <CodeBlock code="chmod +x nokvault" lang="bash" />
+        </div>
+
+        <div class="mb-6">
+          <h3>Encryption is very slow</h3>
+          <p class="text-dark-text-muted">
+            Large files or directories can take time to encrypt. This is normal. You can:
+          </p>
+          <ul class="list-disc list-inside space-y-2 text-dark-text-muted mt-2">
+            <li>Use <code>--verbose</code> to see progress</li>
+            <li>Exclude unnecessary files with <code>--exclude</code></li>
+            <li>Consider using compression for text files: <code>--compress</code></li>
+          </ul>
+        </div>
+
+        <div class="mb-6">
+          <h3>Can I use Nokvault files across different operating systems?</h3>
+          <p class="text-dark-text-muted">
+            Yes! Encrypted files are platform-independent. A file encrypted on Windows can be decrypted on Linux or macOS, and vice versa.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2>Still Have Questions?</h2>
+        <p class="text-dark-text-muted mb-4">
+          If you can't find the answer you're looking for:
+        </p>
+        <ul class="list-disc list-inside space-y-2 text-dark-text-muted">
+          <li>Check the <a href="/nokvault/docs/commands" class="text-blue-400 hover:underline">Commands documentation</a></li>
+          <li>Review the <a href="/nokvault/docs/security" class="text-blue-400 hover:underline">Security documentation</a></li>
+          <li>Open an issue on <a href="https://github.com/jimididit/nokvault/issues" class="text-blue-400 hover:underline" target="_blank">GitHub</a></li>
+          <li>Start a discussion on <a href="https://github.com/jimididit/nokvault/discussions" class="text-blue-400 hover:underline" target="_blank">GitHub Discussions</a></li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</DocsLayout>
+
+<style>
+  .prose {
+    color: #e5e5e5;
+  }
+  .prose h1 {
+    color: #fff;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .prose h2 {
+    color: #fff;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+  .prose h3 {
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+  }
+  .prose code {
+    background-color: #1f1f1f;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+  }
+</style>

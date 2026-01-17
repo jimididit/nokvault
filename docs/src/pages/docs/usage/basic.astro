@@ -1,0 +1,131 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+import CodeBlock from '../../../components/CodeBlock.astro';
+---
+
+<DocsLayout title="Basic Usage - Nokvault">
+  <div class="prose prose-invert max-w-none">
+    <h1>Basic Usage</h1>
+    <p class="text-xl text-dark-text-muted mb-8">
+      Learn the fundamentals of using Nokvault to encrypt and decrypt your files.
+    </p>
+
+    <section class="mb-8">
+      <h2>Encrypting a File</h2>
+      <p class="text-dark-text-muted mb-4">
+        The simplest way to encrypt a file is to use the <code>encrypt</code> command:
+      </p>
+      <CodeBlock code="nokvault encrypt document.txt" lang="bash" />
+      <p class="text-dark-text-muted mt-4">
+        This will create <code>document.txt.nokvault</code> and prompt you for a password. The original file remains unchanged unless you use the <code>--delete-original</code> flag.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Decrypting a File</h2>
+      <p class="text-dark-text-muted mb-4">
+        To decrypt a file, use the <code>decrypt</code> command:
+      </p>
+      <CodeBlock code="nokvault decrypt document.txt.nokvault" lang="bash" />
+      <p class="text-dark-text-muted mt-4">
+        Nokvault will automatically detect the original filename and restore it. You'll be prompted for the password used during encryption.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Using Keyfiles</h2>
+      <p class="text-dark-text-muted mb-4">
+        Keyfiles are more secure than passwords and don't require typing. Create a keyfile and use it for encryption:
+      </p>
+      <CodeBlock code={`# Generate a random keyfile (using openssl or similar)
+openssl rand -out ~/.keys/master.key 32
+
+# Encrypt with keyfile
+nokvault encrypt document.txt --keyfile ~/.keys/master.key
+
+# Decrypt with keyfile
+nokvault decrypt document.txt.nokvault --keyfile ~/.keys/master.key`} lang="bash" />
+      <p class="text-dark-text-muted mt-4">
+        <strong>Important:</strong> Keep your keyfiles secure and backed up. Without the keyfile, encrypted data cannot be recovered.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Using Environment Variables</h2>
+      <p class="text-dark-text-muted mb-4">
+        For automation and scripts, you can use environment variables instead of interactive prompts:
+      </p>
+      <CodeBlock code={`# Set password as environment variable
+export NOKVAULT_PASSWORD="your-secure-password"
+
+# Encrypt without prompt
+nokvault encrypt document.txt --no-prompt
+
+# Unset after use
+unset NOKVAULT_PASSWORD`} lang="bash" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Encrypting Directories</h2>
+      <p class="text-dark-text-muted mb-4">
+        Nokvault can encrypt entire directories recursively:
+      </p>
+      <CodeBlock code={`# Encrypt a directory
+nokvault encrypt ./documents
+
+# The directory structure is preserved
+# Each file is encrypted individually`} lang="bash" />
+      <p class="text-dark-text-muted mt-4">
+        When encrypting directories, each file is encrypted separately, allowing you to decrypt individual files if needed.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Specifying Output Location</h2>
+      <p class="text-dark-text-muted mb-4">
+        By default, encrypted files are created in the same location with a <code>.nokvault</code> extension. You can specify a custom output:
+      </p>
+      <CodeBlock code={`# Encrypt to specific location
+nokvault encrypt document.txt --output ./encrypted/secure.nokvault
+
+# Decrypt to specific location
+nokvault decrypt document.nokvault --output ./decrypted/restored.txt`} lang="bash" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Dry Run</h2>
+      <p class="text-dark-text-muted mb-4">
+        Before encrypting, you can preview what would happen with the <code>--dry-run</code> flag:
+      </p>
+      <CodeBlock code={`# See what would be encrypted
+nokvault encrypt ./documents --dry-run
+
+# This shows which files would be processed without actually encrypting`} lang="bash" />
+    </section>
+  </div>
+</DocsLayout>
+
+<style>
+  .prose {
+    color: #e5e5e5;
+  }
+  .prose h1 {
+    color: #fff;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .prose h2 {
+    color: #fff;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+  .prose code {
+    background-color: #1f1f1f;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+  }
+</style>

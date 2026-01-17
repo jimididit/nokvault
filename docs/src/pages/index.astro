@@ -1,0 +1,70 @@
+---
+import CodeBlock from '../components/CodeBlock.astro';
+import Layout from '../layouts/Layout.astro';
+import GitHubButtons from '../components/GitHubButtons.astro';
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+---
+
+<Layout title="Nokvault - Encrypt and Protect Your Files">
+  <div class="max-w-4xl mx-auto">
+    <div class="text-center mb-16">
+      <h1 class="text-5xl font-bold mb-4">Nokvault</h1>
+      <p class="text-xl text-dark-text-muted mb-8">
+        A modern CLI tool for encrypting and protecting local folders and files
+      </p>
+      <div class="flex flex-col items-center gap-4">
+        <div class="flex gap-4 justify-center">
+          <a href={`${base}docs/`} class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+            Get Started
+          </a>
+          <a href="https://github.com/jimididit/nokvault" target="_blank" class="px-6 py-3 bg-dark-surface hover:bg-dark-border border border-dark-border rounded-lg transition">
+            View on GitHub
+          </a>
+        </div>
+        <GitHubButtons />
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6 mb-16">
+      <div class="bg-dark-surface p-6 rounded-lg border border-dark-border">
+        <h2 class="text-2xl font-semibold mb-3">🔒 Strong Encryption</h2>
+        <p class="text-dark-text-muted">
+          AES-256-GCM authenticated encryption with Argon2id key derivation for maximum security.
+        </p>
+      </div>
+      <div class="bg-dark-surface p-6 rounded-lg border border-dark-border">
+        <h2 class="text-2xl font-semibold mb-3">📁 Directory Support</h2>
+        <p class="text-dark-text-muted">
+          Encrypt entire directories recursively with metadata preservation.
+        </p>
+      </div>
+      <div class="bg-dark-surface p-6 rounded-lg border border-dark-border">
+        <h2 class="text-2xl font-semibold mb-3">⚡ Auto-Encryption</h2>
+        <p class="text-dark-text-muted">
+          Watch directories and automatically encrypt files on change.
+        </p>
+      </div>
+      <div class="bg-dark-surface p-6 rounded-lg border border-dark-border">
+        <h2 class="text-2xl font-semibold mb-3">🌐 Cross-Platform</h2>
+        <p class="text-dark-text-muted">
+          Single binary for Windows, Linux, and macOS. No dependencies required.
+        </p>
+      </div>
+    </div>
+
+    <div class="bg-dark-surface p-8 rounded-lg border border-dark-border">
+      <h2 class="text-2xl font-semibold mb-4">Quick Start</h2>
+      <CodeBlock code={`# Encrypt a file
+nokvault encrypt document.txt
+
+# Decrypt a file
+nokvault decrypt document.txt.nokvault
+
+# Encrypt a directory
+nokvault encrypt ./documents`} lang="bash" />
+      <a href={`${base}docs/`} class="text-blue-400 hover:text-blue-300">
+        View full documentation →
+      </a>
+    </div>
+  </div>
+</Layout>

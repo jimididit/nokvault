@@ -1,0 +1,154 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+import CodeBlock from '../../../components/CodeBlock.astro';
+---
+
+<DocsLayout title="Advanced Usage - Nokvault">
+  <div class="prose prose-invert max-w-none">
+    <h1>Advanced Usage</h1>
+    <p class="text-xl text-dark-text-muted mb-8">
+      Explore advanced features like compression, auto-encryption, scheduling, and key rotation.
+    </p>
+
+    <section class="mb-8">
+      <h2>Compression</h2>
+      <p class="text-dark-text-muted mb-4">
+        Compress files before encryption to save space, especially useful for text files and archives:
+      </p>
+      <CodeBlock code={`# Encrypt with compression
+nokvault encrypt large-file.txt --compress
+
+# Compression is automatically detected during decryption
+nokvault decrypt large-file.txt.nokvault`} lang="bash" />
+      <p class="text-dark-text-muted mt-4">
+        Compression is particularly effective for text files, JSON, XML, and other compressible formats. Binary files may not compress much.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Excluding Files</h2>
+      <p class="text-dark-text-muted mb-4">
+        When encrypting directories, exclude certain files or patterns:
+      </p>
+      <CodeBlock code={`# Exclude temporary files
+nokvault encrypt ./documents --exclude "*.tmp" --exclude "*.log"
+
+# Exclude specific directories
+nokvault encrypt ./project --exclude "node_modules" --exclude ".git"`} lang="bash" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Auto-Encryption with File Watching</h2>
+      <p class="text-dark-text-muted mb-4">
+        Automatically encrypt files when they're created or modified in a directory:
+      </p>
+      <CodeBlock code={`# Watch directory and auto-encrypt
+nokvault watch ./sensitive --auto-encrypt \\
+  --keyfile ~/.keys/master.key \\
+  --delay 5s \\
+  --exclude "*.tmp"`} lang="bash" />
+      <p class="text-dark-text-muted mt-4">
+        The <code>--delay</code> option prevents encrypting files that are still being written. The watcher runs until you stop it with Ctrl+C.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Scheduled Encryption</h2>
+      <p class="text-dark-text-muted mb-4">
+        Set up periodic encryption for automated backups and regular encryption tasks:
+      </p>
+      <CodeBlock code={`# Encrypt backups every hour
+nokvault schedule encrypt ./backups --interval 1h --keyfile ~/.keys/backup.key
+
+# Encrypt daily at midnight (using cron on Linux/macOS)
+# Add to crontab: 0 0 * * * nokvault encrypt /path/to/docs --keyfile ~/.keys/master.key`} lang="bash" />
+      <p class="text-dark-text-muted mt-4">
+        Scheduled encryption is useful for maintaining encrypted backups of important directories.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Key Rotation</h2>
+      <p class="text-dark-text-muted mb-4">
+        Rotate encryption keys without re-encrypting data. This is more efficient than decrypting and re-encrypting:
+      </p>
+      <CodeBlock code={`# Rotate key for a file
+nokvault rotate-key file.nokvault
+
+# Rotate with specific keyfiles
+nokvault rotate-key file.nokvault \\
+  --old-keyfile ~/.keys/old.key \\
+  --new-keyfile ~/.keys/new.key`} lang="bash" />
+      <p class="text-dark-text-muted mt-4">
+        Key rotation is recommended periodically for enhanced security, especially if a key might have been compromised.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Secure Deletion</h2>
+      <p class="text-dark-text-muted mb-4">
+        Permanently delete sensitive files by overwriting them multiple times:
+      </p>
+      <CodeBlock code={`# Secure delete with default passes (3)
+nokvault secure-delete sensitive-file.txt
+
+# Secure delete with more passes
+nokvault secure-delete sensitive-file.txt --passes 7`} lang="bash" />
+      <p class="text-dark-text-muted mt-4">
+        Secure deletion makes data recovery extremely difficult. Use this for files containing sensitive information that should be permanently removed.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Batch Operations</h2>
+      <p class="text-dark-text-muted mb-4">
+        Encrypt or decrypt multiple files using shell loops:
+      </p>
+      <CodeBlock code={`# Encrypt all .txt files in current directory
+for file in *.txt; do
+  nokvault encrypt "$file" --keyfile ~/.keys/master.key --no-prompt
+done
+
+# Decrypt all .nokvault files
+for file in *.nokvault; do
+  nokvault decrypt "$file" --keyfile ~/.keys/master.key --no-prompt
+done`} lang="bash" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Verbose Output</h2>
+      <p class="text-dark-text-muted mb-4">
+        Get detailed information about operations:
+      </p>
+      <CodeBlock code={`# Verbose encryption
+nokvault encrypt ./documents --verbose
+
+# Shows progress, file counts, and detailed status`} lang="bash" />
+    </section>
+  </div>
+</DocsLayout>
+
+<style>
+  .prose {
+    color: #e5e5e5;
+  }
+  .prose h1 {
+    color: #fff;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .prose h2 {
+    color: #fff;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+  .prose code {
+    background-color: #1f1f1f;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+  }
+</style>

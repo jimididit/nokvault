@@ -1,0 +1,66 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+---
+
+<DocsLayout title="Documentation Overview - Nokvault">
+  <div class="prose prose-invert max-w-none">
+    <h1>Documentation</h1>
+    <p class="text-xl text-dark-text-muted mb-8">
+      Welcome to the Nokvault documentation. Get started with installation or explore the guides below.
+    </p>
+
+    <div class="grid md:grid-cols-2 gap-6 mt-8">
+      <a href={`${base}docs/installation`} class="block bg-dark-surface p-6 rounded-lg border border-dark-border hover:border-blue-500 transition">
+        <h2 class="text-xl font-semibold mb-2">Installation</h2>
+        <p class="text-dark-text-muted">Get Nokvault up and running on your system. Download binaries or build from source.</p>
+      </a>
+
+      <a href={`${base}docs/commands`} class="block bg-dark-surface p-6 rounded-lg border border-dark-border hover:border-blue-500 transition">
+        <h2 class="text-xl font-semibold mb-2">Commands</h2>
+        <p class="text-dark-text-muted">Complete reference for all Nokvault commands and their options.</p>
+      </a>
+
+      <a href={`${base}docs/usage/basic`} class="block bg-dark-surface p-6 rounded-lg border border-dark-border hover:border-blue-500 transition">
+        <h2 class="text-xl font-semibold mb-2">Basic Usage</h2>
+        <p class="text-dark-text-muted">Learn the fundamentals of encrypting and decrypting files.</p>
+      </a>
+
+      <a href={`${base}docs/usage/advanced`} class="block bg-dark-surface p-6 rounded-lg border border-dark-border hover:border-blue-500 transition">
+        <h2 class="text-xl font-semibold mb-2">Advanced Usage</h2>
+        <p class="text-dark-text-muted">Explore advanced features like auto-encryption, scheduling, and key rotation.</p>
+      </a>
+
+      <a href={`${base}docs/configuration`} class="block bg-dark-surface p-6 rounded-lg border border-dark-border hover:border-blue-500 transition">
+        <h2 class="text-xl font-semibold mb-2">Configuration</h2>
+        <p class="text-dark-text-muted">Configure Nokvault with global and local settings.</p>
+      </a>
+
+      <a href={`${base}docs/security`} class="block bg-dark-surface p-6 rounded-lg border border-dark-border hover:border-blue-500 transition">
+        <h2 class="text-xl font-semibold mb-2">Security</h2>
+        <p class="text-dark-text-muted">Understand Nokvault's security features and best practices.</p>
+      </a>
+    </div>
+  </div>
+</DocsLayout>
+
+<style>
+  .prose {
+    color: #e5e5e5;
+  }
+  .prose h1 {
+    color: #fff;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .prose h2 {
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-top: 0;
+  }
+  .prose a {
+    text-decoration: none;
+  }
+</style>

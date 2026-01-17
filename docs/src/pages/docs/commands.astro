@@ -1,0 +1,212 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+---
+
+<DocsLayout title="Commands - Nokvault">
+  <div class="prose prose-invert max-w-none">
+    <h1>Commands</h1>
+    <p class="text-xl text-dark-text-muted mb-8">
+      Complete reference for all Nokvault commands and their options.
+    </p>
+
+    <div class="space-y-8">
+      <section>
+        <h2><code>encrypt &lt;path&gt;</code></h2>
+        <p class="text-dark-text-muted mb-4">
+          Encrypt a file or directory using AES-256-GCM encryption. Supports both files and recursive directory encryption.
+        </p>
+        <h3>Options</h3>
+        <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+          <li><code>--output, -o</code>: Specify output file path (default: &lt;path&gt;.nokvault)</li>
+          <li><code>--keyfile, -k</code>: Path to keyfile for encryption</li>
+          <li><code>--password, -p</code>: Encryption password (not recommended)</li>
+          <li><code>--no-prompt</code>: Don't prompt for password</li>
+          <li><code>--compress</code>: Compress before encryption</li>
+          <li><code>--exclude</code>: Exclude patterns (can be used multiple times)</li>
+          <li><code>--dry-run</code>: Show what would be encrypted without actually encrypting</li>
+          <li><code>--verbose, -v</code>: Verbose output</li>
+        </ul>
+        <h3>Examples</h3>
+        <CodeBlock code={`# Encrypt a file
+nokvault encrypt document.txt
+
+# Encrypt with compression
+nokvault encrypt large-file.bin --compress
+
+# Encrypt directory excluding temp files
+nokvault encrypt ./documents --exclude "*.tmp" --exclude "*.log"
+
+# Use keyfile
+nokvault encrypt file.txt --keyfile ~/.keys/master.key`} lang="bash" />
+      </section>
+
+      <section>
+        <h2><code>decrypt &lt;path&gt;</code></h2>
+        <p class="text-dark-text-muted mb-4">
+          Decrypt a nokvault encrypted file or directory. Automatically detects encrypted files and restores original structure.
+        </p>
+        <h3>Options</h3>
+        <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+          <li><code>--output, -o</code>: Specify output file path</li>
+          <li><code>--keyfile, -k</code>: Path to keyfile for decryption</li>
+          <li><code>--password, -p</code>: Decryption password</li>
+          <li><code>--no-prompt</code>: Don't prompt for password</li>
+          <li><code>--dry-run</code>: Show what would be decrypted</li>
+          <li><code>--verbose, -v</code>: Verbose output</li>
+        </ul>
+        <h3>Examples</h3>
+        <CodeBlock code={`# Decrypt a file
+nokvault decrypt document.txt.nokvault
+
+# Decrypt with keyfile
+nokvault decrypt file.nokvault --keyfile ~/.keys/master.key
+
+# Decrypt directory
+nokvault decrypt ./encrypted-documents`} lang="bash" />
+      </section>
+
+      <section>
+        <h2><code>watch &lt;path&gt;</code></h2>
+        <p class="text-dark-text-muted mb-4">
+          Watch a directory for file changes and optionally auto-encrypt files when they're created or modified.
+        </p>
+        <h3>Options</h3>
+        <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+          <li><code>--auto-encrypt</code>: Automatically encrypt files on change</li>
+          <li><code>--keyfile, -k</code>: Path to keyfile</li>
+          <li><code>--delay</code>: Delay before processing changes (default: 1s)</li>
+          <li><code>--exclude</code>: Exclude patterns</li>
+          <li><code>--recursive</code>: Watch subdirectories recursively</li>
+          <li><code>--verbose, -v</code>: Verbose output</li>
+        </ul>
+        <h3>Examples</h3>
+        <CodeBlock code={`# Watch directory with auto-encryption
+nokvault watch ./documents --auto-encrypt --keyfile ~/.keys/master.key
+
+# Watch with delay and exclusions
+nokvault watch ./sensitive --auto-encrypt \\
+  --keyfile ~/.keys/master.key \\
+  --delay 5s \\
+  --exclude "*.tmp"`} lang="bash" />
+      </section>
+
+      <section>
+        <h2><code>schedule encrypt &lt;path&gt;</code></h2>
+        <p class="text-dark-text-muted mb-4">
+          Schedule periodic encryption operations. Useful for automated backups and regular encryption tasks.
+        </p>
+        <h3>Options</h3>
+        <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+          <li><code>--interval</code>: Time interval between operations (e.g., 1h, 30m, 1d)</li>
+          <li><code>--keyfile, -k</code>: Path to keyfile</li>
+          <li><code>--compress</code>: Compress before encryption</li>
+          <li><code>--verbose, -v</code>: Verbose output</li>
+        </ul>
+        <h3>Examples</h3>
+        <CodeBlock code={`# Encrypt every hour
+nokvault schedule encrypt ./backups --interval 1h --keyfile ~/.keys/backup.key
+
+# Encrypt daily
+nokvault schedule encrypt ./documents --interval 24h`} lang="bash" />
+      </section>
+
+      <section>
+        <h2><code>rotate-key &lt;path&gt;</code></h2>
+        <p class="text-dark-text-muted mb-4">
+          Rotate the encryption key for an encrypted file without re-encrypting the data. This is more efficient than decrypting and re-encrypting.
+        </p>
+        <h3>Options</h3>
+        <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+          <li><code>--old-keyfile</code>: Path to old keyfile</li>
+          <li><code>--new-keyfile</code>: Path to new keyfile</li>
+          <li><code>--verbose, -v</code>: Verbose output</li>
+        </ul>
+        <h3>Examples</h3>
+        <CodeBlock code={`# Rotate key for a file
+nokvault rotate-key file.nokvault
+
+# Rotate with specific keyfiles
+nokvault rotate-key file.nokvault \\
+  --old-keyfile ~/.keys/old.key \\
+  --new-keyfile ~/.keys/new.key`} lang="bash" />
+      </section>
+
+      <section>
+        <h2><code>secure-delete &lt;path&gt;</code></h2>
+        <p class="text-dark-text-muted mb-4">
+          Securely delete a file by overwriting it multiple times before deletion. Makes data recovery extremely difficult.
+        </p>
+        <h3>Options</h3>
+        <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+          <li><code>--passes</code>: Number of overwrite passes (default: 3)</li>
+          <li><code>--verbose, -v</code>: Verbose output</li>
+        </ul>
+        <h3>Examples</h3>
+        <CodeBlock code={`# Secure delete with default passes
+nokvault secure-delete sensitive-file.txt
+
+# Secure delete with custom passes
+nokvault secure-delete sensitive-file.txt --passes 7`} lang="bash" />
+      </section>
+
+      <section>
+        <h2><code>config</code></h2>
+        <p class="text-dark-text-muted mb-4">
+          Manage configuration settings. View, set, or initialize configuration files.
+        </p>
+        <h3>Subcommands</h3>
+        <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+          <li><code>--init</code>: Initialize default configuration</li>
+          <li><code>--show</code>: Show current configuration</li>
+          <li><code>--get &lt;key&gt;</code>: Get a specific configuration value</li>
+          <li><code>--set &lt;key&gt;=&lt;value&gt;</code>: Set a configuration value</li>
+        </ul>
+        <h3>Examples</h3>
+        <CodeBlock code={`# Initialize configuration
+nokvault config --init
+
+# View current configuration
+nokvault config --show
+
+# Get specific value
+nokvault config --get compression
+
+# Set a value
+nokvault config --set compression=true`} lang="bash" />
+      </section>
+    </div>
+  </div>
+</DocsLayout>
+
+<style>
+  .prose {
+    color: #e5e5e5;
+  }
+  .prose h1 {
+    color: #fff;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .prose h2 {
+    color: #fff;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+  .prose h3 {
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .prose code {
+    background-color: #1f1f1f;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+  }
+</style>

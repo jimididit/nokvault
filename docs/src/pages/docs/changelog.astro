@@ -1,0 +1,106 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Changelog - Nokvault">
+  <div class="prose prose-invert max-w-none">
+    <h1>Changelog</h1>
+    <p class="text-xl text-dark-text-muted mb-8">
+      All notable changes to Nokvault will be documented here. For the latest releases, visit <a href="https://github.com/jimididit/nokvault/releases" class="text-blue-400 hover:underline" target="_blank">GitHub Releases</a>.
+    </p>
+
+    <section class="mb-8">
+      <div class="flex items-center gap-4 mb-4">
+        <h2 class="mb-0">Current Version</h2>
+        <span class="px-3 py-1 bg-blue-600 text-white text-sm rounded-full">Check GitHub Releases</span>
+      </div>
+      <p class="text-dark-text-muted">
+        The current version can be checked by running <code>nokvault --version</code> or by visiting the <a href="https://github.com/jimididit/nokvault/releases" class="text-blue-400 hover:underline" target="_blank">GitHub Releases page</a>.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Version History</h2>
+      <p class="text-dark-text-muted mb-4">
+        For detailed release notes and changelog, please visit:
+      </p>
+      <div class="bg-dark-surface p-6 rounded-lg border border-dark-border">
+        <a href="https://github.com/jimididit/nokvault/releases" target="_blank" class="text-blue-400 hover:text-blue-300 text-lg font-semibold">
+          View All Releases on GitHub →
+        </a>
+      </div>
+    </section>
+
+    <section class="mb-8">
+      <h2>Release Types</h2>
+      <div class="space-y-4">
+        <div class="bg-dark-surface p-6 rounded-lg border border-dark-border">
+          <h3 class="text-lg font-semibold mb-2">Major Releases (v2.0.0, v3.0.0)</h3>
+          <p class="text-dark-text-muted">
+            Breaking changes, major new features, or significant architectural changes. May require updates to existing workflows.
+          </p>
+        </div>
+
+        <div class="bg-dark-surface p-6 rounded-lg border border-dark-border">
+          <h3 class="text-lg font-semibold mb-2">Minor Releases (v1.1.0, v1.2.0)</h3>
+          <p class="text-dark-text-muted">
+            New features and enhancements. Backward compatible with previous minor versions.
+          </p>
+        </div>
+
+        <div class="bg-dark-surface p-6 rounded-lg border border-dark-border">
+          <h3 class="text-lg font-semibold mb-2">Patch Releases (v1.0.1, v1.0.2)</h3>
+          <p class="text-dark-text-muted">
+            Bug fixes and security patches. Safe to upgrade immediately.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-8">
+      <h2>Upgrading</h2>
+      <p class="text-dark-text-muted mb-4">
+        To upgrade Nokvault:
+      </p>
+      <ol class="list-decimal list-inside space-y-2 text-dark-text-muted">
+        <li>Download the latest binary from <a href="https://github.com/jimididit/nokvault/releases" class="text-blue-400 hover:underline" target="_blank">GitHub Releases</a></li>
+        <li>Replace your existing binary</li>
+        <li>Verify the installation: <code>nokvault --version</code></li>
+      </ol>
+      <p class="text-dark-text-muted mt-4">
+        <strong>Note:</strong> Encrypted files are forward-compatible. Files encrypted with older versions can be decrypted with newer versions.
+      </p>
+    </section>
+  </div>
+</DocsLayout>
+
+<style>
+  .prose {
+    color: #e5e5e5;
+  }
+  .prose h1 {
+    color: #fff;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .prose h2 {
+    color: #fff;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+  .prose h3 {
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+  }
+  .prose code {
+    background-color: #1f1f1f;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+  }
+</style>

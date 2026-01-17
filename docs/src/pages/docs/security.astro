@@ -1,0 +1,144 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Security - Nokvault">
+  <div class="prose prose-invert max-w-none">
+    <h1>Security</h1>
+    <p class="text-xl text-dark-text-muted mb-8">
+      Understand Nokvault's security features and how they protect your data.
+    </p>
+
+    <section class="mb-8">
+      <h2>Encryption</h2>
+      <p class="text-dark-text-muted mb-4">
+        Nokvault uses <strong>AES-256-GCM</strong> (Advanced Encryption Standard with Galois/Counter Mode) for authenticated encryption. This provides:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li><strong>Confidentiality:</strong> Data is encrypted and cannot be read without the key</li>
+        <li><strong>Integrity:</strong> Any tampering with encrypted files is detected</li>
+        <li><strong>Authentication:</strong> Ensures data came from the original source</li>
+      </ul>
+      <p class="text-dark-text-muted">
+        AES-256 is considered secure against current and foreseeable threats, including quantum computing attacks (with appropriate key sizes).
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Key Derivation</h2>
+      <p class="text-dark-text-muted mb-4">
+        Passwords are never used directly as encryption keys. Instead, Nokvault uses <strong>Argon2id</strong> for key derivation:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Resistant to GPU-based attacks</li>
+        <li>Configurable memory and time costs</li>
+        <li>Winner of the Password Hashing Competition</li>
+        <li>Protects against rainbow table attacks</li>
+      </ul>
+      <p class="text-dark-text-muted">
+        Each file uses a unique salt, ensuring that even identical files produce different ciphertexts.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Memory Safety</h2>
+      <p class="text-dark-text-muted mb-4">
+        Sensitive data is handled securely in memory:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Passwords and keys are zeroized from memory after use</li>
+        <li>Memory is cleared before being freed</li>
+        <li>Prevents sensitive data from remaining in RAM</li>
+      </ul>
+    </section>
+
+    <section class="mb-8">
+      <h2>Timing Attack Protection</h2>
+      <p class="text-dark-text-muted mb-4">
+        Nokvault uses constant-time operations for:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Password comparison</li>
+        <li>Key verification</li>
+        <li>Authentication tag checking</li>
+      </ul>
+      <p class="text-dark-text-muted">
+        This prevents attackers from learning information through timing analysis.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>File Integrity</h2>
+      <p class="text-dark-text-muted mb-4">
+        Every encrypted file includes an authentication tag that:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Detects any modification or corruption</li>
+        <li>Prevents tampering attacks</li>
+        <li>Ensures data hasn't been altered</li>
+      </ul>
+      <p class="text-dark-text-muted">
+        If a file is tampered with, decryption will fail with an authentication error.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Random Number Generation</h2>
+      <p class="text-dark-text-muted mb-4">
+        Nokvault uses cryptographically secure random number generation for:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Initialization vectors (IVs) for each file</li>
+        <li>Salt generation for key derivation</li>
+        <li>Key generation</li>
+      </ul>
+      <p class="text-dark-text-muted">
+        Each encrypted file uses a unique, randomly generated IV, ensuring that identical plaintexts produce different ciphertexts.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Best Practices</h2>
+      <p class="text-dark-text-muted mb-4">
+        For additional security, follow these recommendations:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Use keyfiles instead of passwords when possible</li>
+        <li>Store keyfiles securely and back them up</li>
+        <li>Rotate keys periodically</li>
+        <li>Use secure deletion for sensitive files</li>
+        <li>Never commit passwords or keyfiles to version control</li>
+        <li>Use environment variables for automation scripts</li>
+        <li>Keep Nokvault updated to the latest version</li>
+      </ul>
+      <p class="text-dark-text-muted">
+        See the <a href="/nokvault/docs/security/best-practices" class="text-blue-400 hover:underline">Best Practices</a> page for detailed guidance.
+      </p>
+    </section>
+  </div>
+</DocsLayout>
+
+<style>
+  .prose {
+    color: #e5e5e5;
+  }
+  .prose h1 {
+    color: #fff;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .prose h2 {
+    color: #fff;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+  .prose code {
+    background-color: #1f1f1f;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+  }
+</style>

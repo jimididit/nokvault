@@ -1,0 +1,96 @@
+# Cursor IDE
+.cursor/
+.cursorignore
+.cursorignoreindex
+.cursorrules
+.cursorindexingignore
+.specstory/
+
+# Other IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+
+# Environment and sensitive files
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+*.secret
+*.password
+.nokvault-backup/
+
+# Go specific
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+nokvault
+nokvault.exe
+nokvault-*
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.html
+coverage.xml
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Build artifacts
+dist/
+build/
+bin/
+out/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.bak
+*.backup
+*~
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Project specific
+# Encrypted files (optional - uncomment if you don't want to track encrypted files)
+*.nokvault
+PACKAGE_MANAGERS.md
+
+# Package manager templates (not ready for distribution yet)
+Formula/
+scoop/
+
+# Config files with sensitive data (if any)
+# config.local.toml
+# .nokvault.local.toml

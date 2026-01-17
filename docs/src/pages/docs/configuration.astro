@@ -1,0 +1,157 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+---
+
+<DocsLayout title="Configuration - Nokvault">
+  <div class="prose prose-invert max-w-none">
+    <h1>Configuration</h1>
+    <p class="text-xl text-dark-text-muted mb-8">
+      Configure Nokvault with global and local settings to customize its behavior.
+    </p>
+
+    <section class="mb-8">
+      <h2>Configuration Files</h2>
+      <p class="text-dark-text-muted mb-4">
+        Nokvault supports two levels of configuration:
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li><strong>Global config:</strong> <code>~/.config/nokvault/config.toml</code> - Applies to all projects</li>
+        <li><strong>Local config:</strong> <code>.nokvault.toml</code> - Applies to the current directory and overrides global settings</li>
+      </ul>
+      <p class="text-dark-text-muted">
+        Local configuration takes precedence over global configuration, allowing project-specific settings.
+      </p>
+    </section>
+
+    <section class="mb-8">
+      <h2>Initializing Configuration</h2>
+      <p class="text-dark-text-muted mb-4">
+        Create a default configuration file:
+      </p>
+      <CodeBlock code={`# Initialize global configuration
+nokvault config --init
+
+# This creates ~/.config/nokvault/config.toml with default values`} lang="bash" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Viewing Configuration</h2>
+      <p class="text-dark-text-muted mb-4">
+        View your current configuration settings:
+      </p>
+      <CodeBlock code={`# Show all configuration (global + local merged)
+nokvault config --show
+
+# Get a specific value
+nokvault config --get compression
+nokvault config --get keyfile`} lang="bash" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Configuration Options</h2>
+      <p class="text-dark-text-muted mb-4">
+        Common configuration options you can set:
+      </p>
+      <CodeBlock code={`# Set compression default
+nokvault config --set compression=true
+
+# Set default keyfile path
+nokvault config --set keyfile="~/.keys/master.key"
+
+# Set encryption algorithm
+nokvault config --set algorithm="aes-256-gcm"
+
+# Set Argon2id parameters
+nokvault config --set argon2.memory=65536
+nokvault config --set argon2.iterations=3
+nokvault config --set argon2.parallelism=4`} lang="bash" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Configuration File Format</h2>
+      <p class="text-dark-text-muted mb-4">
+        Configuration files use TOML format. Example <code>config.toml</code>:
+      </p>
+      <CodeBlock code={`# Default compression setting
+compression = false
+
+# Default keyfile path
+keyfile = "~/.keys/master.key"
+
+# Encryption algorithm
+algorithm = "aes-256-gcm"
+
+# Argon2id key derivation parameters
+[argon2]
+memory = 65536      # Memory in KB
+iterations = 3      # Number of iterations
+parallelism = 4     # Number of threads
+
+# File watching settings
+[watch]
+delay = "1s"
+recursive = true
+
+# Secure deletion settings
+[secure_delete]
+passes = 3`} lang="toml" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Environment Variables</h2>
+      <p class="text-dark-text-muted mb-4">
+        Some settings can also be controlled via environment variables, which override config files:
+      </p>
+      <CodeBlock code={`# Password for non-interactive use
+export NOKVAULT_PASSWORD="your-password"
+
+# Keyfile path
+export NOKVAULT_KEYFILE="~/.keys/master.key"
+
+# Enable compression
+export NOKVAULT_COMPRESSION="true"`} lang="bash" />
+    </section>
+
+    <section class="mb-8">
+      <h2>Project-Specific Configuration</h2>
+      <p class="text-dark-text-muted mb-4">
+        Create a <code>.nokvault.toml</code> file in your project directory for project-specific settings:
+      </p>
+      <CodeBlock code={`# .nokvault.toml
+compression = true
+keyfile = "./.keys/project.key"
+
+[watch]
+exclude = ["*.tmp", "*.log", "node_modules"]`} lang="toml" />
+      <p class="text-dark-text-muted mt-4">
+        This is useful for projects that need different encryption settings or keyfiles.
+      </p>
+    </section>
+  </div>
+</DocsLayout>
+
+<style>
+  .prose {
+    color: #e5e5e5;
+  }
+  .prose h1 {
+    color: #fff;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .prose h2 {
+    color: #fff;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+  .prose code {
+    background-color: #1f1f1f;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+  }
+</style>

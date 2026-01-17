@@ -1,0 +1,62 @@
+---
+export interface Props {
+  code: string;
+  lang?: string;
+  filename?: string;
+}
+
+const { code, lang = 'text', filename } = Astro.props;
+
+// Import Shiki
+const { codeToHtml } = await import('shiki');
+
+// Get the highlighted HTML
+const html = await codeToHtml(code, {
+  lang,
+  theme: 'github-dark',
+});
+---
+
+<div class="code-block-wrapper">
+  {filename && (
+    <div class="code-filename">
+      {filename}
+    </div>
+  )}
+  <div class="code-container" set:html={html} />
+</div>
+
+<style>
+  .code-block-wrapper {
+    margin: 1rem 0;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    border: 1px solid #1f1f1f;
+  }
+
+  .code-filename {
+    background-color: #1a1a1a;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    color: #a3a3a3;
+    border-bottom: 1px solid #1f1f1f;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  }
+
+  .code-container {
+    overflow-x: auto;
+  }
+
+  .code-container :global(pre) {
+    margin: 0;
+    padding: 1rem;
+    background-color: #0d1117 !important;
+    overflow-x: auto;
+  }
+
+  .code-container :global(code) {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+</style>

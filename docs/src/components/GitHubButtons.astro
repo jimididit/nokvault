@@ -1,0 +1,56 @@
+---
+const repoUrl = "https://github.com/jimididit/nokvault";
+const repo = "jimididit/nokvault";
+---
+
+<div class="github-buttons">
+  <a 
+    class="github-button" 
+    href={`${repoUrl}/stargazers`}
+    data-icon="octicon-star"
+    data-size="large"
+    data-show-count="true"
+    data-color-scheme="no-preference: dark; light: dark; dark: dark;"
+    aria-label={`Star ${repo} on GitHub`}
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    Star
+  </a>
+  
+  <a 
+    class="github-button" 
+    href={`${repoUrl}/fork`}
+    data-icon="octicon-repo-forked"
+    data-size="large"
+    data-show-count="true"
+    data-color-scheme="no-preference: dark; light: dark; dark: dark;"
+    aria-label={`Fork ${repo} on GitHub`}
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    Fork
+  </a>
+</div>
+
+<script async defer src="https://buttons.github.io/buttons.js"></script>
+
+<style>
+  .github-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  /* Override GitHub button styles for dark theme */
+  :global(.github-button) {
+    filter: invert(1) hue-rotate(180deg);
+  }
+
+  /* Better dark theme integration */
+  @media (prefers-color-scheme: dark) {
+    :global(.github-button) {
+      filter: brightness(0.9) contrast(1.1);
+    }
+  }
+</style>
