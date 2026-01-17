@@ -2,10 +2,26 @@
 import CodeBlock from '../components/CodeBlock.astro';
 import Layout from '../layouts/Layout.astro';
 import GitHubButtons from '../components/GitHubButtons.astro';
+import StructuredData from '../components/StructuredData.astro';
+import Icon from '../components/Icon.astro';
 const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
-<Layout title="Nokvault - Encrypt and Protect Your Files">
+<Layout 
+  title="Nokvault - Encrypt and Protect Your Files | CLI Encryption Tool"
+  description="Nokvault is a modern, cross-platform CLI tool for encrypting files and directories using AES-256-GCM encryption. Protect your sensitive data with strong encryption, automatic file watching, and secure key management."
+  canonical={base}
+  keywords={['file encryption', 'CLI encryption', 'AES-256', 'directory encryption', 'secure files', 'privacy tool', 'encryption software', 'command line encryption']}
+>
+  <StructuredData 
+    type="SoftwareApplication" 
+    data={{
+      name: 'Nokvault',
+      description: 'A modern CLI tool for encrypting and protecting local folders and files',
+      version: '0.1.0',
+      downloadUrl: 'https://github.com/jimididit/nokvault/releases'
+    }} 
+  />
   <div class="max-w-4xl mx-auto">
     <div class="text-center mb-16">
       <h1 class="text-5xl font-bold mb-4">Nokvault</h1>
@@ -27,25 +43,37 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
 
     <div class="grid md:grid-cols-2 gap-6 mb-16">
       <div class="bg-dark-surface p-6 rounded-lg border border-dark-border">
-        <h2 class="text-2xl font-semibold mb-3">🔒 Strong Encryption</h2>
+        <h2 class="text-2xl font-semibold mb-3 flex items-center gap-2">
+          <Icon name="lock" size={28} class="text-blue-400" />
+          Strong Encryption
+        </h2>
         <p class="text-dark-text-muted">
           AES-256-GCM authenticated encryption with Argon2id key derivation for maximum security.
         </p>
       </div>
       <div class="bg-dark-surface p-6 rounded-lg border border-dark-border">
-        <h2 class="text-2xl font-semibold mb-3">📁 Directory Support</h2>
+        <h2 class="text-2xl font-semibold mb-3 flex items-center gap-2">
+          <Icon name="folder" size={28} class="text-blue-400" />
+          Directory Support
+        </h2>
         <p class="text-dark-text-muted">
           Encrypt entire directories recursively with metadata preservation.
         </p>
       </div>
       <div class="bg-dark-surface p-6 rounded-lg border border-dark-border">
-        <h2 class="text-2xl font-semibold mb-3">⚡ Auto-Encryption</h2>
+        <h2 class="text-2xl font-semibold mb-3 flex items-center gap-2">
+          <Icon name="bolt" size={28} class="text-blue-400" />
+          Auto-Encryption
+        </h2>
         <p class="text-dark-text-muted">
           Watch directories and automatically encrypt files on change.
         </p>
       </div>
       <div class="bg-dark-surface p-6 rounded-lg border border-dark-border">
-        <h2 class="text-2xl font-semibold mb-3">🌐 Cross-Platform</h2>
+        <h2 class="text-2xl font-semibold mb-3 flex items-center gap-2">
+          <Icon name="globe" size={28} class="text-blue-400" />
+          Cross-Platform
+        </h2>
         <p class="text-dark-text-muted">
           Single binary for Windows, Linux, and macOS. No dependencies required.
         </p>

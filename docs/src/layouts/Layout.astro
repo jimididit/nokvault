@@ -1,12 +1,16 @@
 ---
 import GitHubButtons from '../components/GitHubButtons.astro';
+import SEO from '../components/SEO.astro';
+import StructuredData from '../components/StructuredData.astro';
 
 export interface Props {
   title: string;
   description?: string;
+  canonical?: string;
+  keywords?: string[];
 }
 
-const { title, description = "Nokvault - A modern CLI tool for encrypting and protecting local folders and files" } = Astro.props;
+const { title, description = "Nokvault - A modern CLI tool for encrypting and protecting local folders and files", canonical, keywords } = Astro.props;
 const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
@@ -14,11 +18,12 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="description" content={description} />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
+    <SEO title={title} description={description} canonical={canonical} keywords={keywords} />
+    <StructuredData type="WebSite" />
   </head>
   <body class="bg-dark-bg text-dark-text min-h-screen">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

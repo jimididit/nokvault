@@ -3,7 +3,12 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
-<DocsLayout title="Documentation Overview - Nokvault">
+<DocsLayout 
+  title="Documentation Overview - Nokvault"
+  description="Complete documentation for Nokvault CLI encryption tool. Learn how to install, use, and configure Nokvault to encrypt files and directories securely."
+  canonical={`${base}docs/`}
+  keywords={['nokvault documentation', 'encryption guide', 'CLI encryption tutorial', 'file encryption how-to']}
+>
   <div class="prose prose-invert max-w-none">
     <h1>Documentation</h1>
     <p class="text-xl text-dark-text-muted mb-8">

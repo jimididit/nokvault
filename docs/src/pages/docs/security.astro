@@ -1,8 +1,14 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
-<DocsLayout title="Security - Nokvault">
+<DocsLayout 
+  title="Security Features - Nokvault Encryption Security"
+  description="Learn about Nokvault's security features including AES-256-GCM encryption, Argon2id key derivation, secure memory handling, authenticated encryption, and best practices for secure file encryption."
+  canonical={`${base}docs/security`}
+  keywords={['encryption security', 'AES-256 security', 'secure encryption', 'cryptographic security', 'file encryption security', 'data protection']}
+>
   <div class="prose prose-invert max-w-none">
     <h1>Security</h1>
     <p class="text-xl text-dark-text-muted mb-8">

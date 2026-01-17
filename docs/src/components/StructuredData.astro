@@ -1,0 +1,77 @@
+---
+export interface Props {
+  type: 'SoftwareApplication' | 'BreadcrumbList' | 'WebSite';
+  data?: any;
+  breadcrumbs?: Array<{ name: string; url: string }>;
+}
+
+const { type, data, breadcrumbs } = Astro.props;
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+const siteUrl = 'https://jimididit.github.io';
+
+let schema = {};
+
+if (type === 'SoftwareApplication' && data) {
+  schema = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: data.name || 'Nokvault',
+    applicationCategory: 'SecurityApplication',
+    operatingSystem: 'Windows, Linux, macOS',
+    description: data.description || 'A modern CLI tool for encrypting and protecting local folders and files',
+    url: `${siteUrl}${base}`,
+    downloadUrl: data.downloadUrl || `https://github.com/jimididit/nokvault/releases`,
+    softwareVersion: data.version || '0.1.0',
+    releaseNotes: `${siteUrl}${base}docs/changelog`,
+    license: 'https://opensource.org/licenses/MIT',
+    author: {
+      '@type': 'Person',
+      name: 'jimididit',
+      url: 'https://github.com/jimididit'
+    },
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD'
+    },
+    aggregateRating: data.rating ? {
+      '@type': 'AggregateRating',
+      ratingValue: data.rating.value,
+      ratingCount: data.rating.count
+    } : undefined,
+    ...data
+  };
+} else if (type === 'BreadcrumbList' && breadcrumbs) {
+  schema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: breadcrumbs.map((crumb, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: crumb.name,
+      item: crumb.url.startsWith('http') ? crumb.url : `${siteUrl}${crumb.url}`
+    }))
+  };
+} else if (type === 'WebSite') {
+  schema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Nokvault',
+    description: 'A modern CLI tool for encrypting and protecting local folders and files',
+    url: `${siteUrl}${base}`,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${siteUrl}${base}docs/?q={search_term_string}`
+      },
+      'query-input': 'required name=search_term_string'
+    }
+  };
+}
+
+// Remove undefined properties
+const cleanSchema = JSON.parse(JSON.stringify(schema, (key, value) => value === undefined ? undefined : value));
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(cleanSchema)} />

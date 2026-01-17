@@ -1,9 +1,15 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import CodeBlock from '../../components/CodeBlock.astro';
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
-<DocsLayout title="Commands - Nokvault">
+<DocsLayout 
+  title="Command Reference - Nokvault CLI Commands"
+  description="Complete reference guide for all Nokvault CLI commands including encrypt, decrypt, watch, schedule, rotate-key, secure-delete, and config. Learn command syntax, options, and examples."
+  canonical={`${base}docs/commands`}
+  keywords={['nokvault commands', 'CLI commands', 'encryption commands', 'nokvault encrypt', 'nokvault decrypt', 'command reference']}
+>
   <div class="prose prose-invert max-w-none">
     <h1>Commands</h1>
     <p class="text-xl text-dark-text-muted mb-8">
