@@ -39,9 +39,11 @@ secrets/
 *.dll
 *.so
 *.dylib
-nokvault
-nokvault.exe
+/nokvault
+/nokvault.exe
 nokvault-*
+# Allow cmd/nokvault directory (source code)
+!cmd/nokvault/
 
 # Test binary, built with `go test -c`
 *.test
@@ -84,7 +86,7 @@ desktop.ini
 
 # Project specific
 # Encrypted files (optional - uncomment if you don't want to track encrypted files)
-*.nokvault
+# *.nokvault
 PACKAGE_MANAGERS.md
 
 # Package manager templates (not ready for distribution yet)
