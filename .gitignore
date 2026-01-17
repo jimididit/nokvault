@@ -48,6 +48,9 @@ nokvault-*
 # Test binary, built with `go test -c`
 *.test
 
+# Test files and folders
+/test-*
+
 # Output of the go coverage tool
 *.out
 coverage.html
