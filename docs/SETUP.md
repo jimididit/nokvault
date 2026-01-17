@@ -31,8 +31,8 @@ The built site will be in `docs/dist/`.
    - Branch: `gh-pages` (or use GitHub Actions)
 
 2. **Configure Base Path:**
-   - If your repo is `username/nokvault`, the base path should be `/nokvault`
-   - If your repo is `username/nokvault` and you want it at the root, change `base` in `astro.config.mjs` to `/`
+   - If your repo is `jimididit/nokvault`, the base path should be `/nokvault`
+   - If your repo is `jimididit/nokvault` and you want it at the root, change `base` in `astro.config.mjs` to `/`
    - Update all internal links accordingly
 
 3. **Deploy:**
@@ -60,4 +60,4 @@ npm run build
 
 - The site uses a dark theme by default
 - All paths are relative to the `base` configured in `astro.config.mjs`
-- GitHub Pages URL will be: `https://username.github.io/nokvault/`
+- GitHub Pages URL will be: `https://jimididit.github.io/nokvault/`

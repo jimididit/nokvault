@@ -4,49 +4,33 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDefaultConfig(t *testing.T) {
 	config := DefaultConfig()
 
-	if config.Encryption.Algorithm != "aes256gcm" {
-		t.Errorf("Expected encryption algorithm aes256gcm, got %s", config.Encryption.Algorithm)
-	}
-
-	if config.KeyDerivation.Algorithm != "argon2id" {
-		t.Errorf("Expected key derivation algorithm argon2id, got %s", config.KeyDerivation.Algorithm)
-	}
-
-	if config.KeyDerivation.MemoryCost == 0 {
-		t.Error("Memory cost should not be zero")
-	}
-
-	if config.KeyDerivation.TimeCost == 0 {
-		t.Error("Time cost should not be zero")
-	}
-
-	if config.Security.DeletePasses == 0 {
-		t.Error("Delete passes should not be zero")
-	}
+	assert.Equal(t, "aes256gcm", config.Encryption.Algorithm, "Encryption algorithm should match")
+	assert.Equal(t, "argon2id", config.KeyDerivation.Algorithm, "Key derivation algorithm should match")
+	assert.NotZero(t, config.KeyDerivation.MemoryCost, "Memory cost should not be zero")
+	assert.NotZero(t, config.KeyDerivation.TimeCost, "Time cost should not be zero")
+	assert.NotZero(t, config.Security.DeletePasses, "Delete passes should not be zero")
 }
 
 func TestConfigManager_Load_NoConfigFile(t *testing.T) {
 	cm := NewConfigManager()
 
 	// Load should succeed even if config file doesn't exist (uses defaults)
-	if err := cm.Load(); err != nil {
-		t.Errorf("Load should succeed with defaults even if config file doesn't exist: %v", err)
-	}
+	err := cm.Load()
+	assert.NoError(t, err, "Load should succeed with defaults even if config file doesn't exist")
 
 	config := cm.Get()
-	if config == nil {
-		t.Fatal("Config should not be nil")
-	}
+	require.NotNil(t, config, "Config should not be nil")
 
 	// Verify defaults are set
-	if config.Encryption.Algorithm != "aes256gcm" {
-		t.Errorf("Expected default algorithm aes256gcm, got %s", config.Encryption.Algorithm)
-	}
+	assert.Equal(t, "aes256gcm", config.Encryption.Algorithm, "Expected default algorithm")
 }
 
 func TestConfigManager_Save_Load(t *testing.T) {
@@ -60,36 +44,29 @@ func TestConfigManager_Save_Load(t *testing.T) {
 	// Save config (will save to actual config directory)
 	// Note: This test modifies the actual config directory, so it's a bit invasive
 	// In a real scenario, you might want to use a test-specific config directory
-	if err := cm.Save(); err != nil {
+	err := cm.Save()
+	if err != nil {
 		// If save fails (e.g., permission issues), skip the test
 		t.Skipf("Skipping test due to save error (may be permission issue): %v", err)
 	}
 
 	// Verify config file exists
 	configPath := GetConfigPath()
-	if _, err := os.Stat(configPath); err != nil {
-		t.Fatalf("Config file was not created: %v", err)
-	}
+	_, err = os.Stat(configPath)
+	require.NoError(t, err, "Config file should be created")
 	defer os.Remove(configPath) // Clean up
 
 	// Create new config manager and load
 	cm2 := NewConfigManager()
-	if err := cm2.Load(); err != nil {
-		t.Fatalf("Failed to load config: %v", err)
-	}
+	err = cm2.Load()
+	require.NoError(t, err, "Failed to load config")
 
 	loadedConfig := cm2.Get()
 	// Note: Config loading may merge with defaults, so we check that at least compression was saved
 	// The exact behavior depends on how viper merges configs
-	if loadedConfig.Encryption.Compression != config.Encryption.Compression {
-		t.Errorf("Compression setting not loaded correctly. Expected %v, got %v",
-			config.Encryption.Compression, loadedConfig.Encryption.Compression)
-	}
-
-	// Verify config was loaded (even if some values may be merged with defaults)
-	if loadedConfig == nil {
-		t.Fatal("Loaded config should not be nil")
-	}
+	assert.Equal(t, config.Encryption.Compression, loadedConfig.Encryption.Compression,
+		"Compression setting should be loaded correctly")
+	require.NotNil(t, loadedConfig, "Loaded config should not be nil")
 }
 
 func TestConfigManager_SetConfig(t *testing.T) {
@@ -101,20 +78,12 @@ func TestConfigManager_SetConfig(t *testing.T) {
 	cm.SetConfig(newConfig)
 
 	config := cm.Get()
-	if config.Encryption.Compression != true {
-		t.Error("Config was not set correctly")
-	}
+	assert.True(t, config.Encryption.Compression, "Config should be set correctly")
 }
 
 func TestGetConfigPath(t *testing.T) {
 	path := GetConfigPath()
 
-	if path == "" {
-		t.Error("Config path should not be empty")
-	}
-
-	// Should end with config.toml
-	if filepath.Base(path) != "config.toml" {
-		t.Errorf("Expected config path to end with config.toml, got %s", path)
-	}
+	assert.NotEmpty(t, path, "Config path should not be empty")
+	assert.Equal(t, "config.toml", filepath.Base(path), "Config path should end with config.toml")
 }

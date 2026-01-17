@@ -2,6 +2,9 @@ package core
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEncryptionServiceEncryptDecrypt(t *testing.T) {
@@ -10,9 +13,7 @@ func TestEncryptionServiceEncryptDecrypt(t *testing.T) {
 
 	password := []byte("test-password-123")
 	key, _, err := keyManager.DeriveKeyFromPassword(password)
-	if err != nil {
-		t.Fatalf("Failed to derive key: %v", err)
-	}
+	require.NoError(t, err, "Failed to derive key")
 	defer func() {
 		for i := range key {
 			key[i] = 0
@@ -23,25 +24,17 @@ func TestEncryptionServiceEncryptDecrypt(t *testing.T) {
 
 	// Encrypt
 	ciphertext, err := service.EncryptData(plaintext, key)
-	if err != nil {
-		t.Fatalf("Encryption failed: %v", err)
-	}
+	require.NoError(t, err, "Encryption should succeed")
 
-	// Verify ciphertext is different
-	if string(ciphertext) == string(plaintext) {
-		t.Error("Ciphertext should be different from plaintext")
-	}
+	// Verify ciphertext is different from plaintext
+	assert.NotEqual(t, plaintext, ciphertext, "Ciphertext should be different from plaintext")
 
 	// Decrypt
 	decrypted, err := service.DecryptData(ciphertext, key)
-	if err != nil {
-		t.Fatalf("Decryption failed: %v", err)
-	}
+	require.NoError(t, err, "Decryption should succeed")
 
 	// Verify decrypted matches original
-	if string(decrypted) != string(plaintext) {
-		t.Errorf("Decrypted text doesn't match: got %q, want %q", string(decrypted), string(plaintext))
-	}
+	assert.Equal(t, plaintext, decrypted, "Decrypted text should match original")
 }
 
 func TestEncryptionServiceWrongKey(t *testing.T) {
@@ -52,9 +45,7 @@ func TestEncryptionServiceWrongKey(t *testing.T) {
 	password2 := []byte("password2")
 
 	key1, salt1, err := keyManager.DeriveKeyFromPassword(password1)
-	if err != nil {
-		t.Fatalf("Failed to derive key: %v", err)
-	}
+	require.NoError(t, err, "Failed to derive key1")
 	defer func() {
 		for i := range key1 {
 			key1[i] = 0
@@ -65,23 +56,18 @@ func TestEncryptionServiceWrongKey(t *testing.T) {
 
 	// Encrypt with key1
 	ciphertext, err := service.EncryptData(plaintext, key1)
-	if err != nil {
-		t.Fatalf("Encryption failed: %v", err)
-	}
+	require.NoError(t, err, "Encryption should succeed")
 
 	// Try to decrypt with key derived from different password
 	key2, err := keyManager.DeriveKeyFromPasswordAndSalt(password2, salt1)
-	if err != nil {
-		t.Fatalf("Failed to derive key: %v", err)
-	}
+	require.NoError(t, err, "Failed to derive key2")
 	defer func() {
 		for i := range key2 {
 			key2[i] = 0
 		}
 	}()
 
-	// Decryption should fail or produce garbage
+	// Decryption should fail - GCM will detect authentication failure
 	_, err = service.DecryptData(ciphertext, key2)
-	// Note: GCM will detect authentication failure, but the exact error may vary
-	// The important thing is that it doesn't silently succeed
+	assert.Error(t, err, "Decryption with wrong key should fail")
 }

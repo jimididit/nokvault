@@ -3,6 +3,9 @@ package core
 import (
 	"bytes"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCompressionService_Compress_Decompress(t *testing.T) {
@@ -14,30 +17,17 @@ func TestCompressionService_Compress_Decompress(t *testing.T) {
 
 	// Compress
 	compressed, err := cs.Compress(originalData)
-	if err != nil {
-		t.Fatalf("Compression failed: %v", err)
-	}
+	require.NoError(t, err, "Compression should succeed")
 
-	if len(compressed) == 0 {
-		t.Error("Compressed data should not be empty")
-	}
-
-	// Verify compressed data is different from original
-	if bytes.Equal(compressed, originalData) {
-		t.Error("Compressed data should be different from original")
-	}
+	assert.NotEmpty(t, compressed, "Compressed data should not be empty")
+	assert.NotEqual(t, originalData, compressed, "Compressed data should be different from original")
 
 	// Decompress
 	decompressed, err := cs.Decompress(compressed)
-	if err != nil {
-		t.Fatalf("Decompression failed: %v", err)
-	}
+	require.NoError(t, err, "Decompression should succeed")
 
 	// Verify decompressed matches original
-	if !bytes.Equal(decompressed, originalData) {
-		t.Errorf("Decompressed data doesn't match original. Expected %d bytes, got %d bytes",
-			len(originalData), len(decompressed))
-	}
+	assert.Equal(t, originalData, decompressed, "Decompressed data should match original")
 }
 
 func TestCompressionService_Compress_EmptyData(t *testing.T) {
@@ -46,19 +36,13 @@ func TestCompressionService_Compress_EmptyData(t *testing.T) {
 	emptyData := []byte{}
 
 	compressed, err := cs.Compress(emptyData)
-	if err != nil {
-		t.Fatalf("Compression of empty data failed: %v", err)
-	}
+	require.NoError(t, err, "Compression of empty data should succeed")
 
 	// Decompress empty data
 	decompressed, err := cs.Decompress(compressed)
-	if err != nil {
-		t.Fatalf("Decompression of empty data failed: %v", err)
-	}
+	require.NoError(t, err, "Decompression of empty data should succeed")
 
-	if !bytes.Equal(decompressed, emptyData) {
-		t.Error("Decompressed empty data should match original")
-	}
+	assert.Equal(t, emptyData, decompressed, "Decompressed empty data should match original")
 }
 
 func TestCompressionService_Decompress_InvalidData(t *testing.T) {
@@ -67,9 +51,7 @@ func TestCompressionService_Decompress_InvalidData(t *testing.T) {
 	invalidData := []byte("This is not compressed data")
 
 	_, err := cs.Decompress(invalidData)
-	if err == nil {
-		t.Error("Expected error when decompressing invalid data")
-	}
+	assert.Error(t, err, "Expected error when decompressing invalid data")
 }
 
 func TestCompressionService_ShouldCompress(t *testing.T) {
@@ -110,10 +92,7 @@ func TestCompressionService_ShouldCompress(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := cs.ShouldCompress(tt.data, tt.minSize)
-			if result != tt.expected {
-				t.Errorf("ShouldCompress(%d bytes, minSize=%d) = %v, want %v",
-					len(tt.data), tt.minSize, result, tt.expected)
-			}
+			assert.Equal(t, tt.expected, result, "ShouldCompress result should match expected")
 		})
 	}
 }
@@ -131,19 +110,12 @@ func TestCompressionService_RoundTrip(t *testing.T) {
 	for i, original := range testCases {
 		t.Run(string(rune(i+'A')), func(t *testing.T) {
 			compressed, err := cs.Compress(original)
-			if err != nil {
-				t.Fatalf("Compression failed: %v", err)
-			}
+			require.NoError(t, err, "Compression should succeed")
 
 			decompressed, err := cs.Decompress(compressed)
-			if err != nil {
-				t.Fatalf("Decompression failed: %v", err)
-			}
+			require.NoError(t, err, "Decompression should succeed")
 
-			if !bytes.Equal(decompressed, original) {
-				t.Errorf("Round trip failed. Original: %d bytes, Decompressed: %d bytes",
-					len(original), len(decompressed))
-			}
+			assert.Equal(t, original, decompressed, "Round trip should preserve original data")
 		})
 	}
 }

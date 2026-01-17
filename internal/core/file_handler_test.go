@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFileHandler_ReadMetadata(t *testing.T) {
@@ -13,35 +16,22 @@ func TestFileHandler_ReadMetadata(t *testing.T) {
 
 	// Create a temporary file
 	tmpFile, err := os.CreateTemp("", "nokvault-test-*.txt")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
+	require.NoError(t, err, "Failed to create temp file")
 	defer os.Remove(tmpFile.Name())
 	defer tmpFile.Close()
 
 	testData := []byte("test content")
-	if _, err := tmpFile.Write(testData); err != nil {
-		t.Fatalf("Failed to write test data: %v", err)
-	}
+	_, err = tmpFile.Write(testData)
+	require.NoError(t, err, "Failed to write test data")
 	tmpFile.Close()
 
 	// Read metadata
 	metadata, err := fh.ReadMetadata(tmpFile.Name())
-	if err != nil {
-		t.Fatalf("Failed to read metadata: %v", err)
-	}
+	require.NoError(t, err, "Failed to read metadata")
 
-	if metadata.Name != filepath.Base(tmpFile.Name()) {
-		t.Errorf("Expected name %s, got %s", filepath.Base(tmpFile.Name()), metadata.Name)
-	}
-
-	if metadata.Size != int64(len(testData)) {
-		t.Errorf("Expected size %d, got %d", len(testData), metadata.Size)
-	}
-
-	if metadata.IsDir {
-		t.Error("File should not be marked as directory")
-	}
+	assert.Equal(t, filepath.Base(tmpFile.Name()), metadata.Name, "Name should match")
+	assert.Equal(t, int64(len(testData)), metadata.Size, "Size should match")
+	assert.False(t, metadata.IsDir, "File should not be marked as directory")
 }
 
 func TestFileHandler_WriteMetadata(t *testing.T) {
@@ -49,9 +39,7 @@ func TestFileHandler_WriteMetadata(t *testing.T) {
 
 	// Create a temporary file
 	tmpFile, err := os.CreateTemp("", "nokvault-test-*.txt")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
+	require.NoError(t, err, "Failed to create temp file")
 	defer os.Remove(tmpFile.Name())
 	defer tmpFile.Close()
 
@@ -65,19 +53,14 @@ func TestFileHandler_WriteMetadata(t *testing.T) {
 	}
 
 	// Write metadata
-	if err := fh.WriteMetadata(tmpFile.Name(), metadata); err != nil {
-		t.Fatalf("Failed to write metadata: %v", err)
-	}
+	err = fh.WriteMetadata(tmpFile.Name(), metadata)
+	require.NoError(t, err, "Failed to write metadata")
 
 	// Verify metadata was applied
 	info, err := os.Stat(tmpFile.Name())
-	if err != nil {
-		t.Fatalf("Failed to stat file: %v", err)
-	}
+	require.NoError(t, err, "Failed to stat file")
 
-	if info.ModTime().Unix() != originalModTime.Unix() {
-		t.Errorf("ModTime not set correctly")
-	}
+	assert.Equal(t, originalModTime.Unix(), info.ModTime().Unix(), "ModTime should be set correctly")
 }
 
 func TestFileHandler_WriteHeader(t *testing.T) {
@@ -99,31 +82,17 @@ func TestFileHandler_WriteHeader(t *testing.T) {
 	var buf bytes.Buffer
 
 	// Write header with metadata
-	if err := fh.WriteHeader(&buf, salt, metadata); err != nil {
-		t.Fatalf("Failed to write header: %v", err)
-	}
+	err := fh.WriteHeader(&buf, salt, metadata)
+	require.NoError(t, err, "Failed to write header")
 
 	// Verify header can be read back
 	header, readMetadata, err := fh.ReadHeaderWithMetadata(&buf)
-	if err != nil {
-		t.Fatalf("Failed to read header: %v", err)
-	}
+	require.NoError(t, err, "Failed to read header")
 
-	if string(header.Magic[:]) != NokvaultMagic {
-		t.Errorf("Expected magic %s, got %s", NokvaultMagic, string(header.Magic[:]))
-	}
-
-	if header.Version != CurrentVersion {
-		t.Errorf("Expected version %d, got %d", CurrentVersion, header.Version)
-	}
-
-	if readMetadata == nil {
-		t.Fatal("Expected metadata to be read")
-	}
-
-	if readMetadata.Name != metadata.Name {
-		t.Errorf("Expected name %s, got %s", metadata.Name, readMetadata.Name)
-	}
+	assert.Equal(t, NokvaultMagic, string(header.Magic[:]), "Magic should match")
+	assert.Equal(t, uint16(CurrentVersion), header.Version, "Version should match")
+	require.NotNil(t, readMetadata, "Expected metadata to be read")
+	assert.Equal(t, metadata.Name, readMetadata.Name, "Metadata name should match")
 }
 
 func TestFileHandler_WriteHeader_NoMetadata(t *testing.T) {
@@ -137,23 +106,15 @@ func TestFileHandler_WriteHeader_NoMetadata(t *testing.T) {
 	var buf bytes.Buffer
 
 	// Write header without metadata
-	if err := fh.WriteHeader(&buf, salt, nil); err != nil {
-		t.Fatalf("Failed to write header: %v", err)
-	}
+	err := fh.WriteHeader(&buf, salt, nil)
+	require.NoError(t, err, "Failed to write header")
 
 	// Verify header can be read back
 	header, metadata, err := fh.ReadHeaderWithMetadata(&buf)
-	if err != nil {
-		t.Fatalf("Failed to read header: %v", err)
-	}
+	require.NoError(t, err, "Failed to read header")
 
-	if string(header.Magic[:]) != NokvaultMagic {
-		t.Errorf("Expected magic %s, got %s", NokvaultMagic, string(header.Magic[:]))
-	}
-
-	if metadata != nil {
-		t.Error("Expected no metadata when none was written")
-	}
+	assert.Equal(t, NokvaultMagic, string(header.Magic[:]), "Magic should match")
+	assert.Nil(t, metadata, "Expected no metadata when none was written")
 }
 
 func TestFileHandler_ReadHeader_InvalidMagic(t *testing.T) {
@@ -163,9 +124,7 @@ func TestFileHandler_ReadHeader_InvalidMagic(t *testing.T) {
 	buf.WriteString("INVALID")
 
 	_, err := fh.ReadHeader(&buf)
-	if err == nil {
-		t.Error("Expected error for invalid magic number")
-	}
+	assert.Error(t, err, "Expected error for invalid magic number")
 }
 
 func TestFileHandler_ReadHeader_InvalidSalt(t *testing.T) {
@@ -175,9 +134,7 @@ func TestFileHandler_ReadHeader_InvalidSalt(t *testing.T) {
 	invalidSalt := make([]byte, 8) // Wrong size
 
 	err := fh.WriteHeader(&buf, invalidSalt, nil)
-	if err == nil {
-		t.Error("Expected error for invalid salt size")
-	}
+	assert.Error(t, err, "Expected error for invalid salt size")
 }
 
 func TestFileHandler_EnsureDirectory(t *testing.T) {
@@ -186,18 +143,13 @@ func TestFileHandler_EnsureDirectory(t *testing.T) {
 	tmpDir := filepath.Join(os.TempDir(), "nokvault-test-dir")
 	defer os.RemoveAll(tmpDir)
 
-	if err := fh.EnsureDirectory(tmpDir); err != nil {
-		t.Fatalf("Failed to create directory: %v", err)
-	}
+	err := fh.EnsureDirectory(tmpDir)
+	require.NoError(t, err, "Failed to create directory")
 
 	info, err := os.Stat(tmpDir)
-	if err != nil {
-		t.Fatalf("Directory was not created: %v", err)
-	}
+	require.NoError(t, err, "Directory was not created")
 
-	if !info.IsDir() {
-		t.Error("Created path is not a directory")
-	}
+	assert.True(t, info.IsDir(), "Created path should be a directory")
 }
 
 func TestFileHandler_GetRelativePath(t *testing.T) {
@@ -207,14 +159,10 @@ func TestFileHandler_GetRelativePath(t *testing.T) {
 	target := "/base/path/sub/file.txt"
 
 	relPath, err := fh.GetRelativePath(base, target)
-	if err != nil {
-		t.Fatalf("Failed to get relative path: %v", err)
-	}
+	require.NoError(t, err, "Failed to get relative path")
 
 	expected := filepath.Join("sub", "file.txt")
-	if relPath != expected {
-		t.Errorf("Expected relative path %s, got %s", expected, relPath)
-	}
+	assert.Equal(t, expected, relPath, "Relative path should match")
 }
 
 func TestFileHandler_CopyFile(t *testing.T) {
@@ -222,61 +170,47 @@ func TestFileHandler_CopyFile(t *testing.T) {
 
 	// Create source file
 	srcFile, err := os.CreateTemp("", "nokvault-test-src-*.txt")
-	if err != nil {
-		t.Fatalf("Failed to create source file: %v", err)
-	}
+	require.NoError(t, err, "Failed to create source file")
 	defer os.Remove(srcFile.Name())
 
 	testData := []byte("test content for copy")
-	if _, err := srcFile.Write(testData); err != nil {
-		t.Fatalf("Failed to write test data: %v", err)
-	}
+	_, err = srcFile.Write(testData)
+	require.NoError(t, err, "Failed to write test data")
 	srcFile.Close()
 
 	// Create destination file path
 	dstFile, err := os.CreateTemp("", "nokvault-test-dst-*.txt")
-	if err != nil {
-		t.Fatalf("Failed to create destination file: %v", err)
-	}
+	require.NoError(t, err, "Failed to create destination file")
 	dstPath := dstFile.Name()
 	dstFile.Close()
 	defer os.Remove(dstPath)
 
 	// Copy file
-	if err := fh.CopyFile(srcFile.Name(), dstPath); err != nil {
-		t.Fatalf("Failed to copy file: %v", err)
-	}
+	err = fh.CopyFile(srcFile.Name(), dstPath)
+	require.NoError(t, err, "Failed to copy file")
 
 	// Verify destination file contents
 	copiedData, err := os.ReadFile(dstPath)
-	if err != nil {
-		t.Fatalf("Failed to read copied file: %v", err)
-	}
+	require.NoError(t, err, "Failed to read copied file")
 
-	if !bytes.Equal(copiedData, testData) {
-		t.Errorf("Copied data doesn't match. Expected %s, got %s", string(testData), string(copiedData))
-	}
+	assert.Equal(t, testData, copiedData, "Copied data should match original")
 }
 
 func TestFileHandler_WalkDirectory(t *testing.T) {
 	fh := NewFileHandler()
 
 	tmpDir, err := os.MkdirTemp("", "nokvault-test-walk-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
+	require.NoError(t, err, "Failed to create temp directory")
 	defer os.RemoveAll(tmpDir)
 
 	// Create test files
 	files := []string{"file1.txt", "file2.txt", "subdir/file3.txt"}
 	for _, file := range files {
 		filePath := filepath.Join(tmpDir, file)
-		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
-			t.Fatalf("Failed to create subdirectory: %v", err)
-		}
-		if err := os.WriteFile(filePath, []byte("test"), 0644); err != nil {
-			t.Fatalf("Failed to create test file: %v", err)
-		}
+		err := os.MkdirAll(filepath.Dir(filePath), 0755)
+		require.NoError(t, err, "Failed to create subdirectory")
+		err = os.WriteFile(filePath, []byte("test"), 0644)
+		require.NoError(t, err, "Failed to create test file")
 	}
 
 	// Walk directory
@@ -294,16 +228,12 @@ func TestFileHandler_WalkDirectory(t *testing.T) {
 		return nil
 	})
 
-	if err != nil {
-		t.Fatalf("WalkDirectory failed: %v", err)
-	}
+	require.NoError(t, err, "WalkDirectory should succeed")
 
 	// Verify all files were visited
 	for _, file := range files {
 		normalizedFile := filepath.ToSlash(file)
-		if !visitedFiles[normalizedFile] {
-			t.Errorf("File %s was not visited. Visited files: %v", normalizedFile, visitedFiles)
-		}
+		assert.True(t, visitedFiles[normalizedFile], "File %s should be visited", normalizedFile)
 	}
 }
 
@@ -311,68 +241,52 @@ func TestFileHandler_CountFiles(t *testing.T) {
 	fh := NewFileHandler()
 
 	tmpDir, err := os.MkdirTemp("", "nokvault-test-count-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
+	require.NoError(t, err, "Failed to create temp directory")
 	defer os.RemoveAll(tmpDir)
 
 	// Create test files
 	files := []string{"file1.txt", "file2.txt", "subdir/file3.txt"}
 	for _, file := range files {
 		filePath := filepath.Join(tmpDir, file)
-		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
-			t.Fatalf("Failed to create subdirectory: %v", err)
-		}
-		if err := os.WriteFile(filePath, []byte("test"), 0644); err != nil {
-			t.Fatalf("Failed to create test file: %v", err)
-		}
+		err := os.MkdirAll(filepath.Dir(filePath), 0755)
+		require.NoError(t, err, "Failed to create subdirectory")
+		err = os.WriteFile(filePath, []byte("test"), 0644)
+		require.NoError(t, err, "Failed to create test file")
 	}
 
 	count, err := fh.CountFiles(tmpDir)
-	if err != nil {
-		t.Fatalf("CountFiles failed: %v", err)
-	}
+	require.NoError(t, err, "CountFiles should succeed")
 
-	if count != len(files) {
-		t.Errorf("Expected %d files, got %d", len(files), count)
-	}
+	assert.Equal(t, len(files), count, "File count should match")
 }
 
 func TestFileHandler_GetTotalSize(t *testing.T) {
 	fh := NewFileHandler()
 
 	tmpDir, err := os.MkdirTemp("", "nokvault-test-size-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
+	require.NoError(t, err, "Failed to create temp directory")
 	defer os.RemoveAll(tmpDir)
 
 	// Create test files with known sizes
 	files := map[string]int64{
-		"file1.txt": 100,
-		"file2.txt": 200,
+		"file1.txt":        100,
+		"file2.txt":        200,
 		"subdir/file3.txt": 300,
 	}
 
 	var expectedTotal int64
 	for file, size := range files {
 		filePath := filepath.Join(tmpDir, file)
-		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
-			t.Fatalf("Failed to create subdirectory: %v", err)
-		}
+		err := os.MkdirAll(filepath.Dir(filePath), 0755)
+		require.NoError(t, err, "Failed to create subdirectory")
 		data := make([]byte, size)
-		if err := os.WriteFile(filePath, data, 0644); err != nil {
-			t.Fatalf("Failed to create test file: %v", err)
-		}
+		err = os.WriteFile(filePath, data, 0644)
+		require.NoError(t, err, "Failed to create test file")
 		expectedTotal += size
 	}
 
 	totalSize, err := fh.GetTotalSize(tmpDir)
-	if err != nil {
-		t.Fatalf("GetTotalSize failed: %v", err)
-	}
+	require.NoError(t, err, "GetTotalSize should succeed")
 
-	if totalSize != expectedTotal {
-		t.Errorf("Expected total size %d, got %d", expectedTotal, totalSize)
-	}
+	assert.Equal(t, expectedTotal, totalSize, "Total size should match expected")
 }
