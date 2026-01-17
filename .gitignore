@@ -87,7 +87,9 @@ desktop.ini
 # Project specific
 # Encrypted files (optional - uncomment if you don't want to track encrypted files)
 # *.nokvault
-PACKAGE_MANAGERS.md
+
+# Internal Docs
+/HELP_DOCS/
 
 # Package manager templates (not ready for distribution yet)
 Formula/

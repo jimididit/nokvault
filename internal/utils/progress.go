@@ -59,8 +59,10 @@ func (pb *ProgressBar) Wait() {
 		return
 	}
 
-	// Complete the bar by setting total to current value (marks as complete)
+	// Get current progress and mark as complete
 	current := pb.bar.Current()
+	// Set total to current to mark as 100% complete
+	// The second parameter 'true' marks it as complete
 	pb.bar.SetTotal(current, true)
 
 	// Wait for the progress container to finish rendering

@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/jimididit/nokvault/internal/core"
 	"github.com/jimididit/nokvault/internal/utils"
@@ -119,8 +120,6 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 		return fmt.Errorf("failed to read file: %w", err)
 	}
 
-	originalSize := int64(len(data))
-
 	// Compress if enabled
 	if compress {
 		compressionService := core.NewCompressionService()
@@ -136,12 +135,14 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 		}
 	}
 
-	// Show progress for large files
-	var progressBar *utils.ProgressBar
-	if originalSize > 1024*1024 { // Show progress for files > 1MB
-		progressBar = utils.NewProgressBar(originalSize, "Encrypting")
-		defer progressBar.Wait()
-	}
+	// Note: For single file operations, we process everything at once,
+	// so progress bars aren't very useful. We'll skip them for now.
+	// Progress bars work better for directory operations.
+	// Show progress for large files (disabled - not useful for single file ops)
+	// var progressBar *utils.ProgressBar
+	// if originalSize > 1024*1024 {
+	// 	progressBar = utils.NewProgressBar(originalSize, "Encrypting")
+	// }
 
 	// Encrypt data
 	ciphertext, err := encryptionService.EncryptData(data, key)
@@ -149,8 +150,11 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 		return utils.NewError(utils.ErrEncryptionFailed.Code, "Encryption failed", err)
 	}
 
-	if progressBar != nil {
-		progressBar.Increment(originalSize)
+	// Ensure output directory exists (only if not root directory)
+	if outputDir := filepath.Dir(outputPath); outputDir != "." && outputDir != "" {
+		if err := os.MkdirAll(outputDir, 0755); err != nil {
+			return fmt.Errorf("failed to create output directory: %w", err)
+		}
 	}
 
 	// Create output file with header

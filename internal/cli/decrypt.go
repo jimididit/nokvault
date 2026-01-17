@@ -115,28 +115,15 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 	}
 	defer utils.ZeroizeKey(key)
 
-	// Read file to get size for progress
-	fileInfo, err := inputFile.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to stat file: %w", err)
-	}
-
-	// Show progress for large files
-	var progressBar *utils.ProgressBar
-	if fileInfo.Size() > 1024*1024 { // Show progress for files > 1MB
-		progressBar = utils.NewProgressBar(fileInfo.Size(), "Decrypting")
-		defer progressBar.Wait()
-	}
+	// Note: For single file operations, we read everything at once,
+	// so progress bars aren't very useful. We'll skip them for now
+	// to avoid deadlock issues. Progress bars work better for directory operations.
 
 	// Read encrypted data (skip header)
 	inputFile.Seek(int64(header.DataOffset), io.SeekStart)
 	ciphertext, err := io.ReadAll(inputFile)
 	if err != nil {
 		return fmt.Errorf("failed to read encrypted data: %w", err)
-	}
-
-	if progressBar != nil {
-		progressBar.Increment(int64(len(ciphertext)))
 	}
 
 	// Decrypt data
@@ -157,6 +144,13 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 			plaintext = decompressed
 		} else if decryptVerbose {
 			PrintInfo("Data appears compressed but decompression failed, using as-is")
+		}
+	}
+
+	// Ensure output directory exists (only if not root directory)
+	if outputDir := filepath.Dir(outputPath); outputDir != "." && outputDir != "" {
+		if err := os.MkdirAll(outputDir, 0755); err != nil {
+			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 	}
 
@@ -350,6 +344,13 @@ func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionServi
 		decompressed, err := compressionService.Decompress(plaintext)
 		if err == nil {
 			plaintext = decompressed
+		}
+	}
+
+	// Ensure output directory exists (only if not root directory)
+	if outputDir := filepath.Dir(outputPath); outputDir != "." && outputDir != "" {
+		if err := os.MkdirAll(outputDir, 0755); err != nil {
+			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 	}
 
