@@ -13,14 +13,14 @@ const {
   title,
   description,
   canonical,
-  ogImage = '/nokvault/favicon.svg',
+  ogImage = '/favicon.svg',
   type = 'website',
   keywords = ['encryption', 'CLI', 'file encryption', 'directory encryption', 'AES-256', 'security', 'privacy', 'nokvault'],
   author = 'jimididit'
 } = Astro.props;
 
 const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
-const siteUrl = 'https://jimididit.github.io';
+const siteUrl = 'https://nokvault.xyz';
 const fullUrl = canonical ? `${siteUrl}${canonical}` : `${siteUrl}${base}${Astro.url.pathname}`;
 const ogImageUrl = ogImage.startsWith('http') ? ogImage : `${siteUrl}${ogImage}`;
 ---

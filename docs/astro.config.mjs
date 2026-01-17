@@ -14,7 +14,7 @@ export default defineConfig({
       lastmod: new Date(),
     })
   ],
-  site: 'https://jimididit.github.io',
-  base: '/nokvault/',
+  site: 'https://nokvault.xyz',
+  base: '/',
   output: 'static',
 });

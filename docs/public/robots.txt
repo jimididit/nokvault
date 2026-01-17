@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemap
-Sitemap: https://jimididit.github.io/nokvault/sitemap.xml
+Sitemap: https://nokvault.xyz/sitemap.xml
 
 # Disallow admin or private areas if any
 # Disallow: /admin/

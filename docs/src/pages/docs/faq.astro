@@ -1,6 +1,7 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import CodeBlock from '../../components/CodeBlock.astro';
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
 <DocsLayout title="FAQ - Nokvault">
@@ -163,8 +164,8 @@ done`} lang="bash" />
           If you can't find the answer you're looking for:
         </p>
         <ul class="list-disc list-inside space-y-2 text-dark-text-muted">
-          <li>Check the <a href="/nokvault/docs/commands" class="text-blue-400 hover:underline">Commands documentation</a></li>
-          <li>Review the <a href="/nokvault/docs/security" class="text-blue-400 hover:underline">Security documentation</a></li>
+          <li>Check the <a href={`${base}docs/commands`} class="text-blue-400 hover:underline">Commands documentation</a></li>
+          <li>Review the <a href={`${base}docs/security`} class="text-blue-400 hover:underline">Security documentation</a></li>
           <li>Open an issue on <a href="https://github.com/jimididit/nokvault/issues" class="text-blue-400 hover:underline" target="_blank">GitHub</a></li>
           <li>Start a discussion on <a href="https://github.com/jimididit/nokvault/discussions" class="text-blue-400 hover:underline" target="_blank">GitHub Discussions</a></li>
         </ul>
