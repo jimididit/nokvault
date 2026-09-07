@@ -3,12 +3,16 @@ package core
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/jimididit/nokvault/internal/crypto"
+	"github.com/jimididit/nokvault/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -344,6 +348,79 @@ func TestFileHandler_GetTotalSize(t *testing.T) {
 	assert.Equal(t, expectedTotal, totalSize, "Total size should match expected")
 }
 
+func TestFileHandler_WalkDirectory_RootSymlink(t *testing.T) {
+	fh := NewFileHandler()
+	target := t.TempDir()
+	link := filepath.Join(t.TempDir(), "root-link")
+	trySymlink(t, target, link)
+
+	called := 0
+	err := fh.WalkDirectory(link, func(path string, info os.FileInfo, err error) error {
+		called++
+		return nil
+	})
+	requireSymlinkDisallowed(t, err, link)
+	assert.Equal(t, 0, called, "callback must not run for a symlink root")
+}
+
+func TestFileHandler_WalkDirectory_NestedFileSymlink(t *testing.T) {
+	fh := NewFileHandler()
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "regular.txt"), []byte("ok"), 0o644))
+	target := filepath.Join(root, "target.txt")
+	require.NoError(t, os.WriteFile(target, []byte("target"), 0o644))
+	link := filepath.Join(root, "nested-link.txt")
+	trySymlink(t, target, link)
+
+	var visited []string
+	err := fh.WalkDirectory(root, func(path string, info os.FileInfo, err error) error {
+		visited = append(visited, path)
+		return nil
+	})
+	requireSymlinkDisallowed(t, err, link)
+	for _, path := range visited {
+		if path == link {
+			t.Fatalf("callback was invoked for nested file symlink %s", link)
+		}
+	}
+}
+
+func TestFileHandler_WalkDirectory_NestedDirectorySymlink(t *testing.T) {
+	fh := NewFileHandler()
+	root := t.TempDir()
+	realDir := filepath.Join(root, "real")
+	require.NoError(t, os.Mkdir(realDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(realDir, "inside.txt"), []byte("secret"), 0o644))
+	link := filepath.Join(root, "nested-dir-link")
+	trySymlink(t, realDir, link)
+
+	var visited []string
+	err := fh.WalkDirectory(root, func(path string, info os.FileInfo, err error) error {
+		visited = append(visited, path)
+		return nil
+	})
+	requireSymlinkDisallowed(t, err, link)
+	for _, path := range visited {
+		if path == link || strings.HasPrefix(path, link+string(os.PathSeparator)) {
+			t.Fatalf("callback was invoked for nested directory symlink %s (visited %s)", link, path)
+		}
+	}
+}
+
+func TestFileHandler_CountFiles_NestedSymlink(t *testing.T) {
+	fh := NewFileHandler()
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "regular.txt"), []byte("ok"), 0o644))
+	target := filepath.Join(root, "target.txt")
+	require.NoError(t, os.WriteFile(target, []byte("target"), 0o644))
+	link := filepath.Join(root, "nested-link.txt")
+	trySymlink(t, target, link)
+
+	count, err := fh.CountFiles(root)
+	requireSymlinkDisallowed(t, err, link)
+	assert.Equal(t, 0, count)
+}
+
 func TestFileHandler_WriteHeader_V2IncludesKDFParams(t *testing.T) {
 	fh := NewFileHandler()
 	salt := make([]byte, 16)
@@ -472,4 +549,52 @@ func TestFileHandler_V1DecryptRoundTrip(t *testing.T) {
 	got, err := es.DecryptData(payload, decKey)
 	require.NoError(t, err)
 	assert.Equal(t, plaintext, got)
+}
+
+func trySymlink(t *testing.T, oldname, newname string) {
+	t.Helper()
+	if err := os.Symlink(oldname, newname); err != nil {
+		if isLinkCreationUnavailable(err) {
+			t.Skipf("symlink privilege/support unavailable: %v", err)
+		}
+		t.Fatalf("symlink creation failed: %v", err)
+	}
+}
+
+func isLinkCreationUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	var errno syscall.Errno
+	if errors.As(err, &errno) {
+		switch errno {
+		case 1314, 1, 50:
+			return true
+		}
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "privilege") ||
+		strings.Contains(msg, "not supported") ||
+		strings.Contains(msg, "a required privilege is not held")
+}
+
+func requireSymlinkDisallowed(t *testing.T, err error, rejectedPath string) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected SYMLINK_DISALLOWED, got nil")
+	}
+	var nv *utils.NokvaultError
+	if !errors.As(err, &nv) {
+		t.Fatalf("got %T %v, want *utils.NokvaultError with code SYMLINK_DISALLOWED", err, err)
+	}
+	if nv.Code != "SYMLINK_DISALLOWED" {
+		t.Fatalf("got code %q, want SYMLINK_DISALLOWED (err=%v)", nv.Code, err)
+	}
+	absRejected, absErr := filepath.Abs(rejectedPath)
+	if absErr != nil {
+		absRejected = rejectedPath
+	}
+	if !strings.Contains(err.Error(), absRejected) && !strings.Contains(err.Error(), rejectedPath) {
+		t.Fatalf("error %q does not name rejected path %s", err, rejectedPath)
+	}
 }

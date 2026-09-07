@@ -197,3 +197,43 @@ func TestDirectoryEncryptor_EncryptDirectory_NonExistentInput(t *testing.T) {
 	err = encryptor.EncryptDirectory(nonExistentDir, outputDir, key, salt, nil)
 	assert.Error(t, err, "Expected error when encrypting non-existent directory")
 }
+
+func TestDirectoryEncryptor_EncryptDirectory_RejectsSymlinkedOutputParent(t *testing.T) {
+	encryptionService := NewEncryptionService()
+	encryptor := NewDirectoryEncryptor(encryptionService, false)
+	keyManager := encryptionService.GetKeyManager()
+
+	password := []byte("test-password-123")
+	key, salt, err := keyManager.DeriveKeyFromPassword(password)
+	require.NoError(t, err)
+	defer func() {
+		for i := range key {
+			key[i] = 0
+		}
+	}()
+
+	inputDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(inputDir, "file.txt"), []byte("content"), 0o644))
+
+	realParent := t.TempDir()
+	linkParent := filepath.Join(t.TempDir(), "output-parent-link")
+	trySymlink(t, realParent, linkParent)
+	outputDir := filepath.Join(linkParent, "out")
+
+	err = encryptor.EncryptDirectory(inputDir, outputDir, key, salt, nil)
+	requireSymlinkDisallowed(t, err, linkParent)
+}
+
+func TestDirectoryDecryptor_DecryptDirectory_RejectsSymlinkedOutputParent(t *testing.T) {
+	encryptionService := NewEncryptionService()
+	decryptor := NewDirectoryDecryptor(encryptionService, false)
+
+	inputDir := t.TempDir()
+	realParent := t.TempDir()
+	linkParent := filepath.Join(t.TempDir(), "decrypt-parent-link")
+	trySymlink(t, realParent, linkParent)
+	outputDir := filepath.Join(linkParent, "out")
+
+	err := decryptor.DecryptDirectory(inputDir, outputDir, []byte("unused-password"), nil)
+	requireSymlinkDisallowed(t, err, linkParent)
+}

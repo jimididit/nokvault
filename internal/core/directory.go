@@ -8,6 +8,19 @@ import (
 	"github.com/jimididit/nokvault/internal/utils"
 )
 
+func ensureContainedOutputRoot(fh *FileHandler, outputDir string) error {
+	if err := utils.ValidateNoSymlinkComponents(outputDir); err != nil {
+		return err
+	}
+	if err := fh.EnsureDirectory(outputDir); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+	if err := utils.ValidateNoSymlinkComponents(outputDir); err != nil {
+		return err
+	}
+	return nil
+}
+
 // DirectoryEncryptor handles directory encryption operations
 type DirectoryEncryptor struct {
 	encryptionService  *EncryptionService
@@ -43,9 +56,8 @@ func (de *DirectoryEncryptor) SetOverwrite(overwrite bool) {
 
 // EncryptDirectory encrypts all files in a directory recursively
 func (de *DirectoryEncryptor) EncryptDirectory(inputDir, outputDir string, key, salt []byte, onProgress func(current, total int, currentFile string)) error {
-	// Ensure output directory exists
-	if err := de.fileHandler.EnsureDirectory(outputDir); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
+	if err := ensureContainedOutputRoot(de.fileHandler, outputDir); err != nil {
+		return err
 	}
 
 	// Count total files for progress tracking
@@ -76,7 +88,10 @@ func (de *DirectoryEncryptor) EncryptDirectory(inputDir, outputDir string, key, 
 		}
 
 		// Create output path maintaining directory structure
-		outputPath := filepath.Join(outputDir, relPath+".nokvault")
+		outputPath, err := utils.SafeJoin(outputDir, relPath+".nokvault")
+		if err != nil {
+			return fmt.Errorf("failed to construct output path for %s: %w", relPath, err)
+		}
 
 		// Ensure output directory exists
 		outputFileDir := filepath.Dir(outputPath)
@@ -179,9 +194,8 @@ func (dd *DirectoryDecryptor) SetPreserveMode(preserve bool) {
 
 // DecryptDirectory decrypts all .nokvault files in a directory recursively
 func (dd *DirectoryDecryptor) DecryptDirectory(inputDir, outputDir string, password []byte, onProgress func(current, total int, currentFile string)) error {
-	// Ensure output directory exists
-	if err := dd.fileHandler.EnsureDirectory(outputDir); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
+	if err := ensureContainedOutputRoot(dd.fileHandler, outputDir); err != nil {
+		return err
 	}
 
 	// Count total .nokvault files
@@ -222,7 +236,10 @@ func (dd *DirectoryDecryptor) DecryptDirectory(inputDir, outputDir string, passw
 
 		// Remove .nokvault extension
 		outputRelPath := relPath[:len(relPath)-len(".nokvault")]
-		outputPath := filepath.Join(outputDir, outputRelPath)
+		outputPath, err := utils.SafeJoin(outputDir, outputRelPath)
+		if err != nil {
+			return fmt.Errorf("failed to construct output path for %s: %w", outputRelPath, err)
+		}
 
 		// Ensure output directory exists
 		outputFileDir := filepath.Dir(outputPath)

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jimididit/nokvault/internal/crypto"
+	"github.com/jimididit/nokvault/internal/utils"
 )
 
 // FileMetadata stores file metadata
@@ -314,11 +315,21 @@ func (fh *FileHandler) CopyFile(src, dst string) error {
 	return nil
 }
 
-// WalkDirectory walks a directory and calls fn for each file
+// WalkDirectory walks a directory and calls fn for each regular file or
+// directory. Existing root components are validated first. Walk errors are
+// propagated without invoking fn. Each entry is checked with
+// ValidateNoSymlinkComponents so Windows junctions/reparse points are rejected
+// the same way as POSIX symlinks.
 func (fh *FileHandler) WalkDirectory(root string, fn func(path string, info os.FileInfo, err error) error) error {
+	if err := utils.ValidateNoSymlinkComponents(root); err != nil {
+		return err
+	}
 	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return fn(path, info, err)
+			return err
+		}
+		if err := utils.ValidateNoSymlinkComponents(path); err != nil {
+			return err
 		}
 		return fn(path, info, nil)
 	})
