@@ -18,8 +18,13 @@ func isPathPolicyError(err error) bool {
 	return nv.Code == utils.ErrSymlinkDisallowed.Code || nv.Code == utils.ErrPathEscape.Code
 }
 
-func reportPathPolicyError(err error) {
-	if isPathPolicyError(err) {
+// reportWatchValidationError always prints typed path-policy errors.
+// Ordinary permission/I/O validation errors print only when verbose.
+func reportWatchValidationError(err error, verbose bool) {
+	if err == nil {
+		return
+	}
+	if isPathPolicyError(err) || verbose {
 		PrintError(err.Error())
 	}
 }

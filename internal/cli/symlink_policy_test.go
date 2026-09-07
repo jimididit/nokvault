@@ -404,6 +404,88 @@ func TestWatch_RejectsSymlinkRoot(t *testing.T) {
 	}
 }
 
+func TestReportWatchValidationError(t *testing.T) {
+	policyErr := utils.NewErrorWithHint(
+		utils.ErrSymlinkDisallowed.Code,
+		"Symlink paths are not allowed: watch-link",
+		nil,
+		"Use a regular file or directory path. Symlinks are not followed.",
+	)
+	ordinary := os.ErrPermission
+
+	t.Run("policy_verbose_off_visible", func(t *testing.T) {
+		read := captureStderr(t)
+		reportWatchValidationError(policyErr, false)
+		out := read()
+		require.Contains(t, out, "SYMLINK_DISALLOWED")
+	})
+	t.Run("policy_verbose_on_visible", func(t *testing.T) {
+		read := captureStderr(t)
+		reportWatchValidationError(policyErr, true)
+		out := read()
+		require.Contains(t, out, "SYMLINK_DISALLOWED")
+	})
+	t.Run("ordinary_verbose_off_silent", func(t *testing.T) {
+		read := captureStderr(t)
+		reportWatchValidationError(ordinary, false)
+		require.Empty(t, read())
+	})
+	t.Run("ordinary_verbose_on_visible", func(t *testing.T) {
+		read := captureStderr(t)
+		reportWatchValidationError(ordinary, true)
+		out := read()
+		require.Contains(t, out, ordinary.Error())
+	})
+}
+
+func TestWatch_CallbackReportsPolicyWithVerbose(t *testing.T) {
+	dir := t.TempDir()
+	target := writeRegularFile(t, dir, "target.txt", "watch-target")
+	link := filepath.Join(dir, "verbose-event-link.txt")
+	trySymlink(t, target, link)
+
+	svc := core.NewEncryptionService()
+	key, salt, err := svc.GetKeyManager().DeriveKeyFromPassword([]byte("watch-verbose-policy-test"))
+	require.NoError(t, err)
+
+	readStderr := captureStderr(t)
+	cb := createEncryptCallback(svc, key, salt, 30*time.Millisecond, nil, true)
+	cb(link, fsnotify.Event{Name: link, Op: fsnotify.Write})
+	output := readStderr()
+
+	require.Contains(t, output, "SYMLINK_DISALLOWED")
+	require.Contains(t, output, link)
+}
+
+func TestWatch_CallbackOrdinaryValidationSilentWithoutVerbose(t *testing.T) {
+	dir := t.TempDir()
+	missing := filepath.Join(dir, "gone.txt")
+
+	svc := core.NewEncryptionService()
+	key, salt, err := svc.GetKeyManager().DeriveKeyFromPassword([]byte("watch-ordinary-quiet-test"))
+	require.NoError(t, err)
+
+	readStderr := captureStderr(t)
+	cb := createEncryptCallback(svc, key, salt, 30*time.Millisecond, nil, false)
+	cb(missing, fsnotify.Event{Name: missing, Op: fsnotify.Write})
+	require.Empty(t, readStderr())
+}
+
+func TestWatch_CallbackOrdinaryValidationReportsWhenVerbose(t *testing.T) {
+	dir := t.TempDir()
+	missing := filepath.Join(dir, "gone.txt")
+
+	svc := core.NewEncryptionService()
+	key, salt, err := svc.GetKeyManager().DeriveKeyFromPassword([]byte("watch-ordinary-verbose-test"))
+	require.NoError(t, err)
+
+	readStderr := captureStderr(t)
+	cb := createEncryptCallback(svc, key, salt, 30*time.Millisecond, nil, true)
+	cb(missing, fsnotify.Event{Name: missing, Op: fsnotify.Write})
+	output := readStderr()
+	require.Contains(t, output, "gone.txt")
+}
+
 func TestWatch_CallbackReportsPolicyWithoutVerbose(t *testing.T) {
 	dir := t.TempDir()
 	target := writeRegularFile(t, dir, "target.txt", "watch-target")
