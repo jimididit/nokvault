@@ -8,13 +8,13 @@
 ## Goals
 
 1. Gate `secure-delete` behind interactive confirmation or `--yes` (fail closed when non-interactive).
-2. Refuse encrypt/decrypt when the output path already exists unless `--force`.
-3. Add decrypt `--strict` to abort directory decrypt on the first failure (no rollback).
-4. Share helpers so policy stays consistent; cover with unit + integration tests; update docs/CHANGELOG in the same PR.
+2. Add `secure-delete --dry-run` that lists paths that would be deleted without touching disk (no `--yes` required).
+3. Refuse encrypt/decrypt when the output path already exists unless `--force`.
+4. Add decrypt `--strict` to abort directory decrypt on the first failure (no rollback).
+5. Share helpers so policy stays consistent; cover with unit + integration tests; update docs/CHANGELOG in the same PR.
 
 ## Non-goals
 
-- Secure-delete `--dry-run`.
 - `rotate-key` `--force` (in-place vault rewrite stays as today).
 - Watch/schedule overwrite policy changes.
 - True transactional rollback / secure-wipe of partial decrypt outputs.
@@ -26,6 +26,7 @@
 |-------|--------|
 | Non-interactive `secure-delete` | Require `--yes`; refuse otherwise |
 | Interactive `secure-delete` | Prompt; accept exact `yes` (case-insensitive, trimmed) |
+| `secure-delete --dry-run` | List target file path(s) that would be overwritten/deleted; exit 0; never write/unlink; **does not** require `--yes` or TTY confirm |
 | Overwrite | Refuse if target exists unless `--force` (no prompt) |
 | Directory decrypt errors | Default continue-on-error; `--strict` stop on first failure; leave already-written files |
 | Approach | Shared CLI helpers (not duplicated per-command, not Cobra PreRun middleware) |
