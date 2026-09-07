@@ -13,7 +13,7 @@ A modern, feature-rich CLI tool for encrypting and protecting local folders and 
 - **📁 Directory Support**: Encrypt entire directories recursively with metadata preservation
 - **🔑 Flexible Authentication**: Password, keyfile, or environment variable support
 - **⚡ Auto-Encryption**: Watch directories and automatically encrypt files on change
-- **🔄 Key Rotation**: Rotate encryption keys without re-encrypting data
+- **🔄 Key Rotation**: Re-key files by decrypting and re-encrypting with a new password
 - **🗑️ Secure Deletion**: Overwrite files multiple times before deletion
 - **📦 Compression**: Optional compression before encryption
 - **⚙️ Configuration**: Global and per-project configuration files

@@ -14,10 +14,11 @@ import (
 var rotateKeyCmd = &cobra.Command{
 	Use:   "rotate-key <path>",
 	Short: "Rotate the encryption key for an encrypted file",
-	Long: `Rotate the encryption key for a nokvault encrypted file by decrypting
-it with the old password and re-encrypting it with a new password.
+	Long: `Re-key a nokvault encrypted file by decrypting it with the old password
+and re-encrypting it with a new password (new salt + ciphertext).
 
-This is useful for password changes or key rotation policies.`,
+This is useful for password changes or key rotation policies. The operation
+rewrites the file in place via a temporary file and rename.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runRotateKey,
 }
@@ -74,12 +75,12 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open input file: %w", err)
 	}
-	defer inputFile.Close()
 
 	// Read header
 	fileHandler := core.NewFileHandler()
 	header, metadata, err := fileHandler.ReadHeaderWithMetadata(inputFile)
 	if err != nil {
+		inputFile.Close()
 		PrintError("Invalid nokvault file format")
 		return utils.NewError(utils.ErrInvalidFormat.Code, "Invalid nokvault file format", err)
 	}
@@ -93,10 +94,16 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 	defer utils.ZeroizeKey(oldKey)
 
 	// Read encrypted data
-	inputFile.Seek(int64(header.DataOffset), io.SeekStart)
+	if _, err := inputFile.Seek(int64(header.DataOffset), io.SeekStart); err != nil {
+		return fmt.Errorf("failed to seek encrypted data: %w", err)
+	}
 	ciphertext, err := io.ReadAll(inputFile)
 	if err != nil {
 		return fmt.Errorf("failed to read encrypted data: %w", err)
+	}
+	// Close before replace — Windows cannot rename over a file that is still open.
+	if err := inputFile.Close(); err != nil {
+		return fmt.Errorf("failed to close input file: %w", err)
 	}
 
 	// Decrypt with old key
@@ -105,18 +112,19 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 		PrintError("Decryption failed - incorrect old password")
 		return utils.NewError(utils.ErrDecryptionFailed.Code, "Decryption failed", err)
 	}
+	defer utils.ZeroizePassword(plaintext)
 
 	if rotateKeyVerbose {
 		PrintInfo("Successfully decrypted with old key")
 	}
 
-	// Generate new salt and derive new key
+	// Generate new salt and derive new key from that same salt (must match header).
 	newSalt, err := crypto.GenerateSalt()
 	if err != nil {
 		return fmt.Errorf("failed to generate new salt: %w", err)
 	}
 
-	newKey, _, err := keyManager.DeriveKeyFromPassword(newPassword)
+	newKey, err := keyManager.DeriveKeyFromPasswordAndSalt(newPassword, newSalt)
 	if err != nil {
 		PrintError("Failed to derive new key")
 		return err
@@ -136,18 +144,24 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer outputFile.Close()
 
 	// Write header with new salt
 	if err := fileHandler.WriteHeader(outputFile, newSalt, metadata); err != nil {
+		outputFile.Close()
+		os.Remove(tempPath)
 		return fmt.Errorf("failed to write header: %w", err)
 	}
 
 	// Write encrypted data
 	if _, err := outputFile.Write(newCiphertext); err != nil {
+		outputFile.Close()
+		os.Remove(tempPath)
 		return fmt.Errorf("failed to write encrypted data: %w", err)
 	}
-	outputFile.Close()
+	if err := outputFile.Close(); err != nil {
+		os.Remove(tempPath)
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
 
 	// Atomic replace
 	if err := os.Rename(tempPath, inputPath); err != nil {
