@@ -53,7 +53,7 @@ nokvault encrypt file.txt --keyfile ~/.keys/master.key`} lang="bash" />
         <li>Following a security incident</li>
         <li>As part of regular security maintenance</li>
       </ul>
-      <CodeBlock code={`# Rotate key without re-encrypting data
+      <CodeBlock code={`# Re-key (decrypt + re-encrypt) with new credentials
 nokvault rotate-key file.nokvault \\
   --old-keyfile ~/.keys/old.key \\
   --new-keyfile ~/.keys/new.key`} lang="bash" />

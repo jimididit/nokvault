@@ -1,6 +1,6 @@
 # Nokvault
 
-[![Go Version](https://img.shields.io/badge/go-1.21+-00ADD8?style=flat-square&logo=go)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8?style=flat-square&logo=go)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/jimididit/nokvault/release.yml?style=flat-square)](https://github.com/jimididit/nokvault/actions)
 [![Release](https://img.shields.io/github/v/release/jimididit/nokvault?style=flat-square)](https://github.com/jimididit/nokvault/releases)
@@ -10,13 +10,15 @@ A modern, feature-rich CLI tool for encrypting and protecting local folders and 
 ## Features
 
 - **🔒 Strong Encryption**: AES-256-GCM authenticated encryption with Argon2id key derivation
+- **📋 Format v2**: KDF parameters stored in each `.nokvault` header (v1 files still decrypt)
 - **📁 Directory Support**: Encrypt entire directories recursively with metadata preservation
-- **🔑 Flexible Authentication**: Password, keyfile, or environment variable support
+- **🔑 Flexible Authentication**: Interactive password, keyfile, or `NOKVAULT_PASSWORD` (CLI `--password` refused)
 - **⚡ Auto-Encryption**: Watch directories and automatically encrypt files on change
 - **🔄 Key Rotation**: Re-key files by decrypting and re-encrypting with a new password
 - **🗑️ Secure Deletion**: Overwrite files multiple times before deletion
 - **📦 Compression**: Optional compression before encryption
-- **⚙️ Configuration**: Global and per-project configuration files
+- **⚙️ Configuration**: Global and per-project configuration files (`key_derivation` applies to new encryptions)
+- **🛡️ Crash-safe writes**: Encrypt/rotate use temp+fsync+rename; decrypt clamps modes to owner-only unless `--preserve-mode`
 - **📊 Progress Tracking**: Visual progress bars for operations
 - **🌐 Cross-Platform**: Single binary for Windows, Linux, and macOS
 
@@ -166,8 +168,10 @@ nokvault encrypt ./files -v
 ## Security
 
 - **Encryption**: AES-256-GCM authenticated encryption
-- **Key Derivation**: Argon2id with configurable parameters
+- **Key Derivation**: Argon2id with configurable parameters (persisted in format v2 headers)
 - **Memory Safety**: Sensitive data zeroized after use
+- **Atomic encrypt writes**: Temp file + fsync + rename
+- **Decrypt modes**: Clamped to ≤0600 / ≤0700 unless `--preserve-mode`
 - **Timing Attack Protection**: Constant-time operations
 - **File Integrity**: Built-in authentication tags
 

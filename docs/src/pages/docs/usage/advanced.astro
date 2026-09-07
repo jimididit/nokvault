@@ -70,7 +70,7 @@ nokvault schedule encrypt ./backups --interval 1h --keyfile ~/.keys/backup.key
     <section class="mb-8">
       <h2>Key Rotation</h2>
       <p class="text-dark-text-muted mb-4">
-        Rotate encryption keys without re-encrypting data. This is more efficient than decrypting and re-encrypting:
+        Re-key an encrypted file by decrypting with the old credential and re-encrypting with a new one (new salt and ciphertext):
       </p>
       <CodeBlock code={`# Rotate key for a file
 nokvault rotate-key file.nokvault
