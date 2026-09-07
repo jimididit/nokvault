@@ -115,6 +115,7 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
         <li>Use keyfiles instead of passwords when possible (chmod 0600; no symlinks)</li>
         <li>Store keyfiles securely and back them up</li>
         <li>Never pass passwords on the command line — <code>--password</code> is refused</li>
+        <li>After decrypt, file modes are clamped to owner-only by default; use <code>--preserve-mode</code> only when you intentionally need the original (often world-readable) mode</li>
         <li>Rotate keys periodically</li>
         <li>Use secure deletion for sensitive files</li>
         <li>Never commit passwords or keyfiles to version control</li>

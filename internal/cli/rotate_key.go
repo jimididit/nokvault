@@ -144,35 +144,17 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Create temporary output file
-	tempPath := inputPath + ".tmp"
-	outputFile, err := os.Create(tempPath)
-	if err != nil {
-		return fmt.Errorf("failed to create temp file: %w", err)
-	}
-
-	// Write header with new salt
-	if err := fileHandler.WriteHeader(outputFile, newSalt, metadata, keyManager.Params()); err != nil {
-		outputFile.Close()
-		os.Remove(tempPath)
-		return fmt.Errorf("failed to write header: %w", err)
-	}
-
-	// Write encrypted data
-	if _, err := outputFile.Write(newCiphertext); err != nil {
-		outputFile.Close()
-		os.Remove(tempPath)
-		return fmt.Errorf("failed to write encrypted data: %w", err)
-	}
-	if err := outputFile.Close(); err != nil {
-		os.Remove(tempPath)
-		return fmt.Errorf("failed to close temp file: %w", err)
-	}
-
-	// Atomic replace
-	if err := os.Rename(tempPath, inputPath); err != nil {
-		os.Remove(tempPath)
-		return fmt.Errorf("failed to replace file: %w", err)
+	// Create temporary output via atomic write helper
+	if err := utils.AtomicWriteFunc(inputPath, 0o600, func(outputFile *os.File) error {
+		if err := fileHandler.WriteHeader(outputFile, newSalt, metadata, keyManager.Params()); err != nil {
+			return fmt.Errorf("failed to write header: %w", err)
+		}
+		if _, err := outputFile.Write(newCiphertext); err != nil {
+			return fmt.Errorf("failed to write encrypted data: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	PrintSuccess(fmt.Sprintf("Key rotated successfully: %s", inputPath))

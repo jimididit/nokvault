@@ -21,14 +21,14 @@
 - **Risk if deferred:** Silent decrypt failures after config/default changes; format dead-end vs age/restic-class tools.  
 - **Depends on:** Spec sketch in-repo (can be short RFC-style section); unlocks Later format-spec publication.
 
-### N3. Stop password-on-argv & harden keyfiles (NV-004, NV-005) — DONE (PR pending)
+### N3. Stop password-on-argv & harden keyfiles (NV-004, NV-005) — DONE (merged)
 - **Problem:** `--password` exposes secrets via process list/history; keyfiles have no permission checks.
 - **Approach:** Hard-deprecate/refuse `--password` outside tests; keep prompt / keyfile / env; `Stat` keyfile and reject group/world-readable (and optionally symlinks).
 - **Effort:** S  
 - **Risk if deferred:** Trivial credential theft on shared hosts.  
 - **Depends on:** None.
 
-### N4. Atomic encrypt writes; clamp decrypt permissions (NV-006, NV-007)
+### N4. Atomic encrypt writes; clamp decrypt permissions (NV-006, NV-007) — DONE (PR pending)
 - **Problem:** Crash mid-write corrupts `.nokvault`; metadata restore can make plaintext world-readable.
 - **Approach:** Reuse temp+rename pattern from rotate-key / wire `SafeWrite` (or delete dead recovery code if unused); clamp restored modes to ≤0600/0700 unless explicit `--preserve-mode`.
 - **Effort:** S–M  

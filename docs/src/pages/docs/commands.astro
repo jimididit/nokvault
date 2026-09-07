@@ -58,6 +58,7 @@ nokvault encrypt file.txt --keyfile ~/.keys/master.key`} lang="bash" />
           <li><code>--keyfile, -k</code>: Path to keyfile for decryption (mode 0600 required on Unix; symlinks refused)</li>
           <li><code>--password, -p</code>: Removed — refused at runtime (use keyfile, <code>NOKVAULT_PASSWORD</code>, or prompt)</li>
           <li><code>--no-prompt</code>: Don't prompt for password</li>
+          <li><code>--preserve-mode</code>: Restore original file modes (default clamps to ≤0600 files / ≤0700 dirs)</li>
           <li><code>--dry-run</code>: Show what would be decrypted</li>
           <li><code>--verbose, -v</code>: Verbose output</li>
         </ul>
