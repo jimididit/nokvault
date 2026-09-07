@@ -66,6 +66,11 @@ func runScheduleEncrypt(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	outputPath := path + ".nokvault"
+	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
+		return err
+	}
+
 	// Get password/key
 	password, err := utils.GetPassword(schedulePassword, scheduleKeyfile, scheduleNoPrompt, false)
 	if err != nil {

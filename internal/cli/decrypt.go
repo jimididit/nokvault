@@ -79,6 +79,12 @@ func runDecrypt(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if info.IsDir() {
+		if err := preflightDirectoryDecryptOutputs(inputPath, outputPath); err != nil {
+			return err
+		}
+	}
+
 	if decryptDryRun {
 		PrintInfo(fmt.Sprintf("Would decrypt: %s -> %s", inputPath, outputPath))
 		return nil
@@ -198,6 +204,25 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 	return nil
 }
 
+func preflightDirectoryDecryptOutputs(inputPath, outputPath string) error {
+	fileHandler := core.NewFileHandler()
+	return fileHandler.WalkDirectory(inputPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() || filepath.Ext(path) != ".nokvault" {
+			return nil
+		}
+		relPath, relErr := fileHandler.GetRelativePath(inputPath, path)
+		if relErr != nil {
+			return relErr
+		}
+		outputRelPath := relPath[:len(relPath)-len(".nokvault")]
+		_, joinErr := utils.SafeJoin(outputPath, outputRelPath)
+		return joinErr
+	})
+}
+
 func decryptDirectory(inputPath, outputPath string, password []byte, encryptionService *core.EncryptionService) error {
 	fileHandler := core.NewFileHandler()
 
@@ -213,6 +238,9 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		return nil
 	})
 	if err != nil {
+		if isSymlinkDisallowed(err) {
+			return err
+		}
 		return fmt.Errorf("failed to count files: %w", err)
 	}
 
@@ -244,6 +272,9 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 
 	walkErr := fileHandler.WalkDirectory(inputPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
+			if isSymlinkDisallowed(err) {
+				return err
+			}
 			PrintError(fmt.Sprintf("Error accessing %s: %v", path, err))
 			if decryptStrict {
 				return fmt.Errorf("strict mode: aborted after access error on %s: %w", path, err)
@@ -266,6 +297,9 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		outputRelPath := relPath[:len(relPath)-len(".nokvault")]
 		outputFilePath, joinErr := utils.SafeJoin(outputPath, outputRelPath)
 		if joinErr != nil {
+			if isSymlinkDisallowed(joinErr) {
+				return joinErr
+			}
 			return recordFailure(relPath, joinErr)
 		}
 

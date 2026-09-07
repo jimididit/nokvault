@@ -72,6 +72,12 @@ func runEncrypt(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if info.IsDir() {
+		if err := preflightDirectoryEncryptOutputs(inputPath, outputPath); err != nil {
+			return err
+		}
+	}
+
 	if encryptDryRun {
 		PrintInfo(fmt.Sprintf("Would encrypt: %s -> %s", inputPath, outputPath))
 		return nil
@@ -203,6 +209,24 @@ func shouldCompress() bool {
 	}
 	// TODO: Check config file
 	return false
+}
+
+func preflightDirectoryEncryptOutputs(inputPath, outputPath string) error {
+	fileHandler := core.NewFileHandler()
+	return fileHandler.WalkDirectory(inputPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		relPath, relErr := fileHandler.GetRelativePath(inputPath, path)
+		if relErr != nil {
+			return relErr
+		}
+		_, joinErr := utils.SafeJoin(outputPath, relPath+".nokvault")
+		return joinErr
+	})
 }
 
 func encryptDirectory(inputPath, outputPath string, key, salt []byte, encryptionService *core.EncryptionService) error {

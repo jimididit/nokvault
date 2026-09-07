@@ -133,6 +133,83 @@ func TestSecureDelete_RejectsSymlinkPreservesLinkAndTarget(t *testing.T) {
 	require.Equal(t, "must-survive", string(got))
 }
 
+func TestEncrypt_Directory_RejectsNestedOutputSymlinkBeforePassword(t *testing.T) {
+	t.Setenv("NOKVAULT_PASSWORD", "")
+	dir := t.TempDir()
+	inDir := filepath.Join(dir, "in")
+	require.NoError(t, os.MkdirAll(filepath.Join(inDir, "nested"), 0o700))
+	writeRegularFile(t, filepath.Join(inDir, "nested"), "file.txt", "secret")
+
+	outDir := filepath.Join(dir, "out")
+	require.NoError(t, os.Mkdir(outDir, 0o700))
+	target := filepath.Join(dir, "target")
+	require.NoError(t, os.Mkdir(target, 0o700))
+	link := filepath.Join(outDir, "nested")
+	trySymlink(t, target, link)
+
+	err := execCLI(t, "encrypt", inDir, "--output", outDir, "--no-prompt")
+	requireSymlinkDisallowed(t, err, link)
+	require.NotContains(t, err.Error(), "no password provided")
+}
+
+func TestDecrypt_Directory_RejectsNestedOutputSymlinkBeforePassword(t *testing.T) {
+	t.Setenv("NOKVAULT_PASSWORD", "")
+	dir := t.TempDir()
+	inDir := filepath.Join(dir, "in")
+	require.NoError(t, os.MkdirAll(filepath.Join(inDir, "nested"), 0o700))
+	writeRegularFile(t, filepath.Join(inDir, "nested"), "file.nokvault", "not-a-real-cipher")
+
+	outDir := filepath.Join(dir, "out")
+	require.NoError(t, os.Mkdir(outDir, 0o700))
+	target := filepath.Join(dir, "target")
+	require.NoError(t, os.Mkdir(target, 0o700))
+	link := filepath.Join(outDir, "nested")
+	trySymlink(t, target, link)
+
+	err := execCLI(t, "decrypt", inDir, "--output", outDir, "--no-prompt")
+	requireSymlinkDisallowed(t, err, link)
+	require.NotContains(t, err.Error(), "no password provided")
+}
+
+func TestSchedule_RejectsGeneratedOutputBeforePassword(t *testing.T) {
+	t.Setenv("NOKVAULT_PASSWORD", "")
+	dir := t.TempDir()
+	input := writeRegularFile(t, dir, "secret.txt", "secret")
+	target := writeRegularFile(t, dir, "out-target.txt", "keep")
+	outLink := input + ".nokvault"
+	trySymlink(t, target, outLink)
+
+	err := execCLI(t, "schedule", "encrypt", input, "--no-prompt")
+	requireSymlinkDisallowed(t, err, outLink)
+	require.NotContains(t, err.Error(), "no password provided")
+	got, readErr := os.ReadFile(target)
+	require.NoError(t, readErr)
+	require.Equal(t, "keep", string(got))
+}
+
+func TestDecrypt_Directory_NonStrictPreservesSymlinkDisallowed(t *testing.T) {
+	dir := t.TempDir()
+	inDir := filepath.Join(dir, "vault")
+	require.NoError(t, os.MkdirAll(filepath.Join(inDir, "nested"), 0o700))
+	writeRegularFile(t, filepath.Join(inDir, "nested"), "file.nokvault", "not-a-real-cipher")
+	writeRegularFile(t, inDir, "other.nokvault", "also-not-a-cipher")
+
+	outDir := filepath.Join(dir, "out")
+	require.NoError(t, os.Mkdir(outDir, 0o700))
+	target := filepath.Join(dir, "target")
+	require.NoError(t, os.Mkdir(target, 0o700))
+	link := filepath.Join(outDir, "nested")
+	trySymlink(t, target, link)
+
+	ResetCLIStateForTest()
+	t.Cleanup(ResetCLIStateForTest)
+	decryptStrict = false
+
+	err := decryptDirectory(inDir, outDir, []byte("unused-password"), core.NewEncryptionService())
+	requireSymlinkDisallowed(t, err, link)
+	require.NotContains(t, err.Error(), "directory decryption completed")
+}
+
 func TestSchedule_RejectsSymlinkRoot(t *testing.T) {
 	t.Setenv("NOKVAULT_PASSWORD", "")
 	dir := t.TempDir()
