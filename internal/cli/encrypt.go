@@ -34,7 +34,7 @@ var (
 
 func init() {
 	encryptCmd.Flags().StringVarP(&encryptOutput, "output", "o", "", "Output file or directory path")
-	encryptCmd.Flags().StringVarP(&encryptPassword, "password", "p", "", "Encryption password (not recommended for security)")
+	encryptCmd.Flags().StringVarP(&encryptPassword, "password", "p", "", "Removed: passwords on argv are refused (use --keyfile or NOKVAULT_PASSWORD)")
 	encryptCmd.Flags().StringVarP(&encryptKeyfile, "keyfile", "k", "", "Path to keyfile")
 	encryptCmd.Flags().BoolVar(&encryptNoPrompt, "no-prompt", false, "Don't prompt for password (use environment variable or keyfile)")
 	encryptCmd.Flags().BoolVar(&encryptDryRun, "dry-run", false, "Show what would be encrypted without actually encrypting")

@@ -173,11 +173,12 @@ nokvault encrypt ./files -v
 
 ### Security Best Practices
 
-1. **Use keyfiles** instead of passwords when possible
-2. **Rotate keys** periodically using `rotate-key`
-3. **Use secure deletion** for sensitive files: `secure-delete`
-4. **Never commit** passwords or keyfiles to version control
-5. **Use environment variables** for automation: `NOKVAULT_PASSWORD`
+1. **Use keyfiles** instead of passwords when possible (`chmod 0600`; symlinks are rejected)
+2. **Never pass passwords on argv** — `--password` / `-p` are refused
+3. **Rotate keys** periodically using `rotate-key`
+4. **Use secure deletion** for sensitive files: `secure-delete`
+5. **Never commit** passwords or keyfiles to version control
+6. **Prefer keyfiles over** `NOKVAULT_PASSWORD` for automation (env vars remain visible to local processes)
 
 ## Contributing
 

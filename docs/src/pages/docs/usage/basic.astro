@@ -52,14 +52,16 @@ nokvault encrypt document.txt --keyfile ~/.keys/master.key
 # Decrypt with keyfile
 nokvault decrypt document.txt.nokvault --keyfile ~/.keys/master.key`} lang="bash" />
       <p class="text-dark-text-muted mt-4">
-        <strong>Important:</strong> Keep your keyfiles secure and backed up. Without the keyfile, encrypted data cannot be recovered.
+        <strong>Important:</strong> Keep keyfiles mode <code>0600</code> (Nokvault refuses group/world-readable keyfiles on Unix and rejects symlink keyfiles). Back them up securely — without the keyfile, encrypted data cannot be recovered.
       </p>
     </section>
 
     <section class="mb-8">
       <h2>Using Environment Variables</h2>
       <p class="text-dark-text-muted mb-4">
-        For automation and scripts, you can use environment variables instead of interactive prompts:
+        For automation and scripts, you can use environment variables instead of interactive prompts.
+        Prefer keyfiles when possible: <code>NOKVAULT_PASSWORD</code> is still visible to other processes on the same machine.
+        Passwords on the command line (<code>--password</code> / <code>-p</code>) are refused.
       </p>
       <CodeBlock code={`# Set password as environment variable
 export NOKVAULT_PASSWORD="your-secure-password"
