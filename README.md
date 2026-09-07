@@ -82,20 +82,23 @@ nokvault schedule encrypt ./backups --interval 1h
 # Rotate encryption key
 nokvault rotate-key file.nokvault
 
-# Securely delete a file
-nokvault secure-delete sensitive-file.txt
+# Securely delete a file (non-interactive needs --yes)
+nokvault secure-delete sensitive-file.txt --yes
+
+# Preview secure-delete targets
+nokvault secure-delete ./secrets --dry-run
 ```
 
 ## Commands
 
 | Command | Description |
 | --------- | ------------- |
-| `encrypt <path>` | Encrypt a file or directory |
-| `decrypt <path>` | Decrypt a nokvault encrypted file |
+| `encrypt <path>` | Encrypt a file or directory (`--force` to overwrite outputs) |
+| `decrypt <path>` | Decrypt a nokvault encrypted file (`--force`, `--strict`) |
 | `watch <path>` | Watch directory for changes and optionally auto-encrypt |
 | `schedule encrypt <path>` | Schedule periodic encryption operations |
 | `rotate-key <path>` | Rotate encryption key for a file |
-| `secure-delete <path>` | Securely delete a file with multiple overwrite passes |
+| `secure-delete <path>` | Securely delete (`--yes` / `--dry-run`) |
 | `config` | Manage configuration settings |
 
 ## Configuration
@@ -180,9 +183,10 @@ nokvault encrypt ./files -v
 1. **Use keyfiles** instead of passwords when possible (`chmod 0600`; symlinks are rejected)
 2. **Never pass passwords on argv** — `--password` / `-p` are refused
 3. **Rotate keys** periodically using `rotate-key`
-4. **Use secure deletion** for sensitive files: `secure-delete`
+4. **Use secure deletion** for sensitive files: `secure-delete --yes` (or confirm interactively); preview with `--dry-run`
 5. **Never commit** passwords or keyfiles to version control
 6. **Prefer keyfiles over** `NOKVAULT_PASSWORD` for automation (env vars remain visible to local processes)
+7. **Pass `--force`** when intentionally overwriting encrypt/decrypt outputs
 
 ## Contributing
 

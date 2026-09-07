@@ -31,6 +31,7 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
           <li><code>--compress</code>: Compress before encryption</li>
           <li><code>--exclude</code>: Exclude patterns (can be used multiple times)</li>
           <li><code>--dry-run</code>: Show what would be encrypted without actually encrypting</li>
+          <li><code>--force, -f</code>: Overwrite existing output path</li>
           <li><code>--verbose, -v</code>: Verbose output</li>
         </ul>
         <h3>Examples</h3>
@@ -59,6 +60,8 @@ nokvault encrypt file.txt --keyfile ~/.keys/master.key`} lang="bash" />
           <li><code>--password, -p</code>: Removed — refused at runtime (use keyfile, <code>NOKVAULT_PASSWORD</code>, or prompt)</li>
           <li><code>--no-prompt</code>: Don't prompt for password</li>
           <li><code>--preserve-mode</code>: Restore original file modes (default clamps to ≤0600 files / ≤0700 dirs)</li>
+          <li><code>--force, -f</code>: Overwrite existing output path</li>
+          <li><code>--strict</code>: Abort directory decrypt on the first failure (leave already-written files)</li>
           <li><code>--dry-run</code>: Show what would be decrypted</li>
           <li><code>--verbose, -v</code>: Verbose output</li>
         </ul>
@@ -148,15 +151,20 @@ nokvault rotate-key file.nokvault \\
         </p>
         <h3>Options</h3>
         <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-          <li><code>--passes</code>: Number of overwrite passes (default: 3)</li>
+          <li><code>--passes, -p</code>: Number of overwrite passes (default: 3)</li>
+          <li><code>--yes, -y</code>: Confirm deletion without prompting (required when stdin is not a TTY)</li>
+          <li><code>--dry-run</code>: List paths that would be deleted without deleting</li>
           <li><code>--verbose, -v</code>: Verbose output</li>
         </ul>
         <h3>Examples</h3>
-        <CodeBlock code={`# Secure delete with default passes
-nokvault secure-delete sensitive-file.txt
+        <CodeBlock code={`# Preview what would be deleted
+nokvault secure-delete sensitive-file.txt --dry-run
+
+# Secure delete (scripts / CI)
+nokvault secure-delete sensitive-file.txt --yes
 
 # Secure delete with custom passes
-nokvault secure-delete sensitive-file.txt --passes 7`} lang="bash" />
+nokvault secure-delete sensitive-file.txt --yes --passes 7`} lang="bash" />
       </section>
 
       <section>
