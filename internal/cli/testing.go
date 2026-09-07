@@ -6,6 +6,7 @@ import "time"
 // Integration tests share a single rootCmd; without this, flag values leak
 // across tests (e.g. leftover --output / --password).
 func ResetCLIStateForTest() {
+	ClearRuntimeConfig()
 	rootCmd.SetArgs(nil)
 
 	encryptOutput = ""

@@ -40,6 +40,7 @@ func Execute() {
 		// Config loading errors are non-fatal
 		// Default config will be used
 	}
+	SetRuntimeConfig(cm.Get())
 
 	if err := rootCmd.Execute(); err != nil {
 		PrintErrorWithHint(err)

@@ -71,6 +71,7 @@ func runScheduleEncrypt(cmd *cobra.Command, args []string) error {
 	// Create encryption service
 	encryptionService := core.NewEncryptionService()
 	keyManager := encryptionService.GetKeyManager()
+	applyKDFConfig(keyManager)
 
 	// Derive key
 	key, salt, err := keyManager.DeriveKeyFromPassword(password)

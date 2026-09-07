@@ -119,8 +119,8 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 		PrintInfo("Successfully decrypted with old key")
 	}
 
-	// Re-key with encrypt-side params (defaults until Task 4 wires runtime config).
-	keyManager.SetArgon2Params(crypto.DefaultArgon2Params())
+	// Re-key with encrypt-side params from runtime config.
+	applyKDFConfig(keyManager)
 
 	// Generate new salt and derive new key from that same salt (must match header).
 	newSalt, err := crypto.GenerateSalt()
