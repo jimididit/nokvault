@@ -47,6 +47,7 @@ Inject `io.Reader`/`io.Writer` for unit tests; production callers use `os.Stdin`
 | Command | Flag | Default |
 |---------|------|---------|
 | `secure-delete` | `--yes` / `-y` | false |
+| `secure-delete` | `--dry-run` | false |
 | `encrypt` | `--force` / `-f` | false |
 | `decrypt` | `--force` / `-f` | false |
 | `decrypt` | `--strict` | false |
@@ -55,7 +56,9 @@ Note: `secure-delete` already uses `-p` for `--passes`; `-y` is free for `--yes`
 
 ### Call sites
 
-1. **`runSecureDelete`** — after path exists check, before any overwrite/delete: `requireConfirmation(secureDeleteYes, ...)`.
+1. **`runSecureDelete`** — after path exists check:
+   - If `--dry-run`: print each file path that would be securely deleted (single file → that path; directory → walk files only, same as real delete), then return nil. Skip confirmation and skip `SecureDeleteService`.
+   - Else: `requireConfirmation(secureDeleteYes, ...)` before any overwrite/delete.
 2. **`encryptFileWithCompression`** — `refuseIfExists(outputPath, encryptForce)` before `AtomicWriteFunc`.
 3. **Directory encrypt** — for each output `.nokvault` path (or once per file before write in the encryptor callback / CLI loop): refuse unless `--force`. Prefer checking in CLI/walk layer so core stays flag-agnostic; if encryptor writes internally, pass a `force` bool or preflight walk.
 4. **`decryptFile`** — `refuseIfExists(outputPath, decryptForce)` before `AtomicWrite`.
@@ -71,14 +74,14 @@ Messages must name the path and the flag to unblock.
 ### Testing
 
 - Unit (`safety_test.go`): confirm accepts/rejects; non-yes without flag fails when “non-interactive” (inject terminal check or separate `requireConfirmation` with fake `isInteractive`); `refuseIfExists` with/without force.
-- Integration: secure-delete without `--yes` fails in CI (non-TTY); with `--yes` deletes; encrypt/decrypt to existing path fails without `--force`, succeeds with `--force`; directory decrypt with a planted bad vault + `--strict` stops early (fewer successes than continue mode).
+- Integration: secure-delete without `--yes` fails in CI (non-TTY); with `--yes` deletes; `--dry-run` lists paths and leaves files intact (no `--yes` needed); encrypt/decrypt to existing path fails without `--force`, succeeds with `--force`; directory decrypt with a planted bad vault + `--strict` stops early (fewer successes than continue mode).
 
 Update existing integration helpers that re-encrypt to the same `.nokvault` path to pass `--force` where needed.
 
 ### Docs
 
 - Site: secure-delete, encrypt/decrypt command pages, advanced/security as needed.
-- README: brief bullets for `--yes` / `--force` / `--strict`.
+- README: brief bullets for `--yes` / `--dry-run` / `--force` / `--strict`.
 - CHANGELOG: Unreleased Added/Changed.
 - Local `ROADMAP.md` (gitignored): mark X1 DONE after merge.
 
@@ -86,6 +89,7 @@ Update existing integration helpers that re-encrypt to the same `.nokvault` path
 
 - [ ] Non-TTY `secure-delete` without `--yes` exits non-zero and does not delete.
 - [ ] TTY path prompts; `yes` proceeds; other input aborts.
+- [ ] `secure-delete --dry-run` prints target path(s) and does not modify or unlink them (works without `--yes`).
 - [ ] Encrypt/decrypt refuse existing outputs without `--force`.
 - [ ] Decrypt `--strict` aborts on first directory failure without deleting prior successes.
 - [ ] Docs + CHANGELOG updated; `go test ./...` green.
