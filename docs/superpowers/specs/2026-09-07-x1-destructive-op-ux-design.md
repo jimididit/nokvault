@@ -40,6 +40,7 @@
 - `requireConfirmation(yesFlag bool, r io.Reader, w io.Writer) error` — if `yesFlag` OK; else if interactive confirm; else return `CONFIRMATION_REQUIRED` with hint to pass `--yes`.
 - `refuseIfExists(path string, force bool) error` — use `os.Lstat`; refuse existing paths unless `--force`, and refuse non-regular paths even with `--force`. Missing path is OK.
 - No-force writes commit through an atomic no-replace helper so a destination created after preflight is preserved. Force may replace regular files only; it never removes directories, symlinks, or devices.
+- The no-replace commit uses a same-directory hard link. Filesystems without hard-link support (including FAT/exFAT and some network filesystems) fail safely and are documented as unsupported for no-force writes.
 
 Inject `io.Reader`/`io.Writer` for unit tests; production callers use `os.Stdin`/`os.Stderr` (or stdout for prompts — match existing `PrintInfo` style on stderr/stdout consistently with other CLI messages).
 

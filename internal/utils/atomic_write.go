@@ -79,7 +79,7 @@ func atomicWriteFunc(filePath string, perm os.FileMode, replace bool, write func
 		// Link fails if filePath appears after the caller's preflight check.
 		if err := os.Link(tmpName, filePath); err != nil {
 			_ = os.Remove(tmpName)
-			return fmt.Errorf("failed to create target without overwrite: %w", err)
+			return fmt.Errorf("failed atomic no-replace commit (destination exists or filesystem lacks hard-link support): %w", err)
 		}
 		if err := os.Remove(tmpName); err != nil {
 			return fmt.Errorf("target created but failed to remove temporary link: %w", err)

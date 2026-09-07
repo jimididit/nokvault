@@ -34,6 +34,9 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
           <li><code>--force, -f</code>: Overwrite existing output path</li>
           <li><code>--verbose, -v</code>: Verbose output</li>
         </ul>
+        <p class="text-dark-text-muted mb-4">
+          Race-safe writes without <code>--force</code> require hard-link support on the destination filesystem. FAT/exFAT and some network filesystems may reject the operation.
+        </p>
         <h3>Examples</h3>
         <CodeBlock code={`# Encrypt a file
 nokvault encrypt document.txt
@@ -65,6 +68,9 @@ nokvault encrypt file.txt --keyfile ~/.keys/master.key`} lang="bash" />
           <li><code>--dry-run</code>: Show what would be decrypted</li>
           <li><code>--verbose, -v</code>: Verbose output</li>
         </ul>
+        <p class="text-dark-text-muted mb-4">
+          Race-safe writes without <code>--force</code> require hard-link support on the destination filesystem. FAT/exFAT and some network filesystems may reject the operation.
+        </p>
         <h3>Examples</h3>
         <CodeBlock code={`# Decrypt a file
 nokvault decrypt document.txt.nokvault

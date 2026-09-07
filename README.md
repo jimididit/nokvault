@@ -167,6 +167,7 @@ nokvault encrypt ./files -v
 - **`protect` command**: Directory protection (archive mode) is not yet fully implemented. Use `encrypt` for individual files or directories.
 - **Package managers**: Homebrew, Scoop, and APT support is planned but not yet available. Download binaries from [GitHub Releases](https://github.com/jimididit/nokvault/releases).
 - **Edge cases**: Some edge cases may need additional testing. Please report any issues you encounter.
+- **No-replace filesystem support**: Race-safe encrypt/decrypt writes without `--force` require hard-link support on the destination filesystem. FAT/exFAT and some network filesystems may reject the operation; choose a supported destination rather than weakening overwrite protection.
 
 ## Security
 
