@@ -35,6 +35,12 @@ func ResetCLIStateForTest() {
 
 	secureDeletePasses = 3
 	secureDeleteVerbose = false
+	secureDeleteYes = false
+	secureDeleteDryRun = false
+
+	encryptForce = false
+	decryptForce = false
+	decryptStrict = false
 
 	watchAutoEncrypt = false
 	watchDelay = 2 * time.Second

@@ -30,6 +30,8 @@ var (
 	decryptDryRun       bool
 	decryptVerbose      bool
 	decryptPreserveMode bool
+	decryptForce        bool
+	decryptStrict       bool
 )
 
 func init() {
@@ -39,6 +41,8 @@ func init() {
 	decryptCmd.Flags().BoolVar(&decryptNoPrompt, "no-prompt", false, "Don't prompt for password")
 	decryptCmd.Flags().BoolVar(&decryptDryRun, "dry-run", false, "Show what would be decrypted without actually decrypting")
 	decryptCmd.Flags().BoolVar(&decryptPreserveMode, "preserve-mode", false, "Restore original file modes (default clamps to ≤0600 files / ≤0700 dirs)")
+	decryptCmd.Flags().BoolVarP(&decryptForce, "force", "f", false, "Overwrite existing output path")
+	decryptCmd.Flags().BoolVar(&decryptStrict, "strict", false, "Abort directory decrypt on the first failure")
 	decryptCmd.Flags().BoolVarP(&decryptVerbose, "verbose", "v", false, "Verbose output")
 
 	rootCmd.AddCommand(decryptCmd)
@@ -157,6 +161,11 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 		}
 	}
 
+	if err := refuseIfExists(outputPath, decryptForce); err != nil {
+		PrintError(err.Error())
+		return err
+	}
+
 	// Write decrypted data
 	if err := utils.AtomicWrite(outputPath, plaintext, 0o600); err != nil {
 		return fmt.Errorf("failed to write output file: %w", err)
@@ -209,11 +218,23 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 	var failedFiles []string
 	var successCount int
 
+	recordFailure := func(relPath string, cause error) error {
+		PrintError(fmt.Sprintf("Failed to decrypt %s: %v", relPath, cause))
+		progressBar.Increment(1)
+		failedFiles = append(failedFiles, relPath)
+		if decryptStrict {
+			return fmt.Errorf("strict mode: aborted after failure on %s: %w", relPath, cause)
+		}
+		return nil
+	}
+
 	walkErr := fileHandler.WalkDirectory(inputPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			// Log error but continue processing
 			PrintError(fmt.Sprintf("Error accessing %s: %v", path, err))
-			return nil // Continue with other files
+			if decryptStrict {
+				return fmt.Errorf("strict mode: aborted after access error on %s: %w", path, err)
+			}
+			return nil
 		}
 
 		// Skip directories and non-.nokvault files
@@ -224,10 +245,7 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		// Get relative path
 		relPath, err := fileHandler.GetRelativePath(inputPath, path)
 		if err != nil {
-			PrintError(fmt.Sprintf("Failed to get relative path for %s: %v", path, err))
-			progressBar.Increment(1)
-			failedFiles = append(failedFiles, relPath)
-			return nil // Continue with other files
+			return recordFailure(path, err)
 		}
 
 		// Remove .nokvault extension
@@ -237,28 +255,23 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		// Ensure output directory exists
 		outputFileDir := filepath.Dir(outputFilePath)
 		if err := fileHandler.EnsureDirectory(outputFileDir); err != nil {
-			PrintError(fmt.Sprintf("Failed to create output directory for %s: %v", relPath, err))
-			progressBar.Increment(1)
-			failedFiles = append(failedFiles, relPath)
-			return nil // Continue with other files
+			return recordFailure(relPath, err)
+		}
+
+		if err := refuseIfExists(outputFilePath, decryptForce); err != nil {
+			return recordFailure(relPath, err)
 		}
 
 		// Read header to get salt
 		inputFile, err := os.Open(path)
 		if err != nil {
-			PrintError(fmt.Sprintf("Failed to open file %s: %v", relPath, err))
-			progressBar.Increment(1)
-			failedFiles = append(failedFiles, relPath)
-			return nil // Continue with other files
+			return recordFailure(relPath, err)
 		}
 		defer inputFile.Close()
 
 		header, _, err := fileHandler.ReadHeaderWithMetadata(inputFile)
 		if err != nil {
-			PrintError(fmt.Sprintf("Failed to read header for %s: %v", relPath, err))
-			progressBar.Increment(1)
-			failedFiles = append(failedFiles, relPath)
-			return nil // Continue with other files
+			return recordFailure(relPath, err)
 		}
 
 		// Derive key from password and salt using header KDF parameters
@@ -266,19 +279,13 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		keyManager.SetArgon2Params(header.Argon2Params())
 		key, err := keyManager.DeriveKeyFromPasswordAndSalt(password, header.Salt[:])
 		if err != nil {
-			PrintError(fmt.Sprintf("Failed to derive key for %s: %v", relPath, err))
-			progressBar.Increment(1)
-			failedFiles = append(failedFiles, relPath)
-			return nil // Continue with other files
+			return recordFailure(relPath, err)
 		}
 		defer utils.ZeroizeKey(key)
 
 		// Decrypt single file
 		if err := decryptSingleFile(path, outputFilePath, key, encryptionService, fileHandler); err != nil {
-			PrintError(fmt.Sprintf("Failed to decrypt %s: %v", relPath, err))
-			progressBar.Increment(1)
-			failedFiles = append(failedFiles, relPath)
-			return nil // Continue with other files instead of stopping
+			return recordFailure(relPath, err)
 		}
 
 		successCount++
@@ -360,6 +367,10 @@ func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionServi
 		if err := os.MkdirAll(outputDir, 0755); err != nil {
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
+	}
+
+	if err := refuseIfExists(outputPath, decryptForce); err != nil {
+		return err
 	}
 
 	// Write decrypted data
