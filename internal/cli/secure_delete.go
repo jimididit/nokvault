@@ -11,11 +11,13 @@ import (
 
 var secureDeleteCmd = &cobra.Command{
 	Use:   "secure-delete <path>",
-	Short: "Securely delete a file by overwriting it multiple times",
-	Long: `Securely delete a file by overwriting it with random data multiple times
-before deletion. This makes it much harder to recover the file contents.
+	Short: "Securely delete a file or directory by overwriting multiple times",
+	Long: `Securely delete a file (or all files under a directory) by overwriting
+with random/pattern data multiple times before deletion. This makes recovery
+much harder on traditional spinning disks.
 
-WARNING: This operation is irreversible!`,
+WARNING: This operation is irreversible! On SSDs and copy-on-write filesystems,
+multi-pass overwrite may not fully erase prior data.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runSecureDelete,
 }
@@ -43,8 +45,17 @@ func runSecureDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if info.IsDir() {
-		PrintError("secure-delete only works with files, not directories")
-		return fmt.Errorf("secure-delete requires a file")
+		PrintInfo(fmt.Sprintf("This will securely delete all files under: %s", path))
+		PrintInfo("WARNING: This operation is irreversible!")
+		if secureDeleteVerbose {
+			PrintInfo(fmt.Sprintf("Performing %d overwrite passes per file...", secureDeletePasses))
+		}
+		if err := secureDeleteDirectory(path, secureDeletePasses, secureDeleteVerbose); err != nil {
+			PrintError(fmt.Sprintf("Secure deletion failed: %v", err))
+			return err
+		}
+		PrintSuccess(fmt.Sprintf("Securely deleted directory contents: %s", path))
+		return nil
 	}
 
 	// Confirm deletion

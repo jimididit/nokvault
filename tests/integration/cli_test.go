@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jimididit/nokvault/internal/cli"
 )
 
 func TestCLI_EncryptDecrypt_File(t *testing.T) {
@@ -33,7 +32,7 @@ func TestCLI_EncryptDecrypt_File(t *testing.T) {
 	defer os.Remove(encryptedPath)
 
 	// Test encrypt command
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{"encrypt", inputPath, "--no-prompt"})
 
 	if err := rootCmd.Execute(); err != nil {
@@ -109,7 +108,7 @@ func TestCLI_EncryptDecrypt_Directory(t *testing.T) {
 	}
 
 	// Test encrypt directory command
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{"encrypt", inputDir, "--output", encryptedDir, "--no-prompt"})
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("Encrypt directory command failed: %v", err)
@@ -146,7 +145,7 @@ func TestCLI_EncryptDecrypt_Directory(t *testing.T) {
 }
 
 func TestCLI_Encrypt_NonExistentFile(t *testing.T) {
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{"encrypt", "/nonexistent/file.txt", "--no-prompt"})
 
 	err := rootCmd.Execute()
@@ -156,7 +155,7 @@ func TestCLI_Encrypt_NonExistentFile(t *testing.T) {
 }
 
 func TestCLI_Decrypt_NonExistentFile(t *testing.T) {
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{"decrypt", "/nonexistent/file.nokvault", "--no-prompt"})
 
 	err := rootCmd.Execute()
@@ -174,7 +173,7 @@ func TestCLI_Encrypt_DryRun(t *testing.T) {
 	defer os.Remove(tmpFile.Name())
 	tmpFile.Close()
 
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{"encrypt", tmpFile.Name(), "--dry-run", "--no-prompt"})
 
 	// Dry run should succeed without creating encrypted file
@@ -190,11 +189,7 @@ func TestCLI_Encrypt_DryRun(t *testing.T) {
 }
 
 // TestCLI_Encrypt_WithCompression tests encryption with compression flag
-// Note: This test may fail due to Cobra flag persistence between tests.
-// In practice, compression is tested in the integration encrypt_decrypt_test.go
 func TestCLI_Encrypt_WithCompression(t *testing.T) {
-	t.Skip("Skipping due to Cobra flag persistence issue - compression tested in integration tests")
-
 	password := "test-password-123"
 	os.Setenv("NOKVAULT_PASSWORD", password)
 	defer os.Unsetenv("NOKVAULT_PASSWORD")
@@ -218,7 +213,7 @@ func TestCLI_Encrypt_WithCompression(t *testing.T) {
 	defer os.Remove(encryptedPath)
 
 	// Test encrypt with compression
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{"encrypt", inputPath, "--compress", "--no-prompt"})
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("Encrypt with compression failed: %v", err)

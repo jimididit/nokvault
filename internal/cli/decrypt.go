@@ -206,7 +206,7 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 	var failedFiles []string
 	var successCount int
 
-	err = fileHandler.WalkDirectory(inputPath, func(path string, info os.FileInfo, err error) error {
+	walkErr := fileHandler.WalkDirectory(inputPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			// Log error but continue processing
 			PrintError(fmt.Sprintf("Error accessing %s: %v", path, err))
@@ -285,6 +285,10 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 
 		return nil
 	})
+	if walkErr != nil {
+		progressBar.Wait()
+		return walkErr
+	}
 
 	// Report results
 	if len(failedFiles) > 0 {
