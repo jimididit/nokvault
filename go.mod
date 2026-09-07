@@ -1,6 +1,6 @@
 module github.com/jimididit/nokvault
 
-go 1.24.2
+go 1.25.11
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0

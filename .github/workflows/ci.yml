@@ -32,6 +32,8 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+  # Analysis tools may require a newer toolchain than go.mod (GOTOOLCHAIN=local).
+  # Install/run them on a current stable Go; project tests still use go-version-file.
   govulncheck:
     name: govulncheck
     runs-on: ubuntu-latest
@@ -42,7 +44,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: 'stable'
           cache: true
 
       - name: Install govulncheck
@@ -61,14 +63,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: 'stable'
           cache: true
 
-      - name: Run staticcheck
-        uses: dominikh/staticcheck-action@v1
-        with:
-          version: latest
-          install-go: false
+      - name: Install and run staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          staticcheck ./...
 
   docs:
     name: Docs build
