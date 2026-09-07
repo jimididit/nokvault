@@ -51,11 +51,17 @@ func init() {
 func runDecrypt(cmd *cobra.Command, args []string) error {
 	inputPath := args[0]
 
-	// Validate input path
-	info, err := os.Stat(inputPath)
+	if err := utils.ValidateNoSymlinkComponents(inputPath); err != nil {
+		return err
+	}
+
+	info, err := os.Lstat(inputPath)
 	if os.IsNotExist(err) {
 		PrintError(fmt.Sprintf("Path does not exist: %s", inputPath))
 		return utils.NewError(utils.ErrFileNotFound.Code, fmt.Sprintf("Path does not exist: %s", inputPath), err)
+	}
+	if err != nil {
+		return err
 	}
 
 	// Determine output path
@@ -67,6 +73,10 @@ func runDecrypt(cmd *cobra.Command, args []string) error {
 		} else {
 			outputPath = inputPath + ".decrypted"
 		}
+	}
+
+	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
+		return err
 	}
 
 	if decryptDryRun {
@@ -254,7 +264,10 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 
 		// Remove .nokvault extension
 		outputRelPath := relPath[:len(relPath)-len(".nokvault")]
-		outputFilePath := filepath.Join(outputPath, outputRelPath)
+		outputFilePath, joinErr := utils.SafeJoin(outputPath, outputRelPath)
+		if joinErr != nil {
+			return recordFailure(relPath, joinErr)
+		}
 
 		// Ensure output directory exists
 		outputFileDir := filepath.Dir(outputFilePath)

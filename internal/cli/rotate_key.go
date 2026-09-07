@@ -46,10 +46,15 @@ func init() {
 func runRotateKey(cmd *cobra.Command, args []string) error {
 	inputPath := args[0]
 
-	// Validate input path
-	if _, err := os.Stat(inputPath); os.IsNotExist(err) {
+	if err := utils.ValidateNoSymlinkComponents(inputPath); err != nil {
+		return err
+	}
+
+	if _, err := os.Lstat(inputPath); os.IsNotExist(err) {
 		PrintError(fmt.Sprintf("Path does not exist: %s", inputPath))
 		return utils.NewError(utils.ErrFileNotFound.Code, fmt.Sprintf("Path does not exist: %s", inputPath), err)
+	} else if err != nil {
+		return err
 	}
 
 	// Get old password

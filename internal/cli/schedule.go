@@ -56,9 +56,14 @@ func init() {
 func runScheduleEncrypt(cmd *cobra.Command, args []string) error {
 	path := args[0]
 
-	// Validate path
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	if err := utils.ValidateNoSymlinkComponents(path); err != nil {
+		return err
+	}
+
+	if _, err := os.Lstat(path); os.IsNotExist(err) {
 		return utils.NewError(utils.ErrFileNotFound.Code, fmt.Sprintf("Path does not exist: %s", path), err)
+	} else if err != nil {
+		return err
 	}
 
 	// Get password/key
@@ -119,20 +124,25 @@ func runScheduleEncrypt(cmd *cobra.Command, args []string) error {
 }
 
 func performScheduledEncrypt(path string, encryptionService *core.EncryptionService, key, salt []byte) error {
-	info, err := os.Stat(path)
+	if err := utils.ValidateNoSymlinkComponents(path); err != nil {
+		return err
+	}
+
+	info, err := os.Lstat(path)
 	if err != nil {
 		return err
 	}
 
+	outputPath := path + ".nokvault"
+	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
+		return err
+	}
+
 	if info.IsDir() {
-		// Encrypt directory
-		outputPath := path + ".nokvault"
 		encryptor := core.NewDirectoryEncryptor(encryptionService, scheduleVerbose)
 		encryptor.SetCompression(scheduleCompress)
 		return encryptor.EncryptDirectory(path, outputPath, key, salt, nil)
 	}
 
-	// Encrypt file
-	outputPath := path + ".nokvault"
 	return encryptFileWithCompression(path, outputPath, key, salt, encryptionService, scheduleCompress)
 }

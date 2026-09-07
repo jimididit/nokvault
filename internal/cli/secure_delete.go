@@ -43,10 +43,17 @@ func init() {
 func runSecureDelete(cmd *cobra.Command, args []string) error {
 	path := args[0]
 
-	info, err := os.Stat(path)
+	if err := utils.ValidateNoSymlinkComponents(path); err != nil {
+		return err
+	}
+
+	info, err := os.Lstat(path)
 	if os.IsNotExist(err) {
 		PrintError(fmt.Sprintf("Path does not exist: %s", path))
 		return utils.NewError(utils.ErrFileNotFound.Code, fmt.Sprintf("Path does not exist: %s", path), err)
+	}
+	if err != nil {
+		return err
 	}
 
 	if secureDeleteDryRun {

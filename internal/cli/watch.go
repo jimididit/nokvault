@@ -55,10 +55,16 @@ func init() {
 func runWatch(cmd *cobra.Command, args []string) error {
 	watchPath := args[0]
 
-	// Validate path
-	info, err := os.Stat(watchPath)
+	if err := utils.ValidateNoSymlinkComponents(watchPath); err != nil {
+		return err
+	}
+
+	info, err := os.Lstat(watchPath)
 	if os.IsNotExist(err) {
 		return utils.NewError(utils.ErrFileNotFound.Code, fmt.Sprintf("Path does not exist: %s", watchPath), err)
+	}
+	if err != nil {
+		return err
 	}
 
 	// Create watcher
@@ -169,8 +175,14 @@ func createEncryptCallback(
 			return
 		}
 
-		// Check if file exists and is not already encrypted
-		info, err := os.Stat(filePath)
+		if err := utils.ValidateNoSymlinkComponents(filePath); err != nil {
+			if verbose {
+				PrintError(err.Error())
+			}
+			return
+		}
+
+		info, err := os.Lstat(filePath)
 		if err != nil || info.IsDir() {
 			return
 		}
@@ -207,7 +219,20 @@ func createEncryptCallback(
 
 // encryptFileAuto encrypts a file automatically (helper for watch callback)
 func encryptFileAuto(filePath string, encryptionService *core.EncryptionService, key, salt []byte, verbose bool) {
+	if err := utils.ValidateNoSymlinkComponents(filePath); err != nil {
+		if verbose {
+			PrintError(err.Error())
+		}
+		return
+	}
+
 	outputPath := filePath + ".nokvault"
+	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
+		if verbose {
+			PrintError(err.Error())
+		}
+		return
+	}
 
 	fileHandler := core.NewFileHandler()
 	metadata, err := fileHandler.ReadMetadata(filePath)
