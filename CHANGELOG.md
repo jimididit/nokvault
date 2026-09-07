@@ -5,6 +5,18 @@ All notable changes to Nokvault will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed `rotate-key` writing a header salt that did not match the derived key (post-rotation files were not decryptable with the new password)
+- Fixed `rotate-key` on Windows failing to replace the file while the input handle was still open
+- Zeroize plaintext buffer after `rotate-key` re-encryption
+
+### Changed
+
+- Documented `rotate-key` as decrypt-then-re-encrypt (re-key), correcting earlier "without re-encrypting" wording
+
 ## [0.1.1] - 2026-01-17
 
 ### Fixed
@@ -43,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `decrypt` - Decrypt nokvault encrypted files
   - `watch` - Watch directories for changes and optionally auto-encrypt
   - `schedule` - Schedule periodic encryption operations
-  - `rotate-key` - Rotate encryption keys without re-encrypting data
+  - `rotate-key` - Re-key encrypted files (decrypt with old password, re-encrypt with new)
   - `secure-delete` - Securely delete files with multiple overwrite passes
   - `config` - Manage configuration settings
   - `protect` - Directory protection (partial implementation)
