@@ -2,6 +2,8 @@ package cli
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,6 +58,39 @@ func writeRegularFile(t *testing.T, dir, name, contents string) string {
 	path := filepath.Join(dir, name)
 	require.NoError(t, os.WriteFile(path, []byte(contents), 0o600))
 	return path
+}
+
+func requirePathEscape(t *testing.T, err error) {
+	t.Helper()
+	require.Error(t, err)
+	var nv *utils.NokvaultError
+	require.ErrorAs(t, err, &nv)
+	require.Equal(t, "PATH_ESCAPE", nv.Code)
+	require.NotContains(t, err.Error(), "directory decryption completed")
+}
+
+func captureStderr(t *testing.T) func() string {
+	t.Helper()
+	old := os.Stderr
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stderr = w
+	done := make(chan string, 1)
+	t.Cleanup(func() {
+		os.Stderr = old
+		_ = w.Close()
+		_ = r.Close()
+	})
+	return func() string {
+		os.Stderr = old
+		require.NoError(t, w.Close())
+		b, readErr := io.ReadAll(r)
+		require.NoError(t, readErr)
+		_ = r.Close()
+		text := string(b)
+		done <- text
+		return text
+	}
 }
 
 func execCLI(t *testing.T, args ...string) error {
@@ -241,6 +276,113 @@ func TestSchedule_PerformScheduledEncrypt_RejectsSymlink(t *testing.T) {
 	require.Equal(t, "secret", string(got))
 }
 
+func TestSchedule_Directory_RejectsNestedOutputBeforePassword(t *testing.T) {
+	t.Setenv("NOKVAULT_PASSWORD", "")
+	dir := t.TempDir()
+	inDir := filepath.Join(dir, "in")
+	require.NoError(t, os.MkdirAll(filepath.Join(inDir, "nested"), 0o700))
+	writeRegularFile(t, filepath.Join(inDir, "nested"), "file.txt", "secret")
+
+	outRoot := inDir + ".nokvault"
+	require.NoError(t, os.Mkdir(outRoot, 0o700))
+	target := filepath.Join(dir, "target")
+	require.NoError(t, os.Mkdir(target, 0o700))
+	link := filepath.Join(outRoot, "nested")
+	trySymlink(t, target, link)
+
+	err := execCLI(t, "schedule", "encrypt", inDir, "--no-prompt")
+	requireSymlinkDisallowed(t, err, link)
+	require.NotContains(t, err.Error(), "no password provided")
+}
+
+func TestSchedule_ReportsPathPolicyWithoutVerbose(t *testing.T) {
+	ResetCLIStateForTest()
+	t.Cleanup(ResetCLIStateForTest)
+	scheduleVerbose = false
+
+	policyErr := utils.NewErrorWithHint(
+		utils.ErrSymlinkDisallowed.Code,
+		"Symlink paths are not allowed: scheduled-link",
+		nil,
+		"Use a regular file or directory path. Symlinks are not followed.",
+	)
+	readPolicy := captureStderr(t)
+	logScheduleEncryptError(policyErr)
+	policyOut := readPolicy()
+	require.Contains(t, policyOut, "SYMLINK_DISALLOWED")
+	require.Contains(t, policyOut, "scheduled-link")
+
+	escapeErr := utils.NewErrorWithHint(
+		utils.ErrPathEscape.Code,
+		"Path escapes the output root: ..",
+		nil,
+		"Use a relative path that stays inside the selected output directory.",
+	)
+	readEscape := captureStderr(t)
+	logScheduleEncryptError(escapeErr)
+	require.Contains(t, readEscape(), "PATH_ESCAPE")
+
+	readOrdinary := captureStderr(t)
+	logScheduleEncryptError(fmt.Errorf("disk full"))
+	require.Empty(t, readOrdinary(), "ordinary schedule errors stay quiet without --verbose")
+}
+
+func TestProtect_RejectsSymlinkInputBeforeDryRun(t *testing.T) {
+	dir := t.TempDir()
+	realDir := filepath.Join(dir, "real")
+	require.NoError(t, os.Mkdir(realDir, 0o700))
+	link := filepath.Join(dir, "protect-link")
+	trySymlink(t, realDir, link)
+
+	err := execCLI(t, "protect", link, "--dry-run")
+	requireSymlinkDisallowed(t, err, link)
+}
+
+func TestProtect_RejectsSymlinkOutputBeforeDryRun(t *testing.T) {
+	dir := t.TempDir()
+	inDir := filepath.Join(dir, "in")
+	require.NoError(t, os.Mkdir(inDir, 0o700))
+	target := writeRegularFile(t, dir, "out-target", "keep")
+	outLink := filepath.Join(dir, "out-link.nokvault")
+	trySymlink(t, target, outLink)
+
+	err := execCLI(t, "protect", inDir, "--output", outLink, "--dry-run")
+	requireSymlinkDisallowed(t, err, outLink)
+	got, readErr := os.ReadFile(target)
+	require.NoError(t, readErr)
+	require.Equal(t, "keep", string(got))
+}
+
+func TestProtect_RejectsSymlinkBeforeUnimplemented(t *testing.T) {
+	t.Setenv("NOKVAULT_PASSWORD", "")
+	dir := t.TempDir()
+	realDir := filepath.Join(dir, "real")
+	require.NoError(t, os.Mkdir(realDir, 0o700))
+	link := filepath.Join(dir, "protect-input-link")
+	trySymlink(t, realDir, link)
+
+	err := execCLI(t, "protect", link, "--no-prompt")
+	requireSymlinkDisallowed(t, err, link)
+	require.NotContains(t, err.Error(), "not yet implemented")
+}
+
+func TestDecrypt_Directory_NonStrictPreservesPathEscape(t *testing.T) {
+	dir := t.TempDir()
+	inDir := filepath.Join(dir, "vault")
+	require.NoError(t, os.Mkdir(inDir, 0o700))
+	writeRegularFile(t, inDir, "...nokvault", "not-a-real-cipher")
+	writeRegularFile(t, inDir, "other.nokvault", "also-not-a-cipher")
+	outDir := filepath.Join(dir, "out")
+	require.NoError(t, os.Mkdir(outDir, 0o700))
+
+	ResetCLIStateForTest()
+	t.Cleanup(ResetCLIStateForTest)
+	decryptStrict = false
+
+	err := decryptDirectory(inDir, outDir, []byte("unused-password"), core.NewEncryptionService())
+	requirePathEscape(t, err)
+}
+
 func TestWatch_RejectsSymlinkRoot(t *testing.T) {
 	dir := t.TempDir()
 	realDir := filepath.Join(dir, "real")
@@ -260,6 +402,51 @@ func TestWatch_RejectsSymlinkRoot(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("runWatch did not reject symlink root")
 	}
+}
+
+func TestWatch_CallbackReportsPolicyWithoutVerbose(t *testing.T) {
+	dir := t.TempDir()
+	target := writeRegularFile(t, dir, "target.txt", "watch-target")
+	link := filepath.Join(dir, "quiet-event-link.txt")
+	trySymlink(t, target, link)
+
+	svc := core.NewEncryptionService()
+	key, salt, err := svc.GetKeyManager().DeriveKeyFromPassword([]byte("watch-quiet-policy-test"))
+	require.NoError(t, err)
+
+	readStderr := captureStderr(t)
+	cb := createEncryptCallback(svc, key, salt, 30*time.Millisecond, nil, false)
+	cb(link, fsnotify.Event{Name: link, Op: fsnotify.Write})
+	output := readStderr()
+
+	require.Contains(t, output, "SYMLINK_DISALLOWED")
+	require.Contains(t, output, link)
+	_, statErr := os.Lstat(link + ".nokvault")
+	require.True(t, os.IsNotExist(statErr), "symlink event must not be scheduled for encryption")
+}
+
+func TestWatch_DelayedEncryptReportsPolicyWithoutVerbose(t *testing.T) {
+	dir := t.TempDir()
+	regular := writeRegularFile(t, dir, "watched.txt", "original")
+	target := writeRegularFile(t, dir, "swap-target.txt", "swap-target")
+
+	svc := core.NewEncryptionService()
+	key, salt, err := svc.GetKeyManager().DeriveKeyFromPassword([]byte("watch-quiet-delayed-test"))
+	require.NoError(t, err)
+
+	readStderr := captureStderr(t)
+	cb := createEncryptCallback(svc, key, salt, 80*time.Millisecond, nil, false)
+	cb(regular, fsnotify.Event{Name: regular, Op: fsnotify.Write})
+
+	require.NoError(t, os.Remove(regular))
+	trySymlink(t, target, regular)
+
+	time.Sleep(200 * time.Millisecond)
+	output := readStderr()
+
+	require.Contains(t, output, "SYMLINK_DISALLOWED")
+	_, statErr := os.Lstat(regular + ".nokvault")
+	require.True(t, os.IsNotExist(statErr))
 }
 
 func TestWatch_CallbackRejectsSymlinkEvent(t *testing.T) {

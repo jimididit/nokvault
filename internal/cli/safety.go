@@ -2,7 +2,6 @@ package cli
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,11 +10,6 @@ import (
 	"github.com/jimididit/nokvault/internal/utils"
 	"golang.org/x/term"
 )
-
-func isSymlinkDisallowed(err error) bool {
-	var nv *utils.NokvaultError
-	return errors.As(err, &nv) && nv.Code == utils.ErrSymlinkDisallowed.Code
-}
 
 func isInteractive() bool {
 	return term.IsTerminal(int(os.Stdin.Fd()))

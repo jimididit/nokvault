@@ -211,24 +211,6 @@ func shouldCompress() bool {
 	return false
 }
 
-func preflightDirectoryEncryptOutputs(inputPath, outputPath string) error {
-	fileHandler := core.NewFileHandler()
-	return fileHandler.WalkDirectory(inputPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		relPath, relErr := fileHandler.GetRelativePath(inputPath, path)
-		if relErr != nil {
-			return relErr
-		}
-		_, joinErr := utils.SafeJoin(outputPath, relPath+".nokvault")
-		return joinErr
-	})
-}
-
 func encryptDirectory(inputPath, outputPath string, key, salt []byte, encryptionService *core.EncryptionService) error {
 	return encryptDirectoryWithCompression(inputPath, outputPath, key, salt, encryptionService, shouldCompress())
 }

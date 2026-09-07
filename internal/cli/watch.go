@@ -176,9 +176,7 @@ func createEncryptCallback(
 		}
 
 		if err := utils.ValidateNoSymlinkComponents(filePath); err != nil {
-			if verbose {
-				PrintError(err.Error())
-			}
+			reportPathPolicyError(err)
 			return
 		}
 
@@ -220,17 +218,13 @@ func createEncryptCallback(
 // encryptFileAuto encrypts a file automatically (helper for watch callback)
 func encryptFileAuto(filePath string, encryptionService *core.EncryptionService, key, salt []byte, verbose bool) {
 	if err := utils.ValidateNoSymlinkComponents(filePath); err != nil {
-		if verbose {
-			PrintError(err.Error())
-		}
+		reportPathPolicyError(err)
 		return
 	}
 
 	outputPath := filePath + ".nokvault"
 	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
-		if verbose {
-			PrintError(err.Error())
-		}
+		reportPathPolicyError(err)
 		return
 	}
 
