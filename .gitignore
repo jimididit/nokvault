@@ -5,6 +5,8 @@
 .cursorrules
 .cursorindexingignore
 .specstory/
+/graphify-out/
+.graphify_*
 
 # Other IDEs and Editors
 .idea/
