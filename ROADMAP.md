@@ -7,14 +7,14 @@
 
 ## Now (0–2 weeks) — Critical / High security & integrity
 
-### N1. Fix `rotate-key` salt/key mismatch (NV-001, NV-010) — DONE (PR pending)
+### N1. Fix `rotate-key` salt/key mismatch (NV-001, NV-010) — DONE (merged)
 - **Problem:** Rotated files store a salt that does not match the derived key; ciphertext is unrecoverable with the new password. Plaintext also lingers unzeroized.
 - **Approach:** Derive with `DeriveKeyFromPasswordAndSalt(newPassword, newSalt)`; zeroize plaintext after successful rewrite; add encrypt→rotate→decrypt integration test that fails today.
 - **Effort:** S  
 - **Risk if deferred:** Data-loss / trust-breaking for anyone using `rotate-key`.  
 - **Depends on:** None (blocker for any release that advertises rotation).
 
-### N2. Persist KDF parameters in on-disk format + apply config (NV-002, NV-003, NV-012, NV-027)
+### N2. Persist KDF parameters in on-disk format + apply config (NV-002, NV-003, NV-012, NV-027) — DONE (PR pending)
 - **Problem:** Header stores salt only; config KDF is display-only; compression inferred by magic.
 - **Approach:** Bump `CurrentVersion`; extend header (or authenticated AAD metadata) with Argon2 memory/time/parallelism/keylen, algorithm IDs, compress flag; decrypt reads header params; encrypt writes them; wire `KeyManager.SetParams` from config for *new* encryptions only.
 - **Effort:** M  
@@ -35,7 +35,7 @@
 - **Risk if deferred:** Corrupt vaults; accidental plaintext exposure after “secure” decrypt.  
 - **Depends on:** None; Graphify shows `SafeWrite` currently orphaned.
 
-### N5. Correct docs that oversell rotation (NV-008) — DONE (with N1)
+### N5. Correct docs that oversell rotation (NV-008) — DONE (merged)
 - **Problem:** README/CHANGELOG claim rotation without re-encryption.
 - **Approach:** Rewrite to “re-key (decrypt + re-encrypt)”; note plaintext briefly in memory/temp file semantics after N1/N4.
 - **Effort:** S  

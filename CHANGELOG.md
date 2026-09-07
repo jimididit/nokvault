@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Format v2 `.nokvault` header persists Argon2id parameters (memory, time, parallelism, key length) for each file
+- Config `[key_derivation]` values are applied when creating new encrypted files (encrypt, rotate-key rewrite, watch, schedule)
+
 ### Fixed
 
 - Fixed `rotate-key` writing a header salt that did not match the derived key (post-rotation files were not decryptable with the new password)
@@ -15,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- New encryptions write format v2 headers; v1 files remain decryptable using historical built-in KDF defaults
+- Decrypt derives keys from header parameters (v2) or defaults (v1), not from live config
 - Documented `rotate-key` as decrypt-then-re-encrypt (re-key), correcting earlier "without re-encrypting" wording
 
 ## [0.1.1] - 2026-01-17
