@@ -25,8 +25,8 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
         <h3>Options</h3>
         <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
           <li><code>--output, -o</code>: Specify output file path (default: &lt;path&gt;.nokvault)</li>
-          <li><code>--keyfile, -k</code>: Path to keyfile for encryption</li>
-          <li><code>--password, -p</code>: Encryption password (not recommended)</li>
+          <li><code>--keyfile, -k</code>: Path to keyfile for encryption (mode 0600 required on Unix; symlinks refused)</li>
+          <li><code>--password, -p</code>: Removed — refused at runtime (use keyfile, <code>NOKVAULT_PASSWORD</code>, or prompt)</li>
           <li><code>--no-prompt</code>: Don't prompt for password</li>
           <li><code>--compress</code>: Compress before encryption</li>
           <li><code>--exclude</code>: Exclude patterns (can be used multiple times)</li>
@@ -55,8 +55,8 @@ nokvault encrypt file.txt --keyfile ~/.keys/master.key`} lang="bash" />
         <h3>Options</h3>
         <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
           <li><code>--output, -o</code>: Specify output file path</li>
-          <li><code>--keyfile, -k</code>: Path to keyfile for decryption</li>
-          <li><code>--password, -p</code>: Decryption password</li>
+          <li><code>--keyfile, -k</code>: Path to keyfile for decryption (mode 0600 required on Unix; symlinks refused)</li>
+          <li><code>--password, -p</code>: Removed — refused at runtime (use keyfile, <code>NOKVAULT_PASSWORD</code>, or prompt)</li>
           <li><code>--no-prompt</code>: Don't prompt for password</li>
           <li><code>--dry-run</code>: Show what would be decrypted</li>
           <li><code>--verbose, -v</code>: Verbose output</li>
@@ -120,12 +120,14 @@ nokvault schedule encrypt ./documents --interval 24h`} lang="bash" />
       <section>
         <h2><code>rotate-key &lt;path&gt;</code></h2>
         <p class="text-dark-text-muted mb-4">
-          Rotate the encryption key for an encrypted file without re-encrypting the data. This is more efficient than decrypting and re-encrypting.
+          Re-key an encrypted file by decrypting with the old credential and re-encrypting with a new one (new salt and ciphertext). Prefer keyfiles over prompts for automation.
         </p>
         <h3>Options</h3>
         <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
           <li><code>--old-keyfile</code>: Path to old keyfile</li>
           <li><code>--new-keyfile</code>: Path to new keyfile</li>
+          <li><code>--old-password</code> / <code>--new-password</code>: Removed — refused at runtime</li>
+          <li><code>--no-prompt</code>: Don't prompt for passwords</li>
           <li><code>--verbose, -v</code>: Verbose output</li>
         </ul>
         <h3>Examples</h3>

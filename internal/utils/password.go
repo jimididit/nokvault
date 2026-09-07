@@ -3,38 +3,36 @@ package utils
 import (
 	"fmt"
 	"os"
+	"runtime"
+	"strings"
 	"syscall"
 
 	"github.com/manifoldco/promptui"
 	"golang.org/x/term"
 )
 
-// GetPassword retrieves password from various sources
+// ErrPasswordFlagRefused is returned when a password was passed on the command line.
+var ErrPasswordFlagRefused = fmt.Errorf(
+	"passing passwords on the command line is not allowed (visible in process lists and shell history); use --keyfile, the NOKVAULT_PASSWORD environment variable, or an interactive prompt",
+)
+
+// GetPassword retrieves password from keyfile, environment, or interactive prompt.
+// passwordFlag must be empty; non-empty values are refused (NV-004).
 func GetPassword(passwordFlag, keyfileFlag string, noPrompt, confirm bool) ([]byte, error) {
-	// Try keyfile first
-	if keyfileFlag != "" {
-		keyfileData, err := os.ReadFile(keyfileFlag)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read keyfile: %w", err)
-		}
-		// Remove trailing newline if present
-		if len(keyfileData) > 0 && keyfileData[len(keyfileData)-1] == '\n' {
-			keyfileData = keyfileData[:len(keyfileData)-1]
-		}
-		return keyfileData, nil
-	}
-
-	// Try password flag
+	// Refuse argv secrets even if a keyfile is also provided — the flag still
+	// appears in process lists / shell history (NV-004).
 	if passwordFlag != "" {
-		return []byte(passwordFlag), nil
+		return nil, ErrPasswordFlagRefused
 	}
 
-	// Try environment variable
+	if keyfileFlag != "" {
+		return readKeyfile(keyfileFlag)
+	}
+
 	if envPassword := os.Getenv("NOKVAULT_PASSWORD"); envPassword != "" {
 		return []byte(envPassword), nil
 	}
 
-	// Prompt for password
 	if noPrompt {
 		return nil, fmt.Errorf("no password provided and --no-prompt is set")
 	}
@@ -58,6 +56,28 @@ func GetPassword(passwordFlag, keyfileFlag string, noPrompt, confirm bool) ([]by
 	}
 
 	return password, nil
+}
+
+func readKeyfile(path string) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat keyfile: %w", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return nil, fmt.Errorf("keyfile must not be a symlink: %s", path)
+	}
+	if runtime.GOOS != "windows" {
+		if info.Mode().Perm()&0o077 != 0 {
+			return nil, fmt.Errorf("keyfile permissions are too open (got %04o, want 0600 or tighter): %s", info.Mode().Perm(), path)
+		}
+	}
+
+	keyfileData, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read keyfile: %w", err)
+	}
+	keyfileData = []byte(strings.TrimRight(string(keyfileData), "\r\n"))
+	return keyfileData, nil
 }
 
 // PromptPassword prompts for a password

@@ -31,7 +31,7 @@ var (
 
 func init() {
 	protectCmd.Flags().StringVarP(&protectOutput, "output", "o", "", "Output archive file path")
-	protectCmd.Flags().StringVarP(&protectPassword, "password", "p", "", "Encryption password")
+	protectCmd.Flags().StringVarP(&protectPassword, "password", "p", "", "Removed: passwords on argv are refused (use --keyfile or NOKVAULT_PASSWORD)")
 	protectCmd.Flags().StringVarP(&protectKeyfile, "keyfile", "k", "", "Path to keyfile")
 	protectCmd.Flags().BoolVar(&protectNoPrompt, "no-prompt", false, "Don't prompt for password")
 	protectCmd.Flags().BoolVar(&protectDryRun, "dry-run", false, "Show what would be protected without actually protecting")

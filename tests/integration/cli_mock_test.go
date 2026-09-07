@@ -151,11 +151,12 @@ func TestCLI_Encrypt_File_WithPassword(t *testing.T) {
 	defer os.Remove(outputFile)
 
 	rootCmd := freshRootCmd(t)
+	keyfile := writeTempKeyfile(t, "test-password-123")
 	rootCmd.SetArgs([]string{
 		"encrypt",
 		testFile,
 		"--output", outputFile,
-		"--password", "test-password-123",
+		"--keyfile", keyfile,
 		"--no-prompt",
 	})
 
@@ -177,11 +178,12 @@ func TestCLI_Decrypt_File_WithPassword(t *testing.T) {
 	defer os.Remove(encryptedFile)
 
 	rootCmd := freshRootCmd(t)
+	keyfile := writeTempKeyfile(t, "test-password-123")
 	rootCmd.SetArgs([]string{
 		"encrypt",
 		testFile,
 		"--output", encryptedFile,
-		"--password", "test-password-123",
+		"--keyfile", keyfile,
 		"--no-prompt",
 	})
 
@@ -196,7 +198,7 @@ func TestCLI_Decrypt_File_WithPassword(t *testing.T) {
 		"decrypt",
 		encryptedFile,
 		"--output", decryptedFile,
-		"--password", "test-password-123",
+		"--keyfile", keyfile,
 		"--no-prompt",
 	})
 
@@ -229,11 +231,12 @@ func TestCLI_Encrypt_Directory(t *testing.T) {
 	defer os.RemoveAll(outputDir)
 
 	rootCmd := freshRootCmd(t)
+	keyfile := writeTempKeyfile(t, "test-password-123")
 	rootCmd.SetArgs([]string{
 		"encrypt",
 		testDir,
 		"--output", outputDir,
-		"--password", "test-password-123",
+		"--keyfile", keyfile,
 		"--no-prompt",
 	})
 
@@ -260,11 +263,13 @@ func TestCLI_Encrypt_WrongPassword(t *testing.T) {
 	defer os.Remove(encryptedFile)
 
 	rootCmd := freshRootCmd(t)
+	correctKey := writeTempKeyfile(t, "correct-password")
+	wrongKey := writeTempKeyfile(t, "wrong-password")
 	rootCmd.SetArgs([]string{
 		"encrypt",
 		testFile,
 		"--output", encryptedFile,
-		"--password", "correct-password",
+		"--keyfile", correctKey,
 		"--no-prompt",
 	})
 
@@ -279,7 +284,7 @@ func TestCLI_Encrypt_WrongPassword(t *testing.T) {
 		"decrypt",
 		encryptedFile,
 		"--output", decryptedFile,
-		"--password", "wrong-password",
+		"--keyfile", wrongKey,
 		"--no-prompt",
 	})
 

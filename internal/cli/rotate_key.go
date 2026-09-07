@@ -33,8 +33,8 @@ var (
 )
 
 func init() {
-	rotateKeyCmd.Flags().StringVarP(&rotateKeyOldPassword, "old-password", "o", "", "Old password")
-	rotateKeyCmd.Flags().StringVarP(&rotateKeyNewPassword, "new-password", "n", "", "New password")
+	rotateKeyCmd.Flags().StringVarP(&rotateKeyOldPassword, "old-password", "o", "", "Removed: passwords on argv are refused (use --old-keyfile or prompt)")
+	rotateKeyCmd.Flags().StringVarP(&rotateKeyNewPassword, "new-password", "n", "", "Removed: passwords on argv are refused (use --new-keyfile or prompt)")
 	rotateKeyCmd.Flags().StringVar(&rotateKeyOldKeyfile, "old-keyfile", "", "Old keyfile path")
 	rotateKeyCmd.Flags().StringVar(&rotateKeyNewKeyfile, "new-keyfile", "", "New keyfile path")
 	rotateKeyCmd.Flags().BoolVar(&rotateKeyNoPrompt, "no-prompt", false, "Don't prompt for passwords")

@@ -45,7 +45,7 @@ func init() {
 	watchCmd.Flags().StringSliceVar(&watchExclude, "exclude", []string{}, "Patterns to exclude (e.g., '*.tmp')")
 	watchCmd.Flags().BoolVar(&watchRecursive, "recursive", true, "Watch subdirectories recursively")
 	watchCmd.Flags().BoolVarP(&watchVerbose, "verbose", "v", false, "Verbose output")
-	watchCmd.Flags().StringVarP(&watchPassword, "password", "p", "", "Encryption password")
+	watchCmd.Flags().StringVarP(&watchPassword, "password", "p", "", "Removed: passwords on argv are refused (use --keyfile or NOKVAULT_PASSWORD)")
 	watchCmd.Flags().StringVarP(&watchKeyfile, "keyfile", "k", "", "Path to keyfile")
 	watchCmd.Flags().BoolVar(&watchNoPrompt, "no-prompt", false, "Don't prompt for password")
 

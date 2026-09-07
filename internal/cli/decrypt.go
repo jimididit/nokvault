@@ -33,7 +33,7 @@ var (
 
 func init() {
 	decryptCmd.Flags().StringVarP(&decryptOutput, "output", "o", "", "Output file or directory path")
-	decryptCmd.Flags().StringVarP(&decryptPassword, "password", "p", "", "Decryption password")
+	decryptCmd.Flags().StringVarP(&decryptPassword, "password", "p", "", "Removed: passwords on argv are refused (use --keyfile or NOKVAULT_PASSWORD)")
 	decryptCmd.Flags().StringVarP(&decryptKeyfile, "keyfile", "k", "", "Path to keyfile")
 	decryptCmd.Flags().BoolVar(&decryptNoPrompt, "no-prompt", false, "Don't prompt for password")
 	decryptCmd.Flags().BoolVar(&decryptDryRun, "dry-run", false, "Show what would be decrypted without actually decrypting")

@@ -43,7 +43,7 @@ Example: Encrypt a directory every hour
 
 func init() {
 	scheduleEncryptCmd.Flags().DurationVarP(&scheduleInterval, "interval", "i", time.Hour, "Interval between encryption operations")
-	scheduleEncryptCmd.Flags().StringVarP(&schedulePassword, "password", "p", "", "Encryption password")
+	scheduleEncryptCmd.Flags().StringVarP(&schedulePassword, "password", "p", "", "Removed: passwords on argv are refused (use --keyfile or NOKVAULT_PASSWORD)")
 	scheduleEncryptCmd.Flags().StringVarP(&scheduleKeyfile, "keyfile", "k", "", "Path to keyfile")
 	scheduleEncryptCmd.Flags().BoolVar(&scheduleNoPrompt, "no-prompt", false, "Don't prompt for password")
 	scheduleEncryptCmd.Flags().BoolVarP(&scheduleVerbose, "verbose", "v", false, "Verbose output")

@@ -20,11 +20,11 @@ func TestCLI_RotateKey_RoundTrip(t *testing.T) {
 	}
 	encryptedPath := inputPath + ".nokvault"
 
-	rootCmd := freshRootCmd(t)
-	os.Setenv("NOKVAULT_PASSWORD", oldPassword)
-	t.Cleanup(func() { os.Unsetenv("NOKVAULT_PASSWORD") })
+	oldKeyfile := writeTempKeyfile(t, oldPassword)
+	newKeyfile := writeTempKeyfile(t, newPassword)
 
-	rootCmd.SetArgs([]string{"encrypt", inputPath, "--no-prompt"})
+	rootCmd := freshRootCmd(t)
+	rootCmd.SetArgs([]string{"encrypt", inputPath, "--keyfile", oldKeyfile, "--no-prompt"})
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("encrypt: %v", err)
 	}
@@ -35,8 +35,8 @@ func TestCLI_RotateKey_RoundTrip(t *testing.T) {
 	rootCmd = freshRootCmd(t)
 	rootCmd.SetArgs([]string{
 		"rotate-key", encryptedPath,
-		"--old-password", oldPassword,
-		"--new-password", newPassword,
+		"--old-keyfile", oldKeyfile,
+		"--new-keyfile", newKeyfile,
 		"--no-prompt",
 	})
 	if err := rootCmd.Execute(); err != nil {
@@ -47,7 +47,7 @@ func TestCLI_RotateKey_RoundTrip(t *testing.T) {
 	rootCmd = freshRootCmd(t)
 	rootCmd.SetArgs([]string{
 		"decrypt", encryptedPath,
-		"--password", newPassword,
+		"--keyfile", newKeyfile,
 		"--output", decryptedPath,
 		"--no-prompt",
 	})
@@ -68,7 +68,7 @@ func TestCLI_RotateKey_RoundTrip(t *testing.T) {
 	failPath := filepath.Join(tmpDir, "should-fail.txt")
 	rootCmd.SetArgs([]string{
 		"decrypt", encryptedPath,
-		"--password", oldPassword,
+		"--keyfile", oldKeyfile,
 		"--output", failPath,
 		"--no-prompt",
 	})

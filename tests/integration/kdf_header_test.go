@@ -76,7 +76,6 @@ func TestCLI_EncryptDecrypt_CustomKDFParams(t *testing.T) {
 
 	rootCmd.SetArgs([]string{
 		"decrypt", encryptedPath,
-		"--password", password,
 		"--output", decryptedPath,
 		"--no-prompt",
 	})

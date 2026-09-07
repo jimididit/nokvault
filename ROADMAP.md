@@ -14,14 +14,14 @@
 - **Risk if deferred:** Data-loss / trust-breaking for anyone using `rotate-key`.  
 - **Depends on:** None (blocker for any release that advertises rotation).
 
-### N2. Persist KDF parameters in on-disk format + apply config (NV-002, NV-003, NV-012, NV-027) — DONE (PR pending)
+### N2. Persist KDF parameters in on-disk format + apply config (NV-002, NV-003, NV-012, NV-027) — DONE (merged)
 - **Problem:** Header stores salt only; config KDF is display-only; compression inferred by magic.
 - **Approach:** Bump `CurrentVersion`; extend header (or authenticated AAD metadata) with Argon2 memory/time/parallelism/keylen, algorithm IDs, compress flag; decrypt reads header params; encrypt writes them; wire `KeyManager.SetParams` from config for *new* encryptions only.
 - **Effort:** M  
 - **Risk if deferred:** Silent decrypt failures after config/default changes; format dead-end vs age/restic-class tools.  
 - **Depends on:** Spec sketch in-repo (can be short RFC-style section); unlocks Later format-spec publication.
 
-### N3. Stop password-on-argv & harden keyfiles (NV-004, NV-005)
+### N3. Stop password-on-argv & harden keyfiles (NV-004, NV-005) — DONE (PR pending)
 - **Problem:** `--password` exposes secrets via process list/history; keyfiles have no permission checks.
 - **Approach:** Hard-deprecate/refuse `--password` outside tests; keep prompt / keyfile / env; `Stat` keyfile and reject group/world-readable (and optionally symlinks).
 - **Effort:** S  
@@ -108,6 +108,13 @@
 - **Effort:** M  
 - **Risk if deferred:** Loses differentiator vs restic/sops-style ops tooling.  
 - **Depends on:** Stable exit codes + N6 tests.
+
+### X9. Documentation website UI overhaul (product / UX — not from AUDIT_REPORT)
+- **Problem:** The Astro docs site at `/docs` needs a **serious UI overhaul** — layout, typography, navigation, and visual hierarchy do not match a security-tool-grade product page (current pages are functional but dated/generic).
+- **Approach:** Redesign information architecture and visual system (brand-first landing + docs chrome); keep content accurate while upgrading components; do **not** couple to Astro major bumps beyond what’s required for the redesign (Dependabot Astro majors can land in the same effort or immediately after).
+- **Effort:** M–L  
+- **Risk if deferred:** Docs remain a weak first impression vs. age/restic-class tools; trust/marketing mismatch even when core crypto improves.
+- **Depends on:** Content already being corrected by Now/Next work (config, security, format); prefer after N3/N4 usage-doc updates so the redesign starts from accurate copy.
 
 ---
 

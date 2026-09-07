@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New encryptions write format v2 headers; v1 files remain decryptable using historical built-in KDF defaults
 - Decrypt derives keys from header parameters (v2) or defaults (v1), not from live config
 - Documented `rotate-key` as decrypt-then-re-encrypt (re-key), correcting earlier "without re-encrypting" wording
+- **Breaking (CLI):** `--password` / `-p` and rotate `--old-password` / `--new-password` are refused; use `--keyfile`, `NOKVAULT_PASSWORD`, or an interactive prompt
+- Keyfiles must not be symlinks; on Unix they must not be group/world-readable (prefer `0600`)
 
 ## [0.1.1] - 2026-01-17
 
