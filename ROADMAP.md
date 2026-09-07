@@ -28,7 +28,7 @@
 - **Risk if deferred:** Trivial credential theft on shared hosts.  
 - **Depends on:** None.
 
-### N4. Atomic encrypt writes; clamp decrypt permissions (NV-006, NV-007) — DONE (PR pending)
+### N4. Atomic encrypt writes; clamp decrypt permissions (NV-006, NV-007) — DONE (merged)
 - **Problem:** Crash mid-write corrupts `.nokvault`; metadata restore can make plaintext world-readable.
 - **Approach:** Reuse temp+rename pattern from rotate-key / wire `SafeWrite` (or delete dead recovery code if unused); clamp restored modes to ≤0600/0700 unless explicit `--preserve-mode`.
 - **Effort:** S–M  

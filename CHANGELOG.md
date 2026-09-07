@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-07
+
 ### Added
 
 - Format v2 `.nokvault` header persists Argon2id parameters (memory, time, parallelism, key length) for each file
 - Config `[key_derivation]` values are applied when creating new encrypted files (encrypt, rotate-key rewrite, watch, schedule)
+- Decrypt `--preserve-mode` to restore original file modes when clamping is not desired
 
 ### Fixed
 
