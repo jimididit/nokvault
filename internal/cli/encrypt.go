@@ -165,7 +165,7 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 	defer outputFile.Close()
 
 	// Write header with metadata
-	if err := fileHandler.WriteHeader(outputFile, salt, metadata); err != nil {
+	if err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params()); err != nil {
 		return fmt.Errorf("failed to write header: %w", err)
 	}
 

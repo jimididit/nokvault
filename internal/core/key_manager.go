@@ -55,6 +55,11 @@ func (km *KeyManager) VerifyPassword(password []byte, salt []byte, expectedKey [
 	return subtle.ConstantTimeCompare(derivedKey, expectedKey) == 1
 }
 
+// Params returns the current Argon2 parameters.
+func (km *KeyManager) Params() *crypto.Argon2Params {
+	return km.params
+}
+
 // SetParams sets custom Argon2 parameters
 func (km *KeyManager) SetParams(memory uint32, time uint32, parallelism uint8, keyLength uint32) {
 	km.params = &crypto.Argon2Params{

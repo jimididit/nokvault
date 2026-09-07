@@ -130,7 +130,7 @@ func (de *DirectoryEncryptor) encryptFileWithMetadata(inputPath, outputPath stri
 	defer outputFile.Close()
 
 	// Write header with metadata
-	if err := de.fileHandler.WriteHeader(outputFile, salt, metadata); err != nil {
+	if err := de.fileHandler.WriteHeader(outputFile, salt, metadata, de.encryptionService.GetKeyManager().Params()); err != nil {
 		return fmt.Errorf("failed to write header: %w", err)
 	}
 

@@ -54,7 +54,7 @@ func TestEncryptDecryptFile(t *testing.T) {
 	defer encryptedFile.Close()
 
 	// Write header
-	if err := fileHandler.WriteHeader(encryptedFile, salt, metadata); err != nil {
+	if err := fileHandler.WriteHeader(encryptedFile, salt, metadata, keyManager.Params()); err != nil {
 		t.Fatalf("Failed to write header: %v", err)
 	}
 

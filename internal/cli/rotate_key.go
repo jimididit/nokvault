@@ -146,7 +146,7 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 	}
 
 	// Write header with new salt
-	if err := fileHandler.WriteHeader(outputFile, newSalt, metadata); err != nil {
+	if err := fileHandler.WriteHeader(outputFile, newSalt, metadata, keyManager.Params()); err != nil {
 		outputFile.Close()
 		os.Remove(tempPath)
 		return fmt.Errorf("failed to write header: %w", err)

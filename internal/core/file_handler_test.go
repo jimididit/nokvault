@@ -84,7 +84,7 @@ func TestFileHandler_WriteHeader(t *testing.T) {
 	var buf bytes.Buffer
 
 	// Write header with metadata
-	err := fh.WriteHeader(&buf, salt, metadata)
+	err := fh.WriteHeader(&buf, salt, metadata, crypto.DefaultArgon2Params())
 	require.NoError(t, err, "Failed to write header")
 
 	// Verify header can be read back
@@ -108,7 +108,7 @@ func TestFileHandler_WriteHeader_NoMetadata(t *testing.T) {
 	var buf bytes.Buffer
 
 	// Write header without metadata
-	err := fh.WriteHeader(&buf, salt, nil)
+	err := fh.WriteHeader(&buf, salt, nil, crypto.DefaultArgon2Params())
 	require.NoError(t, err, "Failed to write header")
 
 	// Verify header can be read back
@@ -135,7 +135,7 @@ func TestFileHandler_ReadHeader_InvalidSalt(t *testing.T) {
 	var buf bytes.Buffer
 	invalidSalt := make([]byte, 8) // Wrong size
 
-	err := fh.WriteHeader(&buf, invalidSalt, nil)
+	err := fh.WriteHeader(&buf, invalidSalt, nil, crypto.DefaultArgon2Params())
 	assert.Error(t, err, "Expected error for invalid salt size")
 }
 

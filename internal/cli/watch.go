@@ -244,7 +244,7 @@ func encryptFileAuto(filePath string, encryptionService *core.EncryptionService,
 	defer outputFile.Close()
 
 	// Write header with metadata
-	if err := fileHandler.WriteHeader(outputFile, salt, metadata); err != nil {
+	if err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params()); err != nil {
 		if verbose {
 			PrintError(fmt.Sprintf("Failed to write header for %s: %v", outputPath, err))
 		}
