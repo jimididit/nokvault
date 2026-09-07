@@ -85,7 +85,8 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 		return utils.NewError(utils.ErrInvalidFormat.Code, "Invalid nokvault file format", err)
 	}
 
-	// Derive old key
+	// Derive old key using header KDF parameters
+	keyManager.SetArgon2Params(header.Argon2Params())
 	oldKey, err := keyManager.DeriveKeyFromPasswordAndSalt(oldPassword, header.Salt[:])
 	if err != nil {
 		PrintError("Failed to derive old key")
@@ -117,6 +118,9 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 	if rotateKeyVerbose {
 		PrintInfo("Successfully decrypted with old key")
 	}
+
+	// Re-key with encrypt-side params (defaults until Task 4 wires runtime config).
+	keyManager.SetArgon2Params(crypto.DefaultArgon2Params())
 
 	// Generate new salt and derive new key from that same salt (must match header).
 	newSalt, err := crypto.GenerateSalt()

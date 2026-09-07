@@ -106,8 +106,9 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 		return utils.NewError(utils.ErrInvalidFormat.Code, "Invalid nokvault file format", err)
 	}
 
-	// Derive key from password and salt
+	// Derive key from password and salt using header KDF parameters
 	keyManager := encryptionService.GetKeyManager()
+	keyManager.SetArgon2Params(header.Argon2Params())
 	key, err := keyManager.DeriveKeyFromPasswordAndSalt(password, header.Salt[:])
 	if err != nil {
 		PrintError("Failed to derive decryption key")
@@ -258,8 +259,9 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 			return nil // Continue with other files
 		}
 
-		// Derive key from password and salt
+		// Derive key from password and salt using header KDF parameters
 		keyManager := encryptionService.GetKeyManager()
+		keyManager.SetArgon2Params(header.Argon2Params())
 		key, err := keyManager.DeriveKeyFromPasswordAndSalt(password, header.Salt[:])
 		if err != nil {
 			PrintError(fmt.Sprintf("Failed to derive key for %s: %v", relPath, err))

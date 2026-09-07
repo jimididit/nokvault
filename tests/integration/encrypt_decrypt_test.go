@@ -180,7 +180,7 @@ func TestEncryptDecryptDirectory(t *testing.T) {
 	}
 
 	// Decrypt directory
-	if err := decryptor.DecryptDirectory(encryptedDir, decryptedDir, key, nil); err != nil {
+	if err := decryptor.DecryptDirectory(encryptedDir, decryptedDir, password, nil); err != nil {
 		t.Fatalf("Failed to decrypt directory: %v", err)
 	}
 
@@ -252,7 +252,7 @@ func TestEncryptDecryptWithCompression(t *testing.T) {
 	}
 
 	// Decrypt
-	if err := decryptor.DecryptDirectory(encryptedDir, decryptedDir, key, nil); err != nil {
+	if err := decryptor.DecryptDirectory(encryptedDir, decryptedDir, password, nil); err != nil {
 		t.Fatalf("Failed to decrypt directory: %v", err)
 	}
 

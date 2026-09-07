@@ -60,6 +60,17 @@ func (km *KeyManager) Params() *crypto.Argon2Params {
 	return km.params
 }
 
+// SetArgon2Params sets Argon2 parameters from a struct pointer.
+func (km *KeyManager) SetArgon2Params(p *crypto.Argon2Params) {
+	if p == nil {
+		km.params = crypto.DefaultArgon2Params()
+		return
+	}
+	km.params = &crypto.Argon2Params{
+		Memory: p.Memory, Time: p.Time, Parallelism: p.Parallelism, KeyLength: p.KeyLength,
+	}
+}
+
 // SetParams sets custom Argon2 parameters
 func (km *KeyManager) SetParams(memory uint32, time uint32, parallelism uint8, keyLength uint32) {
 	km.params = &crypto.Argon2Params{

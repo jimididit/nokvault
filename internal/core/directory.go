@@ -161,7 +161,7 @@ func NewDirectoryDecryptor(encryptionService *EncryptionService, verbose bool) *
 }
 
 // DecryptDirectory decrypts all .nokvault files in a directory recursively
-func (dd *DirectoryDecryptor) DecryptDirectory(inputDir, outputDir string, key []byte, onProgress func(current, total int, currentFile string)) error {
+func (dd *DirectoryDecryptor) DecryptDirectory(inputDir, outputDir string, password []byte, onProgress func(current, total int, currentFile string)) error {
 	// Ensure output directory exists
 	if err := dd.fileHandler.EnsureDirectory(outputDir); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
@@ -219,7 +219,7 @@ func (dd *DirectoryDecryptor) DecryptDirectory(inputDir, outputDir string, key [
 		}
 
 		// Decrypt file
-		if err := dd.decryptFileWithMetadata(path, outputPath, key); err != nil {
+		if err := dd.decryptFileWithMetadata(path, outputPath, password); err != nil {
 			return fmt.Errorf("failed to decrypt %s: %w", relPath, err)
 		}
 
@@ -230,7 +230,7 @@ func (dd *DirectoryDecryptor) DecryptDirectory(inputDir, outputDir string, key [
 }
 
 // decryptFileWithMetadata decrypts a file and restores metadata
-func (dd *DirectoryDecryptor) decryptFileWithMetadata(inputPath, outputPath string, key []byte) error {
+func (dd *DirectoryDecryptor) decryptFileWithMetadata(inputPath, outputPath string, password []byte) error {
 	// Open input file
 	inputFile, err := os.Open(inputPath)
 	if err != nil {
@@ -244,9 +244,13 @@ func (dd *DirectoryDecryptor) decryptFileWithMetadata(inputPath, outputPath stri
 		return fmt.Errorf("failed to read header: %w", err)
 	}
 
-	// Derive key from salt (if we have the salt from header)
-	// Note: In practice, we already have the key, but we verify it matches
-	// For now, we'll use the provided key directly
+	// Derive key from password and salt using header KDF parameters
+	keyManager := dd.encryptionService.GetKeyManager()
+	keyManager.SetArgon2Params(header.Argon2Params())
+	key, err := keyManager.DeriveKeyFromPasswordAndSalt(password, header.Salt[:])
+	if err != nil {
+		return fmt.Errorf("failed to derive key: %w", err)
+	}
 
 	// Read encrypted data
 	ciphertext, err := os.ReadFile(inputPath)
