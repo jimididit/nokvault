@@ -98,7 +98,7 @@ Expected: current walk accepts file symlinks.
 
 - [ ] **Step 3: Enforce traversal policy**
 
-Validate the root before `filepath.Walk`. In its callback, propagate walk errors, reject `info.Mode()&os.ModeSymlink != 0`, then call the supplied callback.
+Validate the root before `filepath.Walk`. In its callback, propagate walk errors, then call `utils.ValidateNoSymlinkComponents(path)` before the supplied callback. This reuses the shared symlink and Windows reparse-point policy rather than checking `ModeSymlink` alone.
 
 - [ ] **Step 4: Replace generated output joins**
 
