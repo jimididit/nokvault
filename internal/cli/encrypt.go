@@ -167,7 +167,11 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 		return err
 	}
 
-	err = utils.AtomicWriteFunc(outputPath, 0o600, func(outputFile *os.File) error {
+	atomicWrite := utils.AtomicWriteFuncNoReplace
+	if encryptForce {
+		atomicWrite = utils.AtomicWriteFunc
+	}
+	err = atomicWrite(outputPath, 0o600, func(outputFile *os.File) error {
 		if err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params()); err != nil {
 			return fmt.Errorf("failed to write header: %w", err)
 		}
@@ -248,6 +252,7 @@ func encryptDirectoryWithCompression(inputPath, outputPath string, key, salt []b
 	// Create directory encryptor
 	encryptor := core.NewDirectoryEncryptor(encryptionService, encryptVerbose)
 	encryptor.SetCompression(compress)
+	encryptor.SetOverwrite(encryptForce)
 
 	// Encrypt directory with progress callback
 	err = encryptor.EncryptDirectory(inputPath, outputPath, key, salt, func(current, total int, currentFile string) {

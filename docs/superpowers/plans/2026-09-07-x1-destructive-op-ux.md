@@ -27,6 +27,8 @@
 | File | Responsibility |
 |------|----------------|
 | `internal/utils/errors.go` | `CONFIRMATION_REQUIRED`, `OUTPUT_EXISTS` |
+| `internal/utils/atomic_write.go` | Atomic no-replace commit; force replaces regular files only |
+| `internal/utils/atomic_write_test.go` | Existing/concurrent target and directory safety regressions |
 | `internal/cli/safety.go` | Helpers |
 | `internal/cli/safety_test.go` | Unit tests |
 | `internal/cli/secure_delete.go` | `--yes`, `--dry-run` |
@@ -70,6 +72,7 @@
 - [ ] `refuseIfExists` before single-file writes
 - [ ] Directory encrypt: preflight all `*.nokvault` outputs
 - [ ] Directory decrypt: refuse each plaintext output
+- [ ] Use atomic no-replace commits when `--force` is absent; reject non-regular targets even with `--force`
 - [ ] Commit: `feat(cli): require --force to overwrite encrypt/decrypt outputs`
 
 ### Task 4: decrypt `--strict`

@@ -167,7 +167,11 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 	}
 
 	// Write decrypted data
-	if err := utils.AtomicWrite(outputPath, plaintext, 0o600); err != nil {
+	atomicWrite := utils.AtomicWriteNoReplace
+	if decryptForce {
+		atomicWrite = utils.AtomicWrite
+	}
+	if err := atomicWrite(outputPath, plaintext, 0o600); err != nil {
 		return fmt.Errorf("failed to write output file: %w", err)
 	}
 
@@ -297,7 +301,7 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		return nil
 	})
 	if walkErr != nil {
-		progressBar.Wait()
+		progressBar.Abort()
 		return walkErr
 	}
 
@@ -374,7 +378,11 @@ func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionServi
 	}
 
 	// Write decrypted data
-	if err := utils.AtomicWrite(outputPath, plaintext, 0o600); err != nil {
+	atomicWrite := utils.AtomicWriteNoReplace
+	if decryptForce {
+		atomicWrite = utils.AtomicWrite
+	}
+	if err := atomicWrite(outputPath, plaintext, 0o600); err != nil {
 		return fmt.Errorf("failed to write output file: %w", err)
 	}
 

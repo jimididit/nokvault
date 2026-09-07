@@ -70,6 +70,16 @@ func (pb *ProgressBar) Wait() {
 	pb.p.Wait()
 }
 
+// Abort stops an incomplete progress bar without waiting for its original
+// total. Use this when an operation intentionally exits early.
+func (pb *ProgressBar) Abort() {
+	if pb.bar == nil || pb.p == nil {
+		return
+	}
+	pb.bar.Abort(true)
+	pb.p.Wait()
+}
+
 // Writer returns a writer that updates the progress bar
 func (pb *ProgressBar) Writer() io.Writer {
 	return pb.bar.ProxyWriter(io.Discard)

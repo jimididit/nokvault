@@ -64,15 +64,23 @@ func requireConfirmation(yesFlag, interactive bool, r io.Reader, w io.Writer) er
 
 // refuseIfExists returns OUTPUT_EXISTS when path exists and force is false.
 func refuseIfExists(path string, force bool) error {
-	if force {
-		return nil
-	}
-	_, err := os.Stat(path)
+	info, err := os.Lstat(path)
 	if os.IsNotExist(err) {
 		return nil
 	}
 	if err != nil {
 		return err
+	}
+	if force && info.Mode().IsRegular() {
+		return nil
+	}
+	if force {
+		return utils.NewErrorWithHint(
+			utils.ErrOutputExists.Code,
+			fmt.Sprintf("Refusing to overwrite non-regular output path: %s", path),
+			nil,
+			"Choose a regular file path; --force never replaces directories, symlinks, or devices.",
+		)
 	}
 	return utils.NewErrorWithHint(
 		utils.ErrOutputExists.Code,

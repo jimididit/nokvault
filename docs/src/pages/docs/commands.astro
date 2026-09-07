@@ -147,7 +147,7 @@ nokvault rotate-key file.nokvault \\
       <section>
         <h2><code>secure-delete &lt;path&gt;</code></h2>
         <p class="text-dark-text-muted mb-4">
-          Securely delete a file by overwriting it multiple times before deletion. Makes data recovery extremely difficult.
+          Best-effort overwrite and deletion for traditional spinning disks. SSD wear leveling, snapshots, and copy-on-write filesystems may retain prior data; this is not a guaranteed forensic wipe.
         </p>
         <h3>Options</h3>
         <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">

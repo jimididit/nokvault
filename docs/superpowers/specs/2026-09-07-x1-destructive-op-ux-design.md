@@ -38,7 +38,8 @@
 - `isInteractive()` — `term.IsTerminal(int(os.Stdin.Fd()))` (already depend on `golang.org/x/term`).
 - `confirmDestructive(r io.Reader, w io.Writer, prompt string) error` — print prompt; read one line; require `yes`.
 - `requireConfirmation(yesFlag bool, r io.Reader, w io.Writer) error` — if `yesFlag` OK; else if interactive confirm; else return `CONFIRMATION_REQUIRED` with hint to pass `--yes`.
-- `refuseIfExists(path string, force bool) error` — if path exists (`os.Stat`) and `!force`, return `OUTPUT_EXISTS` with hint to pass `--force`. Missing path is OK.
+- `refuseIfExists(path string, force bool) error` — use `os.Lstat`; refuse existing paths unless `--force`, and refuse non-regular paths even with `--force`. Missing path is OK.
+- No-force writes commit through an atomic no-replace helper so a destination created after preflight is preserved. Force may replace regular files only; it never removes directories, symlinks, or devices.
 
 Inject `io.Reader`/`io.Writer` for unit tests; production callers use `os.Stdin`/`os.Stderr` (or stdout for prompts — match existing `PrintInfo` style on stderr/stdout consistently with other CLI messages).
 
@@ -74,6 +75,7 @@ Messages must name the path and the flag to unblock.
 ### Testing
 
 - Unit (`safety_test.go`): confirm accepts/rejects; non-yes without flag fails when “non-interactive” (inject terminal check or separate `requireConfirmation` with fake `isInteractive`); `refuseIfExists` with/without force.
+- Unit (`atomic_write_test.go`): no-replace preserves existing and concurrently-created destinations; force writes never replace directories.
 - Integration: secure-delete without `--yes` fails in CI (non-TTY); with `--yes` deletes; `--dry-run` lists paths and leaves files intact (no `--yes` needed); encrypt/decrypt to existing path fails without `--force`, succeeds with `--force`; directory decrypt with a planted bad vault + `--strict` stops early (fewer successes than continue mode).
 
 Update existing integration helpers that re-encrypt to the same `.nokvault` path to pass `--force` where needed.

@@ -63,3 +63,14 @@ func TestRefuseIfExists_ExistsWithForce(t *testing.T) {
 	require.NoError(t, os.WriteFile(path, []byte("x"), 0o600))
 	require.NoError(t, refuseIfExists(path, true))
 }
+
+func TestRefuseIfExists_DirectoryWithForce(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "output")
+	require.NoError(t, os.Mkdir(path, 0o700))
+
+	err := refuseIfExists(path, true)
+	require.Error(t, err)
+	var nv *utils.NokvaultError
+	require.ErrorAs(t, err, &nv)
+	require.Equal(t, "OUTPUT_EXISTS", nv.Code)
+}
