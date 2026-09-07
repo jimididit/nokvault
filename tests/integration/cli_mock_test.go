@@ -5,14 +5,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jimididit/nokvault/internal/cli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // TestCLI_Encrypt_Help tests the encrypt command help output
 func TestCLI_Encrypt_Help(t *testing.T) {
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	encryptCmd, _, err := rootCmd.Find([]string{"encrypt"})
 	require.NoError(t, err, "Encrypt command should exist")
 	assert.NotNil(t, encryptCmd, "Encrypt command should not be nil")
@@ -21,7 +20,7 @@ func TestCLI_Encrypt_Help(t *testing.T) {
 
 // TestCLI_Decrypt_Help tests the decrypt command help output
 func TestCLI_Decrypt_Help(t *testing.T) {
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	decryptCmd, _, err := rootCmd.Find([]string{"decrypt"})
 	require.NoError(t, err, "Decrypt command should exist")
 	assert.NotNil(t, decryptCmd, "Decrypt command should not be nil")
@@ -30,7 +29,7 @@ func TestCLI_Decrypt_Help(t *testing.T) {
 
 // TestCLI_CommandsExist tests that all expected commands exist
 func TestCLI_CommandsExist(t *testing.T) {
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 
 	expectedCommands := []string{
 		"encrypt",
@@ -52,7 +51,7 @@ func TestCLI_CommandsExist(t *testing.T) {
 
 // TestCLI_Encrypt_InvalidPath tests encrypt command with invalid path
 func TestCLI_Encrypt_InvalidPath(t *testing.T) {
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 
 	// Set up a non-existent path
 	nonExistentPath := filepath.Join(os.TempDir(), "nokvault-nonexistent-test-12345")
@@ -67,7 +66,7 @@ func TestCLI_Encrypt_InvalidPath(t *testing.T) {
 
 // TestCLI_Encrypt_MissingArgs tests encrypt command with missing arguments
 func TestCLI_Encrypt_MissingArgs(t *testing.T) {
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{"encrypt"})
 
 	err := rootCmd.Execute()
@@ -76,7 +75,7 @@ func TestCLI_Encrypt_MissingArgs(t *testing.T) {
 
 // TestCLI_Decrypt_MissingArgs tests decrypt command with missing arguments
 func TestCLI_Decrypt_MissingArgs(t *testing.T) {
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{"decrypt"})
 
 	err := rootCmd.Execute()
@@ -85,7 +84,7 @@ func TestCLI_Decrypt_MissingArgs(t *testing.T) {
 
 // TestCLI_SecureDelete_MissingArgs tests secure-delete command with missing arguments
 func TestCLI_SecureDelete_MissingArgs(t *testing.T) {
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{"secure-delete"})
 
 	err := rootCmd.Execute()
@@ -94,7 +93,7 @@ func TestCLI_SecureDelete_MissingArgs(t *testing.T) {
 
 // TestCLI_Help tests the root help command
 func TestCLI_Help(t *testing.T) {
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{"--help"})
 
 	// Help should not error
@@ -104,7 +103,7 @@ func TestCLI_Help(t *testing.T) {
 
 // TestCLI_Version tests the version command
 func TestCLI_Version(t *testing.T) {
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{"--version"})
 
 	// Version should not error
@@ -114,7 +113,7 @@ func TestCLI_Version(t *testing.T) {
 
 // TestCLI_Config_Show tests config show command
 func TestCLI_Config_Show(t *testing.T) {
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{"config", "--show"})
 
 	// Config show should not error (even if no config exists)
@@ -151,7 +150,7 @@ func TestCLI_Encrypt_File_WithPassword(t *testing.T) {
 	outputFile := testFile + ".nokvault"
 	defer os.Remove(outputFile)
 
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{
 		"encrypt",
 		testFile,
@@ -177,7 +176,7 @@ func TestCLI_Decrypt_File_WithPassword(t *testing.T) {
 	encryptedFile := testFile + ".nokvault"
 	defer os.Remove(encryptedFile)
 
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{
 		"encrypt",
 		testFile,
@@ -229,7 +228,7 @@ func TestCLI_Encrypt_Directory(t *testing.T) {
 	outputDir := testDir + "-encrypted"
 	defer os.RemoveAll(outputDir)
 
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{
 		"encrypt",
 		testDir,
@@ -260,7 +259,7 @@ func TestCLI_Encrypt_WrongPassword(t *testing.T) {
 	encryptedFile := testFile + ".nokvault"
 	defer os.Remove(encryptedFile)
 
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{
 		"encrypt",
 		testFile,
@@ -290,7 +289,7 @@ func TestCLI_Encrypt_WrongPassword(t *testing.T) {
 
 // TestCLI_Commands_Flags tests that commands have expected flags
 func TestCLI_Commands_Flags(t *testing.T) {
-	rootCmd := cli.GetRootCmd()
+	rootCmd := freshRootCmd(t)
 
 	tests := []struct {
 		command    string
