@@ -2,11 +2,13 @@ package core
 
 import (
 	"bytes"
+	"encoding/binary"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/jimididit/nokvault/internal/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -289,4 +291,56 @@ func TestFileHandler_GetTotalSize(t *testing.T) {
 	require.NoError(t, err, "GetTotalSize should succeed")
 
 	assert.Equal(t, expectedTotal, totalSize, "Total size should match expected")
+}
+
+func TestFileHandler_WriteHeader_V2IncludesKDFParams(t *testing.T) {
+	fh := NewFileHandler()
+	salt := make([]byte, 16)
+	params := &crypto.Argon2Params{Memory: 32768, Time: 2, Parallelism: 2, KeyLength: 32}
+
+	var buf bytes.Buffer
+	require.NoError(t, fh.WriteHeader(&buf, salt, nil, params))
+
+	header, meta, err := fh.ReadHeaderWithMetadata(&buf)
+	require.NoError(t, err)
+	assert.Nil(t, meta)
+	assert.Equal(t, uint16(2), header.Version)
+	assert.Equal(t, uint32(32768), header.Memory)
+	assert.Equal(t, uint32(2), header.Time)
+	assert.Equal(t, uint8(2), header.Parallelism)
+	assert.Equal(t, uint32(32), header.KeyLength)
+	assert.Equal(t, uint64(HeaderWireSize(2)), header.DataOffset)
+}
+
+func TestFileHandler_ReadHeader_V1UsesDefaultKDFParams(t *testing.T) {
+	// Hand-built v1 header: magic + version=1 + salt + metadataSize=0 + dataOffset=sizeof(v1)
+	fh := NewFileHandler()
+	var buf bytes.Buffer
+	magic := [8]byte{}
+	copy(magic[:], NokvaultMagic)
+	require.NoError(t, binary.Write(&buf, binary.LittleEndian, magic))
+	require.NoError(t, binary.Write(&buf, binary.LittleEndian, uint16(1)))
+	salt := make([]byte, 16)
+	require.NoError(t, binary.Write(&buf, binary.LittleEndian, salt))
+	require.NoError(t, binary.Write(&buf, binary.LittleEndian, uint32(0)))
+	v1Size := HeaderWireSize(1)
+	require.NoError(t, binary.Write(&buf, binary.LittleEndian, uint64(v1Size)))
+
+	header, err := fh.ReadHeader(&buf)
+	require.NoError(t, err)
+	assert.Equal(t, uint16(1), header.Version)
+	defs := crypto.DefaultArgon2Params()
+	assert.Equal(t, defs.Memory, header.Memory)
+	assert.Equal(t, defs.Time, header.Time)
+	assert.Equal(t, defs.Parallelism, header.Parallelism)
+	assert.Equal(t, defs.KeyLength, header.KeyLength)
+}
+
+func TestFileHandler_WriteHeader_RejectsInvalidParams(t *testing.T) {
+	fh := NewFileHandler()
+	salt := make([]byte, 16)
+	err := fh.WriteHeader(&bytes.Buffer{}, salt, nil, &crypto.Argon2Params{
+		Memory: 0, Time: 3, Parallelism: 4, KeyLength: 32,
+	})
+	assert.Error(t, err)
 }
