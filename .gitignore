@@ -93,8 +93,10 @@ desktop.ini
 # Encrypted files (optional - uncomment if you don't want to track encrypted files)
 # *.nokvault
 
-# Internal Docs
-/HELP_DOCS/
+# Internal / planning docs (local only — do not force-add)
+HELP_DOCS/
+ROADMAP.md
+AUDIT_REPORT.md
 
 # Package manager templates (not ready for distribution yet)
 Formula/
