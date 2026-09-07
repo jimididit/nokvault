@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/jimididit/nokvault/internal/crypto"
 )
 
 // FileMetadata stores file metadata
@@ -20,21 +22,59 @@ type FileMetadata struct {
 	RelativePath string    `json:"relative_path"`
 }
 
-// NokvaultHeader represents the header of a nokvault encrypted file
+// NokvaultHeader is the in-memory header. Wire layout depends on Version.
 type NokvaultHeader struct {
-	Magic        [8]byte // "NOKVAULT"
+	Magic        [8]byte
 	Version      uint16
 	Salt         [16]byte
-	MetadataSize uint32 // Size of JSON metadata
-	DataOffset   uint64 // Offset to encrypted data
+	MetadataSize uint32
+	DataOffset   uint64
+	Memory       uint32
+	Time         uint32
+	Parallelism  uint8
+	KeyLength    uint32
 }
 
 const (
-	// NokvaultMagic is the magic number for nokvault files
-	NokvaultMagic = "NOKVAULT"
-	// CurrentVersion is the current file format version
-	CurrentVersion = 1
+	NokvaultMagic  = "NOKVAULT"
+	Version1       = uint16(1)
+	Version2       = uint16(2)
+	CurrentVersion = Version2
 )
+
+// HeaderWireSize returns on-disk header size for a format version (excluding JSON metadata).
+func HeaderWireSize(version uint16) int {
+	switch version {
+	case Version1:
+		return 8 + 2 + 16 + 4 + 8 // 38
+	case Version2:
+		return HeaderWireSize(Version1) + 4 + 4 + 1 + 3 + 4 // +16 = 54
+	default:
+		return -1
+	}
+}
+
+func ValidateKDFParams(p *crypto.Argon2Params) error {
+	if p == nil {
+		return fmt.Errorf("kdf params are required")
+	}
+	if p.Memory == 0 || p.Time == 0 || p.Parallelism == 0 {
+		return fmt.Errorf("invalid kdf params: memory, time, and parallelism must be non-zero")
+	}
+	if p.KeyLength != crypto.DefaultKeyLength {
+		return fmt.Errorf("invalid kdf params: key length must be %d", crypto.DefaultKeyLength)
+	}
+	return nil
+}
+
+func (h *NokvaultHeader) Argon2Params() *crypto.Argon2Params {
+	return &crypto.Argon2Params{
+		Memory:      h.Memory,
+		Time:        h.Time,
+		Parallelism: h.Parallelism,
+		KeyLength:   h.KeyLength,
+	}
+}
 
 // FileHandler handles file operations
 type FileHandler struct {
@@ -80,18 +120,14 @@ func (fh *FileHandler) WriteMetadata(path string, metadata *FileMetadata) error 
 }
 
 // WriteHeader writes a nokvault header to a file with optional metadata
-func (fh *FileHandler) WriteHeader(writer io.Writer, salt []byte, metadata *FileMetadata) error {
-	header := NokvaultHeader{
-		Version: CurrentVersion,
+func (fh *FileHandler) WriteHeader(writer io.Writer, salt []byte, metadata *FileMetadata, params *crypto.Argon2Params) error {
+	if err := ValidateKDFParams(params); err != nil {
+		return err
 	}
-
-	copy(header.Magic[:], NokvaultMagic)
 	if len(salt) != 16 {
 		return fmt.Errorf("salt must be 16 bytes")
 	}
-	copy(header.Salt[:], salt)
 
-	// Serialize metadata to JSON if provided
 	var metadataJSON []byte
 	if metadata != nil {
 		var err error
@@ -99,46 +135,110 @@ func (fh *FileHandler) WriteHeader(writer io.Writer, salt []byte, metadata *File
 		if err != nil {
 			return fmt.Errorf("failed to serialize metadata: %w", err)
 		}
-		header.MetadataSize = uint32(len(metadataJSON))
 	}
 
-	// Calculate data offset (header size + metadata size)
-	header.DataOffset = uint64(binary.Size(header)) + uint64(header.MetadataSize)
+	headerSize := HeaderWireSize(CurrentVersion)
+	dataOffset := uint64(headerSize) + uint64(len(metadataJSON))
 
-	// Write header
-	if err := binary.Write(writer, binary.LittleEndian, &header); err != nil {
+	var magic [8]byte
+	copy(magic[:], NokvaultMagic)
+	var saltArr [16]byte
+	copy(saltArr[:], salt)
+
+	if err := binary.Write(writer, binary.LittleEndian, magic); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+	if err := binary.Write(writer, binary.LittleEndian, CurrentVersion); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+	if err := binary.Write(writer, binary.LittleEndian, saltArr); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+	if err := binary.Write(writer, binary.LittleEndian, uint32(len(metadataJSON))); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+	if err := binary.Write(writer, binary.LittleEndian, dataOffset); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+	// v2 KDF fields
+	if err := binary.Write(writer, binary.LittleEndian, params.Memory); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+	if err := binary.Write(writer, binary.LittleEndian, params.Time); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+	if err := binary.Write(writer, binary.LittleEndian, params.Parallelism); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+	pad := [3]byte{}
+	if err := binary.Write(writer, binary.LittleEndian, pad); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+	if err := binary.Write(writer, binary.LittleEndian, params.KeyLength); err != nil {
 		return fmt.Errorf("failed to write header: %w", err)
 	}
 
-	// Write metadata JSON if present
 	if len(metadataJSON) > 0 {
 		if _, err := writer.Write(metadataJSON); err != nil {
 			return fmt.Errorf("failed to write metadata: %w", err)
 		}
 	}
-
 	return nil
 }
 
 // ReadHeader reads a nokvault header from a file
 func (fh *FileHandler) ReadHeader(reader io.Reader) (*NokvaultHeader, error) {
-	header := &NokvaultHeader{}
-
-	if err := binary.Read(reader, binary.LittleEndian, header); err != nil {
+	h := &NokvaultHeader{}
+	if err := binary.Read(reader, binary.LittleEndian, &h.Magic); err != nil {
+		return nil, fmt.Errorf("failed to read header: %w", err)
+	}
+	if string(h.Magic[:]) != NokvaultMagic {
+		return nil, fmt.Errorf("invalid magic number: not a nokvault file")
+	}
+	if err := binary.Read(reader, binary.LittleEndian, &h.Version); err != nil {
+		return nil, fmt.Errorf("failed to read header: %w", err)
+	}
+	if err := binary.Read(reader, binary.LittleEndian, &h.Salt); err != nil {
+		return nil, fmt.Errorf("failed to read header: %w", err)
+	}
+	if err := binary.Read(reader, binary.LittleEndian, &h.MetadataSize); err != nil {
+		return nil, fmt.Errorf("failed to read header: %w", err)
+	}
+	if err := binary.Read(reader, binary.LittleEndian, &h.DataOffset); err != nil {
 		return nil, fmt.Errorf("failed to read header: %w", err)
 	}
 
-	// Verify magic number
-	if string(header.Magic[:]) != NokvaultMagic {
-		return nil, fmt.Errorf("invalid magic number: not a nokvault file")
+	switch h.Version {
+	case Version1:
+		defs := crypto.DefaultArgon2Params()
+		h.Memory = defs.Memory
+		h.Time = defs.Time
+		h.Parallelism = defs.Parallelism
+		h.KeyLength = defs.KeyLength
+	case Version2:
+		if err := binary.Read(reader, binary.LittleEndian, &h.Memory); err != nil {
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+		if err := binary.Read(reader, binary.LittleEndian, &h.Time); err != nil {
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+		if err := binary.Read(reader, binary.LittleEndian, &h.Parallelism); err != nil {
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+		var pad [3]byte
+		if err := binary.Read(reader, binary.LittleEndian, &pad); err != nil {
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+		if err := binary.Read(reader, binary.LittleEndian, &h.KeyLength); err != nil {
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+		if err := ValidateKDFParams(h.Argon2Params()); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unsupported version: %d", h.Version)
 	}
-
-	// Verify version
-	if header.Version != CurrentVersion {
-		return nil, fmt.Errorf("unsupported version: %d", header.Version)
-	}
-
-	return header, nil
+	return h, nil
 }
 
 // ReadHeaderWithMetadata reads header and metadata from a file

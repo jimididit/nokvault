@@ -20,6 +20,13 @@ func NewEncryptionService() *EncryptionService {
 	}
 }
 
+// NewEncryptionServiceWithParams creates an encryption service with custom Argon2 parameters.
+func NewEncryptionServiceWithParams(p *crypto.Argon2Params) *EncryptionService {
+	es := NewEncryptionService()
+	es.keyManager.SetArgon2Params(p)
+	return es
+}
+
 // EncryptData encrypts data using AES-256-GCM
 func (es *EncryptionService) EncryptData(data []byte, key []byte) ([]byte, error) {
 	aesGCM, err := crypto.NewAESGCM(key)

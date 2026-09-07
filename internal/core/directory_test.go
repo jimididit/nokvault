@@ -116,7 +116,7 @@ func TestDirectoryDecryptor_DecryptDirectory(t *testing.T) {
 
 	// Now decrypt
 	progressCount := 0
-	err = decryptor.DecryptDirectory(encryptOutputDir, decryptOutputDir, key, func(current, total int, currentFile string) {
+	err = decryptor.DecryptDirectory(encryptOutputDir, decryptOutputDir, password, func(current, total int, currentFile string) {
 		progressCount++
 	})
 	require.NoError(t, err, "Failed to decrypt directory")

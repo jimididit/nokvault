@@ -41,8 +41,11 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
         <li>Winner of the Password Hashing Competition</li>
         <li>Protects against rainbow table attacks</li>
       </ul>
-      <p class="text-dark-text-muted">
+      <p class="text-dark-text-muted mb-4">
         Each file uses a unique salt, ensuring that even identical files produce different ciphertexts.
+      </p>
+      <p class="text-dark-text-muted">
+        New encrypted files (format v2) store Argon2id memory, time, and parallelism in the file header so decryption uses the same parameters that were active at encryption time. Older v1 files rely on built-in defaults (64&nbsp;MiB memory, time&nbsp;3, parallelism&nbsp;4). Config changes affect new encryptions only — they never alter how existing files are decrypted.
       </p>
     </section>
 

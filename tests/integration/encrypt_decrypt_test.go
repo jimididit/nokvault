@@ -54,7 +54,7 @@ func TestEncryptDecryptFile(t *testing.T) {
 	defer encryptedFile.Close()
 
 	// Write header
-	if err := fileHandler.WriteHeader(encryptedFile, salt, metadata); err != nil {
+	if err := fileHandler.WriteHeader(encryptedFile, salt, metadata, keyManager.Params()); err != nil {
 		t.Fatalf("Failed to write header: %v", err)
 	}
 
@@ -180,7 +180,7 @@ func TestEncryptDecryptDirectory(t *testing.T) {
 	}
 
 	// Decrypt directory
-	if err := decryptor.DecryptDirectory(encryptedDir, decryptedDir, key, nil); err != nil {
+	if err := decryptor.DecryptDirectory(encryptedDir, decryptedDir, password, nil); err != nil {
 		t.Fatalf("Failed to decrypt directory: %v", err)
 	}
 
@@ -252,7 +252,7 @@ func TestEncryptDecryptWithCompression(t *testing.T) {
 	}
 
 	// Decrypt
-	if err := decryptor.DecryptDirectory(encryptedDir, decryptedDir, key, nil); err != nil {
+	if err := decryptor.DecryptDirectory(encryptedDir, decryptedDir, password, nil); err != nil {
 		t.Fatalf("Failed to decrypt directory: %v", err)
 	}
 

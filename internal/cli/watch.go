@@ -85,6 +85,9 @@ func runWatch(cmd *cobra.Command, args []string) error {
 	if watchAutoEncrypt {
 		encryptionService := core.NewEncryptionService()
 		keyManager := encryptionService.GetKeyManager()
+		if err := applyKDFConfig(keyManager); err != nil {
+			return fmt.Errorf("invalid key derivation configuration: %w", err)
+		}
 
 		// Get password/key
 		password, err := utils.GetPassword(watchPassword, watchKeyfile, watchNoPrompt, false)
@@ -244,7 +247,7 @@ func encryptFileAuto(filePath string, encryptionService *core.EncryptionService,
 	defer outputFile.Close()
 
 	// Write header with metadata
-	if err := fileHandler.WriteHeader(outputFile, salt, metadata); err != nil {
+	if err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params()); err != nil {
 		if verbose {
 			PrintError(fmt.Sprintf("Failed to write header for %s: %v", outputPath, err))
 		}

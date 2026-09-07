@@ -45,27 +45,19 @@ nokvault config --show
 
 # Get a specific value
 nokvault config --get compression
-nokvault config --get keyfile`} lang="bash" />
+nokvault config --get memory_cost
+nokvault config --get time_cost
+nokvault config --get parallelism`} lang="bash" />
     </section>
 
     <section class="mb-8">
-      <h2>Configuration Options</h2>
+      <h2>Changing Configuration</h2>
       <p class="text-dark-text-muted mb-4">
-        Common configuration options you can set:
+        Edit <code>~/.config/nokvault/config.toml</code> or a project-local <code>.nokvault.toml</code> directly, or run <code>nokvault config --init</code> to create a default global file. Use <code>--get</code> to read individual keys (<code>algorithm</code>, <code>compression</code>, <code>preserve_metadata</code>, <code>memory_cost</code>, <code>time_cost</code>, <code>parallelism</code>, <code>secure_delete</code>, <code>delete_passes</code>).
       </p>
-      <CodeBlock code={`# Set compression default
-nokvault config --set compression=true
-
-# Set default keyfile path
-nokvault config --set keyfile="~/.keys/master.key"
-
-# Set encryption algorithm
-nokvault config --set algorithm="aes-256-gcm"
-
-# Set Argon2id parameters
-nokvault config --set argon2.memory=65536
-nokvault config --set argon2.iterations=3
-nokvault config --set argon2.parallelism=4`} lang="bash" />
+      <p class="text-dark-text-muted mb-4">
+        <strong>Key derivation settings apply when creating encrypted files only</strong> (encrypt, rotate-key re-encryption, watch, schedule). Decryption always uses the Argon2 parameters stored in each file's header (format v2) or built-in defaults for older v1 files — changing config does not affect existing ciphertext.
+      </p>
     </section>
 
     <section class="mb-8">
@@ -73,29 +65,25 @@ nokvault config --set argon2.parallelism=4`} lang="bash" />
       <p class="text-dark-text-muted mb-4">
         Configuration files use TOML format. Example <code>config.toml</code>:
       </p>
-      <CodeBlock code={`# Default compression setting
+      <CodeBlock code={`[encryption]
+algorithm = "aes256gcm"
 compression = false
+preserve_metadata = true
 
-# Default keyfile path
-keyfile = "~/.keys/master.key"
+[key_derivation]
+algorithm = "argon2id"
+memory_cost = 65536  # KiB (64 MiB)
+time_cost = 3
+parallelism = 4
 
-# Encryption algorithm
-algorithm = "aes-256-gcm"
+[security]
+secure_delete = false
+delete_passes = 3
+key_cache_timeout = 300
 
-# Argon2id key derivation parameters
-[argon2]
-memory = 65536      # Memory in KB
-iterations = 3      # Number of iterations
-parallelism = 4     # Number of threads
-
-# File watching settings
-[watch]
-delay = "1s"
-recursive = true
-
-# Secure deletion settings
-[secure_delete]
-passes = 3`} lang="toml" />
+[paths]
+default_keyfile = ""
+backup_dir = ".nokvault-backup"`} lang="toml" />
     </section>
 
     <section class="mb-8">
@@ -119,13 +107,16 @@ export NOKVAULT_COMPRESSION="true"`} lang="bash" />
         Create a <code>.nokvault.toml</code> file in your project directory for project-specific settings:
       </p>
       <CodeBlock code={`# .nokvault.toml
+[encryption]
 compression = true
-keyfile = "./.keys/project.key"
 
-[watch]
-exclude = ["*.tmp", "*.log", "node_modules"]`} lang="toml" />
+[paths]
+default_keyfile = "./.keys/project.key"
+
+[key_derivation]
+memory_cost = 131072  # stronger KDF for new encryptions in this project`} lang="toml" />
       <p class="text-dark-text-muted mt-4">
-        This is useful for projects that need different encryption settings or keyfiles.
+        Local settings override global ones. KDF overrides here affect only new encryptions under this project.
       </p>
     </section>
   </div>

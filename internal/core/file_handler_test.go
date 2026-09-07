@@ -2,11 +2,13 @@ package core
 
 import (
 	"bytes"
+	"encoding/binary"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/jimididit/nokvault/internal/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -82,7 +84,7 @@ func TestFileHandler_WriteHeader(t *testing.T) {
 	var buf bytes.Buffer
 
 	// Write header with metadata
-	err := fh.WriteHeader(&buf, salt, metadata)
+	err := fh.WriteHeader(&buf, salt, metadata, crypto.DefaultArgon2Params())
 	require.NoError(t, err, "Failed to write header")
 
 	// Verify header can be read back
@@ -106,7 +108,7 @@ func TestFileHandler_WriteHeader_NoMetadata(t *testing.T) {
 	var buf bytes.Buffer
 
 	// Write header without metadata
-	err := fh.WriteHeader(&buf, salt, nil)
+	err := fh.WriteHeader(&buf, salt, nil, crypto.DefaultArgon2Params())
 	require.NoError(t, err, "Failed to write header")
 
 	// Verify header can be read back
@@ -133,7 +135,7 @@ func TestFileHandler_ReadHeader_InvalidSalt(t *testing.T) {
 	var buf bytes.Buffer
 	invalidSalt := make([]byte, 8) // Wrong size
 
-	err := fh.WriteHeader(&buf, invalidSalt, nil)
+	err := fh.WriteHeader(&buf, invalidSalt, nil, crypto.DefaultArgon2Params())
 	assert.Error(t, err, "Expected error for invalid salt size")
 }
 
@@ -289,4 +291,134 @@ func TestFileHandler_GetTotalSize(t *testing.T) {
 	require.NoError(t, err, "GetTotalSize should succeed")
 
 	assert.Equal(t, expectedTotal, totalSize, "Total size should match expected")
+}
+
+func TestFileHandler_WriteHeader_V2IncludesKDFParams(t *testing.T) {
+	fh := NewFileHandler()
+	salt := make([]byte, 16)
+	params := &crypto.Argon2Params{Memory: 32768, Time: 2, Parallelism: 2, KeyLength: 32}
+
+	var buf bytes.Buffer
+	require.NoError(t, fh.WriteHeader(&buf, salt, nil, params))
+
+	header, meta, err := fh.ReadHeaderWithMetadata(&buf)
+	require.NoError(t, err)
+	assert.Nil(t, meta)
+	assert.Equal(t, uint16(2), header.Version)
+	assert.Equal(t, uint32(32768), header.Memory)
+	assert.Equal(t, uint32(2), header.Time)
+	assert.Equal(t, uint8(2), header.Parallelism)
+	assert.Equal(t, uint32(32), header.KeyLength)
+	assert.Equal(t, uint64(HeaderWireSize(2)), header.DataOffset)
+}
+
+func TestFileHandler_ReadHeader_V1UsesDefaultKDFParams(t *testing.T) {
+	// Hand-built v1 header: magic + version=1 + salt + metadataSize=0 + dataOffset=sizeof(v1)
+	fh := NewFileHandler()
+	var buf bytes.Buffer
+	magic := [8]byte{}
+	copy(magic[:], NokvaultMagic)
+	require.NoError(t, binary.Write(&buf, binary.LittleEndian, magic))
+	require.NoError(t, binary.Write(&buf, binary.LittleEndian, uint16(1)))
+	salt := make([]byte, 16)
+	require.NoError(t, binary.Write(&buf, binary.LittleEndian, salt))
+	require.NoError(t, binary.Write(&buf, binary.LittleEndian, uint32(0)))
+	v1Size := HeaderWireSize(1)
+	require.NoError(t, binary.Write(&buf, binary.LittleEndian, uint64(v1Size)))
+
+	header, err := fh.ReadHeader(&buf)
+	require.NoError(t, err)
+	assert.Equal(t, uint16(1), header.Version)
+	defs := crypto.DefaultArgon2Params()
+	assert.Equal(t, defs.Memory, header.Memory)
+	assert.Equal(t, defs.Time, header.Time)
+	assert.Equal(t, defs.Parallelism, header.Parallelism)
+	assert.Equal(t, defs.KeyLength, header.KeyLength)
+}
+
+func TestFileHandler_WriteHeader_RejectsInvalidParams(t *testing.T) {
+	fh := NewFileHandler()
+	salt := make([]byte, 16)
+	err := fh.WriteHeader(&bytes.Buffer{}, salt, nil, &crypto.Argon2Params{
+		Memory: 0, Time: 3, Parallelism: 4, KeyLength: 32,
+	})
+	assert.Error(t, err)
+}
+
+func TestValidateKDFParams(t *testing.T) {
+	valid := crypto.DefaultArgon2Params()
+
+	tests := []struct {
+		name    string
+		params  *crypto.Argon2Params
+		wantErr string
+	}{
+		{name: "nil params", params: nil, wantErr: "kdf params are required"},
+		{name: "zero memory", params: &crypto.Argon2Params{Memory: 0, Time: 3, Parallelism: 4, KeyLength: 32}, wantErr: "must be non-zero"},
+		{name: "zero time", params: &crypto.Argon2Params{Memory: 65536, Time: 0, Parallelism: 4, KeyLength: 32}, wantErr: "must be non-zero"},
+		{name: "zero parallelism", params: &crypto.Argon2Params{Memory: 65536, Time: 3, Parallelism: 0, KeyLength: 32}, wantErr: "must be non-zero"},
+		{name: "wrong key length", params: &crypto.Argon2Params{Memory: 65536, Time: 3, Parallelism: 4, KeyLength: 16}, wantErr: "key length must be 32"},
+		{name: "valid defaults", params: valid, wantErr: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateKDFParams(tt.params)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
+}
+
+func TestFileHandler_V1DecryptRoundTrip(t *testing.T) {
+	password := []byte("v1-test-password")
+	plaintext := []byte("v1 legacy file decrypt payload")
+	defs := crypto.DefaultArgon2Params()
+
+	salt, err := crypto.GenerateSalt()
+	require.NoError(t, err)
+
+	km := NewKeyManager()
+	km.SetArgon2Params(defs)
+	key, err := km.DeriveKeyFromPasswordAndSalt(password, salt)
+	require.NoError(t, err)
+
+	es := NewEncryptionService()
+	ciphertext, err := es.EncryptData(plaintext, key)
+	require.NoError(t, err)
+
+	var headerBuf bytes.Buffer
+	magic := [8]byte{}
+	copy(magic[:], NokvaultMagic)
+	require.NoError(t, binary.Write(&headerBuf, binary.LittleEndian, magic))
+	require.NoError(t, binary.Write(&headerBuf, binary.LittleEndian, uint16(1)))
+	var saltArr [16]byte
+	copy(saltArr[:], salt)
+	require.NoError(t, binary.Write(&headerBuf, binary.LittleEndian, saltArr))
+	require.NoError(t, binary.Write(&headerBuf, binary.LittleEndian, uint32(0)))
+	v1Size := HeaderWireSize(1)
+	require.NoError(t, binary.Write(&headerBuf, binary.LittleEndian, uint64(v1Size)))
+
+	var fileBuf bytes.Buffer
+	fileBuf.Write(headerBuf.Bytes())
+	fileBuf.Write(ciphertext)
+
+	fh := NewFileHandler()
+	header, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(fileBuf.Bytes()))
+	require.NoError(t, err)
+	assert.Equal(t, uint16(1), header.Version)
+
+	km2 := NewKeyManager()
+	km2.SetArgon2Params(header.Argon2Params())
+	decKey, err := km2.DeriveKeyFromPasswordAndSalt(password, header.Salt[:])
+	require.NoError(t, err)
+
+	payload := fileBuf.Bytes()[header.DataOffset:]
+	got, err := es.DecryptData(payload, decKey)
+	require.NoError(t, err)
+	assert.Equal(t, plaintext, got)
 }

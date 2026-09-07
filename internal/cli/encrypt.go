@@ -74,6 +74,9 @@ func runEncrypt(cmd *cobra.Command, args []string) error {
 	// Create encryption service
 	encryptionService := core.NewEncryptionService()
 	keyManager := encryptionService.GetKeyManager()
+	if err := applyKDFConfig(keyManager); err != nil {
+		return utils.NewError(utils.ErrKeyDerivation.Code, "Invalid key derivation configuration", err)
+	}
 
 	// Derive key from password
 	key, salt, err := keyManager.DeriveKeyFromPassword(password)
@@ -165,7 +168,7 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 	defer outputFile.Close()
 
 	// Write header with metadata
-	if err := fileHandler.WriteHeader(outputFile, salt, metadata); err != nil {
+	if err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params()); err != nil {
 		return fmt.Errorf("failed to write header: %w", err)
 	}
 
