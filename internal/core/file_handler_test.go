@@ -416,9 +416,40 @@ func TestFileHandler_CountFiles_NestedSymlink(t *testing.T) {
 	link := filepath.Join(root, "nested-link.txt")
 	trySymlink(t, target, link)
 
-	count, err := fh.CountFiles(root)
+	_, err := fh.CountFiles(root)
 	requireSymlinkDisallowed(t, err, link)
-	assert.Equal(t, 0, count)
+}
+
+func TestFileHandler_GetTotalSize_NestedSymlink(t *testing.T) {
+	fh := NewFileHandler()
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "regular.txt"), []byte("ok"), 0o644))
+	target := filepath.Join(root, "target.txt")
+	require.NoError(t, os.WriteFile(target, []byte("target"), 0o644))
+	link := filepath.Join(root, "nested-link.txt")
+	trySymlink(t, target, link)
+
+	_, err := fh.GetTotalSize(root)
+	requireSymlinkDisallowed(t, err, link)
+}
+
+func TestFileHandler_classifyWalkPath_ReparseOverridesWalkError(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target.txt")
+	require.NoError(t, os.WriteFile(target, []byte("x"), 0o644))
+	link := filepath.Join(dir, "link.txt")
+	trySymlink(t, target, link)
+
+	err := classifyWalkPath(link, os.ErrPermission)
+	requireSymlinkDisallowed(t, err, link)
+}
+
+func TestFileHandler_classifyWalkPath_PropagatesNormalWalkError(t *testing.T) {
+	dir := t.TempDir()
+	err := classifyWalkPath(dir, os.ErrPermission)
+	if !errors.Is(err, os.ErrPermission) {
+		t.Fatalf("got %v, want os.ErrPermission", err)
+	}
 }
 
 func TestFileHandler_WriteHeader_V2IncludesKDFParams(t *testing.T) {

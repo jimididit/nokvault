@@ -237,3 +237,47 @@ func TestDirectoryDecryptor_DecryptDirectory_RejectsSymlinkedOutputParent(t *tes
 	err := decryptor.DecryptDirectory(inputDir, outputDir, []byte("unused-password"), nil)
 	requireSymlinkDisallowed(t, err, linkParent)
 }
+
+func TestDirectoryEncryptor_EncryptDirectory_RejectedInputDoesNotCreateOutputRoot(t *testing.T) {
+	encryptionService := NewEncryptionService()
+	encryptor := NewDirectoryEncryptor(encryptionService, false)
+	keyManager := encryptionService.GetKeyManager()
+
+	password := []byte("test-password-123")
+	key, salt, err := keyManager.DeriveKeyFromPassword(password)
+	require.NoError(t, err)
+	defer func() {
+		for i := range key {
+			key[i] = 0
+		}
+	}()
+
+	inputDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(inputDir, "file.txt"), []byte("content"), 0o644))
+	target := filepath.Join(inputDir, "target.txt")
+	require.NoError(t, os.WriteFile(target, []byte("target"), 0o644))
+	link := filepath.Join(inputDir, "nested-link.txt")
+	trySymlink(t, target, link)
+
+	outputDir := filepath.Join(t.TempDir(), "missing-out")
+	err = encryptor.EncryptDirectory(inputDir, outputDir, key, salt, nil)
+	requireSymlinkDisallowed(t, err, link)
+	_, statErr := os.Lstat(outputDir)
+	assert.True(t, os.IsNotExist(statErr), "rejected input must not create output root")
+}
+
+func TestDirectoryDecryptor_DecryptDirectory_RejectedInputDoesNotCreateOutputRoot(t *testing.T) {
+	decryptor := NewDirectoryDecryptor(NewEncryptionService(), false)
+
+	inputDir := t.TempDir()
+	target := filepath.Join(inputDir, "target.txt")
+	require.NoError(t, os.WriteFile(target, []byte("target"), 0o644))
+	link := filepath.Join(inputDir, "nested-link.txt")
+	trySymlink(t, target, link)
+
+	outputDir := filepath.Join(t.TempDir(), "missing-out")
+	err := decryptor.DecryptDirectory(inputDir, outputDir, []byte("unused-password"), nil)
+	requireSymlinkDisallowed(t, err, link)
+	_, statErr := os.Lstat(outputDir)
+	assert.True(t, os.IsNotExist(statErr), "rejected input must not create output root")
+}

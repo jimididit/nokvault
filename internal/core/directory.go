@@ -56,14 +56,14 @@ func (de *DirectoryEncryptor) SetOverwrite(overwrite bool) {
 
 // EncryptDirectory encrypts all files in a directory recursively
 func (de *DirectoryEncryptor) EncryptDirectory(inputDir, outputDir string, key, salt []byte, onProgress func(current, total int, currentFile string)) error {
-	if err := ensureContainedOutputRoot(de.fileHandler, outputDir); err != nil {
-		return err
-	}
-
-	// Count total files for progress tracking
+	// Count/validate input before creating a missing output root.
 	totalFiles, err := de.fileHandler.CountFiles(inputDir)
 	if err != nil {
 		return fmt.Errorf("failed to count files: %w", err)
+	}
+
+	if err := ensureContainedOutputRoot(de.fileHandler, outputDir); err != nil {
+		return err
 	}
 
 	currentFile := 0
@@ -194,11 +194,7 @@ func (dd *DirectoryDecryptor) SetPreserveMode(preserve bool) {
 
 // DecryptDirectory decrypts all .nokvault files in a directory recursively
 func (dd *DirectoryDecryptor) DecryptDirectory(inputDir, outputDir string, password []byte, onProgress func(current, total int, currentFile string)) error {
-	if err := ensureContainedOutputRoot(dd.fileHandler, outputDir); err != nil {
-		return err
-	}
-
-	// Count total .nokvault files
+	// Count/validate input before creating a missing output root.
 	totalFiles := 0
 	err := dd.fileHandler.WalkDirectory(inputDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -211,6 +207,10 @@ func (dd *DirectoryDecryptor) DecryptDirectory(inputDir, outputDir string, passw
 	})
 	if err != nil {
 		return fmt.Errorf("failed to count files: %w", err)
+	}
+
+	if err := ensureContainedOutputRoot(dd.fileHandler, outputDir); err != nil {
+		return err
 	}
 
 	currentFile := 0
