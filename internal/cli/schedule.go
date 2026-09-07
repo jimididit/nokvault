@@ -146,6 +146,9 @@ func performScheduledEncrypt(path string, encryptionService *core.EncryptionServ
 	}
 
 	if info.IsDir() {
+		if err := preflightDirectoryEncryptOutputs(path, outputPath); err != nil {
+			return err
+		}
 		encryptor := core.NewDirectoryEncryptor(encryptionService, scheduleVerbose)
 		encryptor.SetCompression(scheduleCompress)
 		return encryptor.EncryptDirectory(path, outputPath, key, salt, nil)

@@ -276,6 +276,42 @@ func TestSchedule_PerformScheduledEncrypt_RejectsSymlink(t *testing.T) {
 	require.Equal(t, "secret", string(got))
 }
 
+func TestSchedule_PerformScheduledEncrypt_RePreflightsNestedOutputs(t *testing.T) {
+	dir := t.TempDir()
+	inDir := filepath.Join(dir, "in")
+	require.NoError(t, os.MkdirAll(filepath.Join(inDir, "nested"), 0o700))
+	writeRegularFile(t, inDir, "a.txt", "payload-a")
+	writeRegularFile(t, filepath.Join(inDir, "nested"), "z.txt", "payload-z")
+
+	outRoot := inDir + ".nokvault"
+	require.NoError(t, os.MkdirAll(filepath.Join(outRoot, "nested"), 0o700))
+	sentinel := filepath.Join(outRoot, "a.txt.nokvault")
+	require.NoError(t, os.WriteFile(sentinel, []byte("keep-me"), 0o600))
+
+	target := filepath.Join(dir, "target")
+	require.NoError(t, os.Mkdir(target, 0o700))
+	require.NoError(t, os.Remove(filepath.Join(outRoot, "nested")))
+	link := filepath.Join(outRoot, "nested")
+	trySymlink(t, target, link)
+
+	svc := core.NewEncryptionService()
+	key, salt, err := svc.GetKeyManager().DeriveKeyFromPassword([]byte("schedule-repreflight-test"))
+	require.NoError(t, err)
+
+	err = performScheduledEncrypt(inDir, svc, key, salt)
+	requireSymlinkDisallowed(t, err, link)
+
+	got, readErr := os.ReadFile(sentinel)
+	require.NoError(t, readErr)
+	require.Equal(t, "keep-me", string(got), "earlier lexical output must not be rewritten")
+
+	_, statErr := os.Lstat(filepath.Join(target, "z.txt.nokvault"))
+	require.True(t, os.IsNotExist(statErr), "must not write through the symlink")
+	info, lerr := os.Lstat(link)
+	require.NoError(t, lerr)
+	require.NotEqual(t, 0, info.Mode()&os.ModeSymlink)
+}
+
 func TestSchedule_Directory_RejectsNestedOutputBeforePassword(t *testing.T) {
 	t.Setenv("NOKVAULT_PASSWORD", "")
 	dir := t.TempDir()
