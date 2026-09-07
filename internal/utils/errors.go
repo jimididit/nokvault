@@ -46,6 +46,10 @@ func getDefaultHint(code string) string {
 		return "This may indicate insufficient system resources. Try again or reduce key derivation parameters."
 	case "INVALID_FORMAT":
 		return "The file may not be a valid nokvault encrypted file. Ensure it was encrypted with nokvault."
+	case "CONFIRMATION_REQUIRED":
+		return "Re-run with --yes to confirm, or run interactively in a terminal and type yes."
+	case "OUTPUT_EXISTS":
+		return "Pass --force to overwrite the existing output path."
 	default:
 		return "Check the documentation or use --verbose for more details."
 	}
@@ -59,7 +63,9 @@ var (
 	ErrInvalidPassword  = &NokvaultError{Code: "INVALID_PASSWORD", Message: "Invalid password or key"}
 	ErrFileNotFound     = &NokvaultError{Code: "FILE_NOT_FOUND", Message: "File not found"}
 	ErrKeyDerivation    = &NokvaultError{Code: "KEY_DERIVATION_FAILED", Message: "Key derivation failed"}
-	ErrInvalidFormat    = &NokvaultError{Code: "INVALID_FORMAT", Message: "Invalid file format"}
+	ErrInvalidFormat         = &NokvaultError{Code: "INVALID_FORMAT", Message: "Invalid file format"}
+	ErrConfirmationRequired  = &NokvaultError{Code: "CONFIRMATION_REQUIRED", Message: "Confirmation required"}
+	ErrOutputExists          = &NokvaultError{Code: "OUTPUT_EXISTS", Message: "Output path already exists"}
 )
 
 // NewError creates a new error with context

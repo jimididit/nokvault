@@ -15,6 +15,7 @@ type DirectoryEncryptor struct {
 	compressionService *CompressionService
 	verbose            bool
 	compress           bool
+	overwrite          bool
 }
 
 // NewDirectoryEncryptor creates a new directory encryptor
@@ -25,12 +26,19 @@ func NewDirectoryEncryptor(encryptionService *EncryptionService, verbose bool) *
 		compressionService: NewCompressionService(),
 		verbose:            verbose,
 		compress:           false,
+		overwrite:          true,
 	}
 }
 
 // SetCompression enables or disables compression
 func (de *DirectoryEncryptor) SetCompression(compress bool) {
 	de.compress = compress
+}
+
+// SetOverwrite controls whether existing encrypted outputs may be replaced.
+// It defaults to true for existing non-CLI callers such as watch and schedule.
+func (de *DirectoryEncryptor) SetOverwrite(overwrite bool) {
+	de.overwrite = overwrite
 }
 
 // EncryptDirectory encrypts all files in a directory recursively
@@ -125,7 +133,11 @@ func (de *DirectoryEncryptor) encryptFileWithMetadata(inputPath, outputPath stri
 	}
 
 	// Create output file
-	if err := utils.AtomicWriteFunc(outputPath, 0o600, func(outputFile *os.File) error {
+	atomicWrite := utils.AtomicWriteFuncNoReplace
+	if de.overwrite {
+		atomicWrite = utils.AtomicWriteFunc
+	}
+	if err := atomicWrite(outputPath, 0o600, func(outputFile *os.File) error {
 		if err := de.fileHandler.WriteHeader(outputFile, salt, metadata, de.encryptionService.GetKeyManager().Params()); err != nil {
 			return fmt.Errorf("failed to write header: %w", err)
 		}

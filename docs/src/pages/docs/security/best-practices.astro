@@ -64,12 +64,13 @@ nokvault rotate-key file.nokvault \\
       <p class="text-dark-text-muted mb-4">
         When deleting sensitive unencrypted files, use secure deletion:
       </p>
-      <CodeBlock code={`# Securely delete sensitive files
-nokvault secure-delete sensitive-file.txt --passes 7
+      <CodeBlock code={`# Preview, then securely delete
+nokvault secure-delete sensitive-file.txt --dry-run
+nokvault secure-delete sensitive-file.txt --yes --passes 7
 
 # This overwrites the file multiple times before deletion`} lang="bash" />
       <p class="text-dark-text-muted mt-4">
-        Regular file deletion only removes file system references; the data remains on disk until overwritten.
+        Regular file deletion only removes file system references. Overwriting is best-effort on traditional disks; SSD wear leveling, snapshots, and copy-on-write filesystems may retain prior data.
       </p>
     </section>
 

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `secure-delete --yes` / `-y` (required when non-interactive) and interactive `yes` confirmation
+- `secure-delete --dry-run` to list paths without deleting
+- `encrypt` / `decrypt --force` to overwrite existing outputs (refused by default)
+- `decrypt --strict` to abort directory decrypt on the first failure
+
 ## [0.2.0] - 2026-09-07
 
 ### Added

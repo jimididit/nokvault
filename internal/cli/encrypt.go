@@ -30,6 +30,7 @@ var (
 	encryptVerbose    bool
 	encryptCompress   bool
 	encryptNoCompress bool
+	encryptForce      bool
 )
 
 func init() {
@@ -41,6 +42,7 @@ func init() {
 	encryptCmd.Flags().BoolVarP(&encryptVerbose, "verbose", "v", false, "Verbose output")
 	encryptCmd.Flags().BoolVar(&encryptCompress, "compress", false, "Compress data before encryption")
 	encryptCmd.Flags().BoolVar(&encryptNoCompress, "no-compress", false, "Disable compression (overrides config)")
+	encryptCmd.Flags().BoolVarP(&encryptForce, "force", "f", false, "Overwrite existing output path")
 
 	rootCmd.AddCommand(encryptCmd)
 }
@@ -160,7 +162,16 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 		}
 	}
 
-	err = utils.AtomicWriteFunc(outputPath, 0o600, func(outputFile *os.File) error {
+	if err := refuseIfExists(outputPath, encryptForce); err != nil {
+		PrintError(err.Error())
+		return err
+	}
+
+	atomicWrite := utils.AtomicWriteFuncNoReplace
+	if encryptForce {
+		atomicWrite = utils.AtomicWriteFunc
+	}
+	err = atomicWrite(outputPath, 0o600, func(outputFile *os.File) error {
 		if err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params()); err != nil {
 			return fmt.Errorf("failed to write header: %w", err)
 		}
@@ -213,12 +224,35 @@ func encryptDirectoryWithCompression(inputPath, outputPath string, key, salt []b
 
 	PrintInfo(fmt.Sprintf("Encrypting %d files in directory...", totalFiles))
 
+	// Preflight: refuse existing outputs unless --force
+	if err := fileHandler.WalkDirectory(inputPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		relPath, relErr := fileHandler.GetRelativePath(inputPath, path)
+		if relErr != nil {
+			return relErr
+		}
+		out := filepath.Join(outputPath, relPath+".nokvault")
+		if refuseErr := refuseIfExists(out, encryptForce); refuseErr != nil {
+			PrintError(refuseErr.Error())
+			return refuseErr
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
 	// Create progress bar
 	progressBar := utils.NewProgressBar(int64(totalFiles), "Encrypting files")
 
 	// Create directory encryptor
 	encryptor := core.NewDirectoryEncryptor(encryptionService, encryptVerbose)
 	encryptor.SetCompression(compress)
+	encryptor.SetOverwrite(encryptForce)
 
 	// Encrypt directory with progress callback
 	err = encryptor.EncryptDirectory(inputPath, outputPath, key, salt, func(current, total int, currentFile string) {

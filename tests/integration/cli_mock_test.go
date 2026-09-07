@@ -310,6 +310,11 @@ func TestCLI_Commands_Flags(t *testing.T) {
 		{"decrypt", "keyfile", true},
 		{"secure-delete", "passes", true},
 		{"secure-delete", "verbose", true},
+		{"secure-delete", "yes", true},
+		{"secure-delete", "dry-run", true},
+		{"encrypt", "force", true},
+		{"decrypt", "force", true},
+		{"decrypt", "strict", true},
 	}
 
 	for _, tt := range tests {

@@ -87,15 +87,21 @@ nokvault rotate-key file.nokvault \\
     <section class="mb-8">
       <h2>Secure Deletion</h2>
       <p class="text-dark-text-muted mb-4">
-        Permanently delete sensitive files by overwriting them multiple times:
+        Best-effort overwrite and delete sensitive files:
       </p>
-      <CodeBlock code={`# Secure delete with default passes (3)
+      <CodeBlock code={`# Secure delete with default passes (interactive: type yes)
 nokvault secure-delete sensitive-file.txt
 
+# Non-interactive / CI
+nokvault secure-delete sensitive-file.txt --yes
+
+# Preview first
+nokvault secure-delete sensitive-file.txt --dry-run
+
 # Secure delete with more passes
-nokvault secure-delete sensitive-file.txt --passes 7`} lang="bash" />
+nokvault secure-delete sensitive-file.txt --yes --passes 7`} lang="bash" />
       <p class="text-dark-text-muted mt-4">
-        Secure deletion makes data recovery extremely difficult. Use this for files containing sensitive information that should be permanently removed.
+        This is best-effort on traditional spinning disks. SSD wear leveling, snapshots, and copy-on-write filesystems may retain prior data; it is not a guaranteed forensic wipe.
       </p>
     </section>
 
