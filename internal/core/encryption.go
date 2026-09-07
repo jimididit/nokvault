@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/jimididit/nokvault/internal/crypto"
+	"github.com/jimididit/nokvault/internal/utils"
 )
 
 // EncryptionService handles file encryption/decryption operations
@@ -69,7 +70,7 @@ func (es *EncryptionService) EncryptFile(inputPath string, outputPath string, ke
 		return err
 	}
 
-	if err := os.WriteFile(outputPath, ciphertext, 0600); err != nil {
+	if err := utils.AtomicWrite(outputPath, ciphertext, 0o600); err != nil {
 		return fmt.Errorf("failed to write output file: %w", err)
 	}
 
@@ -88,7 +89,7 @@ func (es *EncryptionService) DecryptFile(inputPath string, outputPath string, ke
 		return err
 	}
 
-	if err := os.WriteFile(outputPath, plaintext, 0600); err != nil {
+	if err := utils.AtomicWrite(outputPath, plaintext, 0o600); err != nil {
 		return fmt.Errorf("failed to write output file: %w", err)
 	}
 

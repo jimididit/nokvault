@@ -24,6 +24,7 @@ func ResetCLIStateForTest() {
 	decryptNoPrompt = false
 	decryptDryRun = false
 	decryptVerbose = false
+	decryptPreserveMode = false
 
 	protectOutput = ""
 	protectPassword = ""

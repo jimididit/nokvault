@@ -102,13 +102,19 @@ func (fh *FileHandler) ReadMetadata(path string) (*FileMetadata, error) {
 	}, nil
 }
 
-// WriteMetadata writes metadata to a file
-func (fh *FileHandler) WriteMetadata(path string, metadata *FileMetadata) error {
+// WriteMetadata writes metadata to a file. Modes are clamped to ≤0600 (files)
+// or ≤0700 (dirs) unless preserveMode is true (NV-007).
+func (fh *FileHandler) WriteMetadata(path string, metadata *FileMetadata, preserveMode bool) error {
 	if metadata == nil {
 		return nil
 	}
 
-	if err := os.Chmod(path, os.FileMode(metadata.Mode)); err != nil {
+	mode := os.FileMode(metadata.Mode)
+	if !preserveMode {
+		mode = ClampPersistedMode(mode, metadata.IsDir)
+	}
+
+	if err := os.Chmod(path, mode); err != nil {
 		return fmt.Errorf("failed to set file mode: %w", err)
 	}
 
@@ -117,6 +123,18 @@ func (fh *FileHandler) WriteMetadata(path string, metadata *FileMetadata) error 
 	}
 
 	return nil
+}
+
+// ClampPersistedMode clears group/other permission bits (and file execute),
+// capping files at 0600 and directories at 0700.
+func ClampPersistedMode(mode os.FileMode, isDir bool) os.FileMode {
+	perm := mode.Perm()
+	if isDir {
+		perm &= 0o700
+	} else {
+		perm &= 0o600
+	}
+	return (mode &^ os.ModePerm) | perm
 }
 
 // WriteHeader writes a nokvault header to a file with optional metadata

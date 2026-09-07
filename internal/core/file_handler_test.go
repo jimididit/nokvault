@@ -54,8 +54,8 @@ func TestFileHandler_WriteMetadata(t *testing.T) {
 		IsDir:   false,
 	}
 
-	// Write metadata
-	err = fh.WriteMetadata(tmpFile.Name(), metadata)
+	// Write metadata (clamp world-readable 0644 → 0600)
+	err = fh.WriteMetadata(tmpFile.Name(), metadata, false)
 	require.NoError(t, err, "Failed to write metadata")
 
 	// Verify metadata was applied
@@ -63,6 +63,57 @@ func TestFileHandler_WriteMetadata(t *testing.T) {
 	require.NoError(t, err, "Failed to stat file")
 
 	assert.Equal(t, originalModTime.Unix(), info.ModTime().Unix(), "ModTime should be set correctly")
+	if probePermSupportsChmod(t, tmpFile.Name()) {
+		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), "mode should be clamped to 0600")
+	}
+}
+
+func probePermSupportsChmod(t *testing.T, path string) bool {
+	t.Helper()
+	if err := os.Chmod(path, 0o600); err != nil {
+		return false
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return info.Mode().Perm() == 0o600
+}
+
+func TestClampPersistedMode(t *testing.T) {
+	assert.Equal(t, os.FileMode(0o600), ClampPersistedMode(0o644, false).Perm())
+	assert.Equal(t, os.FileMode(0o600), ClampPersistedMode(0o777, false).Perm())
+	assert.Equal(t, os.FileMode(0o400), ClampPersistedMode(0o400, false).Perm())
+	assert.Equal(t, os.FileMode(0o700), ClampPersistedMode(0o755, true).Perm())
+	assert.Equal(t, os.FileMode(0o500), ClampPersistedMode(0o555, true).Perm())
+}
+
+func TestFileHandler_WriteMetadata_PreserveMode(t *testing.T) {
+	fh := NewFileHandler()
+	tmpFile, err := os.CreateTemp("", "nokvault-test-*.txt")
+	require.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
+
+	if err := os.Chmod(tmpFile.Name(), 0o600); err != nil {
+		t.Skipf("chmod not supported: %v", err)
+	}
+	probe, err := os.Stat(tmpFile.Name())
+	require.NoError(t, err)
+	if probe.Mode().Perm() != 0o600 {
+		t.Skip("filesystem ignores unix permission bits")
+	}
+
+	metadata := &FileMetadata{
+		Name:    "test.txt",
+		Mode:    0o644,
+		ModTime: time.Now(),
+		IsDir:   false,
+	}
+	require.NoError(t, fh.WriteMetadata(tmpFile.Name(), metadata, true))
+	info, err := os.Stat(tmpFile.Name())
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o644), info.Mode().Perm())
 }
 
 func TestFileHandler_WriteHeader(t *testing.T) {

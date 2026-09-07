@@ -23,12 +23,13 @@ by default, or to the path specified by --output flag.`,
 }
 
 var (
-	decryptOutput   string
-	decryptPassword string
-	decryptKeyfile  string
-	decryptNoPrompt bool
-	decryptDryRun   bool
-	decryptVerbose  bool
+	decryptOutput       string
+	decryptPassword     string
+	decryptKeyfile      string
+	decryptNoPrompt     bool
+	decryptDryRun       bool
+	decryptVerbose      bool
+	decryptPreserveMode bool
 )
 
 func init() {
@@ -37,6 +38,7 @@ func init() {
 	decryptCmd.Flags().StringVarP(&decryptKeyfile, "keyfile", "k", "", "Path to keyfile")
 	decryptCmd.Flags().BoolVar(&decryptNoPrompt, "no-prompt", false, "Don't prompt for password")
 	decryptCmd.Flags().BoolVar(&decryptDryRun, "dry-run", false, "Show what would be decrypted without actually decrypting")
+	decryptCmd.Flags().BoolVar(&decryptPreserveMode, "preserve-mode", false, "Restore original file modes (default clamps to ≤0600 files / ≤0700 dirs)")
 	decryptCmd.Flags().BoolVarP(&decryptVerbose, "verbose", "v", false, "Verbose output")
 
 	rootCmd.AddCommand(decryptCmd)
@@ -156,13 +158,13 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 	}
 
 	// Write decrypted data
-	if err := os.WriteFile(outputPath, plaintext, 0600); err != nil {
+	if err := utils.AtomicWrite(outputPath, plaintext, 0o600); err != nil {
 		return fmt.Errorf("failed to write output file: %w", err)
 	}
 
 	// Restore metadata if available
 	if metadata != nil {
-		if err := fileHandler.WriteMetadata(outputPath, metadata); err != nil {
+		if err := fileHandler.WriteMetadata(outputPath, metadata, decryptPreserveMode); err != nil {
 			if decryptVerbose {
 				PrintInfo(fmt.Sprintf("Warning: Could not restore metadata: %v", err))
 			}
@@ -361,13 +363,13 @@ func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionServi
 	}
 
 	// Write decrypted data
-	if err := os.WriteFile(outputPath, plaintext, 0600); err != nil {
+	if err := utils.AtomicWrite(outputPath, plaintext, 0o600); err != nil {
 		return fmt.Errorf("failed to write output file: %w", err)
 	}
 
 	// Restore metadata if available
 	if metadata != nil {
-		if err := fileHandler.WriteMetadata(outputPath, metadata); err != nil {
+		if err := fileHandler.WriteMetadata(outputPath, metadata, decryptPreserveMode); err != nil {
 			// Log warning but don't fail
 		}
 	}

@@ -125,20 +125,16 @@ func (de *DirectoryEncryptor) encryptFileWithMetadata(inputPath, outputPath stri
 	}
 
 	// Create output file
-	outputFile, err := os.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
-	}
-	defer outputFile.Close()
-
-	// Write header with metadata
-	if err := de.fileHandler.WriteHeader(outputFile, salt, metadata, de.encryptionService.GetKeyManager().Params()); err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
-	}
-
-	// Write encrypted data
-	if _, err := outputFile.Write(ciphertext); err != nil {
-		return fmt.Errorf("failed to write encrypted data: %w", err)
+	if err := utils.AtomicWriteFunc(outputPath, 0o600, func(outputFile *os.File) error {
+		if err := de.fileHandler.WriteHeader(outputFile, salt, metadata, de.encryptionService.GetKeyManager().Params()); err != nil {
+			return fmt.Errorf("failed to write header: %w", err)
+		}
+		if _, err := outputFile.Write(ciphertext); err != nil {
+			return fmt.Errorf("failed to write encrypted data: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	return nil
@@ -150,6 +146,7 @@ type DirectoryDecryptor struct {
 	fileHandler        *FileHandler
 	compressionService *CompressionService
 	verbose            bool
+	preserveMode       bool
 }
 
 // NewDirectoryDecryptor creates a new directory decryptor
@@ -159,7 +156,13 @@ func NewDirectoryDecryptor(encryptionService *EncryptionService, verbose bool) *
 		fileHandler:        NewFileHandler(),
 		compressionService: NewCompressionService(),
 		verbose:            verbose,
+		preserveMode:       false,
 	}
+}
+
+// SetPreserveMode controls whether original file modes are restored without clamping.
+func (dd *DirectoryDecryptor) SetPreserveMode(preserve bool) {
+	dd.preserveMode = preserve
 }
 
 // DecryptDirectory decrypts all .nokvault files in a directory recursively
@@ -280,13 +283,13 @@ func (dd *DirectoryDecryptor) decryptFileWithMetadata(inputPath, outputPath stri
 	}
 
 	// Write decrypted data
-	if err := os.WriteFile(outputPath, plaintext, 0600); err != nil {
+	if err := utils.AtomicWrite(outputPath, plaintext, 0o600); err != nil {
 		return fmt.Errorf("failed to write output file: %w", err)
 	}
 
 	// Restore metadata if available
 	if metadata != nil {
-		if err := dd.fileHandler.WriteMetadata(outputPath, metadata); err != nil {
+		if err := dd.fileHandler.WriteMetadata(outputPath, metadata, dd.preserveMode); err != nil {
 			// Log warning but don't fail
 			if dd.verbose {
 				fmt.Fprintf(os.Stderr, "Warning: Could not restore metadata for %s: %v\n", outputPath, err)

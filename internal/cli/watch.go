@@ -237,27 +237,15 @@ func encryptFileAuto(filePath string, encryptionService *core.EncryptionService,
 	}
 
 	// Create output file
-	outputFile, err := os.Create(outputPath)
-	if err != nil {
-		if verbose {
-			PrintError(fmt.Sprintf("Failed to create output file %s: %v", outputPath, err))
+	if err := utils.AtomicWriteFunc(outputPath, 0o600, func(outputFile *os.File) error {
+		if err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params()); err != nil {
+			return err
 		}
-		return
-	}
-	defer outputFile.Close()
-
-	// Write header with metadata
-	if err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params()); err != nil {
+		_, err := outputFile.Write(ciphertext)
+		return err
+	}); err != nil {
 		if verbose {
-			PrintError(fmt.Sprintf("Failed to write header for %s: %v", outputPath, err))
-		}
-		return
-	}
-
-	// Write encrypted data
-	if _, err := outputFile.Write(ciphertext); err != nil {
-		if verbose {
-			PrintError(fmt.Sprintf("Failed to write encrypted data for %s: %v", outputPath, err))
+			PrintError(fmt.Sprintf("Failed to write encrypted file %s: %v", outputPath, err))
 		}
 		return
 	}

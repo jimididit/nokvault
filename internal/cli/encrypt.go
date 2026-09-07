@@ -160,21 +160,17 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 		}
 	}
 
-	// Create output file with header
-	outputFile, err := os.Create(outputPath)
+	err = utils.AtomicWriteFunc(outputPath, 0o600, func(outputFile *os.File) error {
+		if err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params()); err != nil {
+			return fmt.Errorf("failed to write header: %w", err)
+		}
+		if _, err := outputFile.Write(ciphertext); err != nil {
+			return fmt.Errorf("failed to write encrypted data: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
-	}
-	defer outputFile.Close()
-
-	// Write header with metadata
-	if err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params()); err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
-	}
-
-	// Write encrypted data
-	if _, err := outputFile.Write(ciphertext); err != nil {
-		return fmt.Errorf("failed to write encrypted data: %w", err)
+		return err
 	}
 
 	PrintSuccess(fmt.Sprintf("Encrypted: %s -> %s", inputPath, outputPath))
