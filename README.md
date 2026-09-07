@@ -168,8 +168,10 @@ nokvault encrypt ./files -v
 ## Security
 
 - **Encryption**: AES-256-GCM authenticated encryption
-- **Key Derivation**: Argon2id with configurable parameters
+- **Key Derivation**: Argon2id with configurable parameters (persisted in format v2 headers)
 - **Memory Safety**: Sensitive data zeroized after use
+- **Atomic encrypt writes**: Temp file + fsync + rename
+- **Decrypt modes**: Clamped to ≤0600 / ≤0700 unless `--preserve-mode`
 - **Timing Attack Protection**: Constant-time operations
 - **File Integrity**: Built-in authentication tags
 
