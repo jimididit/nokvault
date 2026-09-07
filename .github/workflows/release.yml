@@ -70,7 +70,7 @@ jobs:
           go build -ldflags="-X 'github.com/jimididit/nokvault/internal/cli.Version=${VERSION}' -X 'github.com/jimididit/nokvault/internal/cli.Commit=${GITHUB_SHA}'" -o "${{ matrix.artifact_name }}" ./cmd/nokvault
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_name }}
