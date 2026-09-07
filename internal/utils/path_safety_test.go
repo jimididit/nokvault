@@ -3,15 +3,60 @@ package utils
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 )
+
+func isLinkCreationUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	var errno syscall.Errno
+	if errors.As(err, &errno) {
+		switch errno {
+		case 1314: // ERROR_PRIVILEGE_NOT_HELD
+			return true
+		case 1: // ERROR_INVALID_FUNCTION
+			return true
+		case 50: // ERROR_NOT_SUPPORTED
+			return true
+		}
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "privilege") ||
+		strings.Contains(msg, "not supported") ||
+		strings.Contains(msg, "a required privilege is not held")
+}
 
 func trySymlink(t *testing.T, oldname, newname string) {
 	t.Helper()
 	if err := os.Symlink(oldname, newname); err != nil {
-		t.Skipf("symlink not supported: %v", err)
+		if isLinkCreationUnavailable(err) {
+			t.Skipf("symlink privilege/support unavailable: %v", err)
+		}
+		t.Fatalf("symlink creation failed: %v", err)
+	}
+}
+
+func tryJunction(t *testing.T, oldname, newname string) {
+	t.Helper()
+	if runtime.GOOS != "windows" {
+		t.Skip("junctions are a Windows reparse feature")
+	}
+	out, err := exec.Command("cmd", "/c", "mklink", "/J", newname, oldname).CombinedOutput()
+	if err != nil {
+		msg := strings.ToLower(string(out) + err.Error())
+		if isLinkCreationUnavailable(err) ||
+			strings.Contains(msg, "privilege") ||
+			strings.Contains(msg, "not supported") ||
+			strings.Contains(msg, "cannot create") {
+			t.Skipf("junction creation unavailable: %v: %s", err, out)
+		}
+		t.Fatalf("junction creation failed: %v: %s", err, out)
 	}
 }
 
@@ -81,6 +126,27 @@ func TestValidateNoSymlinkComponents(t *testing.T) {
 		requireErrorCode(t, err, "SYMLINK_DISALLOWED")
 		if !strings.Contains(err.Error(), linkDir) {
 			t.Fatalf("error %q does not name rejected parent %q", err, linkDir)
+		}
+		var nv *NokvaultError
+		if !errors.As(err, &nv) {
+			t.Fatalf("got %T", err)
+		}
+		if !strings.Contains(nv.GetHint(), "Symlinks are not followed.") {
+			t.Fatalf("hint %q is not the full symlink hint", nv.GetHint())
+		}
+	})
+
+	t.Run("windows junction", func(t *testing.T) {
+		realDir := filepath.Join(dir, "junction-target")
+		if err := os.Mkdir(realDir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		junction := filepath.Join(dir, "junction.link")
+		tryJunction(t, realDir, junction)
+		err := ValidateNoSymlinkComponents(filepath.Join(junction, "child.txt"))
+		requireErrorCode(t, err, "SYMLINK_DISALLOWED")
+		if !strings.Contains(err.Error(), junction) {
+			t.Fatalf("error %q does not name rejected junction %q", err, junction)
 		}
 	})
 }
@@ -157,5 +223,46 @@ func TestSafeJoin(t *testing.T) {
 		if !strings.Contains(err.Error(), linkParent) {
 			t.Fatalf("error %q does not name rejected parent %q", err, linkParent)
 		}
+	})
+
+	t.Run("reserved device names", func(t *testing.T) {
+		for _, rel := range []string{"NUL", "CON", "COM1", filepath.Join("nested", "NUL")} {
+			_, err := SafeJoin(root, rel)
+			requireErrorCode(t, err, "PATH_ESCAPE")
+		}
+	})
+
+	t.Run("non-local relative", func(t *testing.T) {
+		_, err := SafeJoin(root, filepath.Join("foo", "..", "..", "outside"))
+		requireErrorCode(t, err, "PATH_ESCAPE")
+	})
+
+	t.Run("rooted backslash", func(t *testing.T) {
+		_, err := SafeJoin(root, `\outside`)
+		requireErrorCode(t, err, "PATH_ESCAPE")
+	})
+
+	t.Run("drive-relative", func(t *testing.T) {
+		if runtime.GOOS != "windows" {
+			t.Skip("drive-relative volumes are a Windows path form")
+		}
+		_, err := SafeJoin(root, `C:windows`)
+		requireErrorCode(t, err, "PATH_ESCAPE")
+	})
+
+	t.Run("volume-qualified", func(t *testing.T) {
+		if runtime.GOOS != "windows" {
+			t.Skip("volume-qualified paths are a Windows path form")
+		}
+		_, err := SafeJoin(root, `\\?\C:\Windows`)
+		requireErrorCode(t, err, "PATH_ESCAPE")
+	})
+
+	t.Run("rel failure is path escape", func(t *testing.T) {
+		if runtime.GOOS != "windows" {
+			t.Skip("cross-volume Rel failures are a Windows path form")
+		}
+		_, err := SafeJoin(root, `D:escape`)
+		requireErrorCode(t, err, "PATH_ESCAPE")
 	})
 }

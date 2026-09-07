@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make every supported file operation fail closed on symlinks and ensure generated directory outputs remain beneath their selected output root.
+**Goal:** Make every supported file operation fail closed on symlinks, Windows junctions, and other reparse points, and ensure generated directory outputs remain beneath their selected output root.
 
-**Architecture:** Put reusable validation in `internal/utils/path_safety.go`, then enforce it in `FileHandler.WalkDirectory`, core directory output construction, and CLI single-path entry points. `SafeJoin` uses cleaned absolute paths plus `filepath.Rel`; output component checks use `Lstat`.
+**Architecture:** Put reusable validation in `internal/utils/path_safety.go`, then enforce it in `FileHandler.WalkDirectory`, core directory output construction, and CLI single-path entry points. `SafeJoin` uses cleaned absolute paths plus `filepath.Rel` and rejects non-local, reserved-device, and volume-qualified relatives; output component checks use `Lstat` plus the Windows reparse attribute.
 
 **Tech Stack:** Go 1.25, standard library `os`/`filepath`, Cobra, testify, Astro docs.
 
@@ -12,13 +12,14 @@
 
 ## Global Constraints
 
-- Any input symlink—root, nested file, nested directory, or existing parent component—aborts the operation and names the rejected path.
-- Reject output leaf and existing output-parent symlinks.
+- Any input symlink or Windows junction/reparse point—root, nested file, nested directory, or existing parent component—aborts the operation and names the rejected path.
+- Reject output leaf and existing output-parent symlinks, junctions, and other reparse points.
 - No `--follow-symlinks` flag and no silent skip behavior.
 - Containment uses `filepath.Clean`, `filepath.Abs`, and `filepath.Rel`; never string-prefix matching.
+- `SafeJoin` also rejects `!filepath.IsLocal` relatives, reserved device names (`NUL`/`CON`/`COM1`), rooted-backslash paths, and drive-relative or volume-qualified relatives as `PATH_ESCAPE`. Wrap `filepath.Rel` failures as `PATH_ESCAPE`.
 - Missing output components are valid, but all existing ancestors must be checked.
 - Descriptor-relative hostile concurrent replacement is outside scope and must be documented.
-- Symlink-specific Windows tests may skip only when `os.Symlink` itself reports unavailable privilege/support.
+- Symlink- or junction-specific Windows tests may skip only when creation itself reports unavailable privilege/support; unexpected creation errors fail.
 - Run `graphify update .` after Go changes.
 - Docs and CHANGELOG ship in this PR.
 
@@ -54,8 +55,8 @@ Expected: build failure because both functions are undefined.
 absolute, err := filepath.Abs(filepath.Clean(path))
 for current := absolute; ; current = filepath.Dir(current) {
     info, statErr := os.Lstat(current)
-    if statErr == nil && info.Mode()&os.ModeSymlink != 0 {
-        return NewErrorWithHint(ErrSymlinkDisallowed.Code, fmt.Sprintf("Symlink paths are not allowed: %s", current), nil, "Use a regular file or directory path.")
+    if statErr == nil && isDisallowedRedirect(current, info) { // ModeSymlink, or Windows FILE_ATTRIBUTE_REPARSE_POINT; ModeIrregular if attrs unreadable
+        return NewErrorWithHint(ErrSymlinkDisallowed.Code, fmt.Sprintf("Symlink paths are not allowed: %s", current), nil, "Use a regular file or directory path. Symlinks are not followed.")
     }
     if statErr != nil && !os.IsNotExist(statErr) { return statErr }
     parent := filepath.Dir(current)
@@ -63,7 +64,7 @@ for current := absolute; ; current = filepath.Dir(current) {
 }
 ```
 
-`SafeJoin` must reject absolute/escaping relatives, verify containment via `filepath.Rel`, validate root and joined components, and return the cleaned absolute joined path.
+`SafeJoin` must reject absolute, escaping, non-local, reserved-device, rooted-backslash, and drive-relative/volume-qualified relatives; wrap `filepath.Rel` failures as `PATH_ESCAPE`; validate root and joined components; and return the cleaned absolute joined path.
 
 - [ ] **Step 4: Verify GREEN and commit**
 
