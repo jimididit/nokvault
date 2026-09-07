@@ -85,7 +85,9 @@ func runWatch(cmd *cobra.Command, args []string) error {
 	if watchAutoEncrypt {
 		encryptionService := core.NewEncryptionService()
 		keyManager := encryptionService.GetKeyManager()
-		applyKDFConfig(keyManager)
+		if err := applyKDFConfig(keyManager); err != nil {
+			return fmt.Errorf("invalid key derivation configuration: %w", err)
+		}
 
 		// Get password/key
 		password, err := utils.GetPassword(watchPassword, watchKeyfile, watchNoPrompt, false)

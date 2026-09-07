@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/jimididit/nokvault/internal/utils"
 )
 
 // DirectoryEncryptor handles directory encryption operations
@@ -251,6 +253,7 @@ func (dd *DirectoryDecryptor) decryptFileWithMetadata(inputPath, outputPath stri
 	if err != nil {
 		return fmt.Errorf("failed to derive key: %w", err)
 	}
+	defer utils.ZeroizeKey(key)
 
 	// Read encrypted data
 	ciphertext, err := os.ReadFile(inputPath)

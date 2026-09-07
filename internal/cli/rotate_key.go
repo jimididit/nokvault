@@ -120,7 +120,9 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 	}
 
 	// Re-key with encrypt-side params from runtime config.
-	applyKDFConfig(keyManager)
+	if err := applyKDFConfig(keyManager); err != nil {
+		return fmt.Errorf("invalid key derivation configuration: %w", err)
+	}
 
 	// Generate new salt and derive new key from that same salt (must match header).
 	newSalt, err := crypto.GenerateSalt()

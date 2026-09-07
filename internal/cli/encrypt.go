@@ -74,7 +74,9 @@ func runEncrypt(cmd *cobra.Command, args []string) error {
 	// Create encryption service
 	encryptionService := core.NewEncryptionService()
 	keyManager := encryptionService.GetKeyManager()
-	applyKDFConfig(keyManager)
+	if err := applyKDFConfig(keyManager); err != nil {
+		return utils.NewError(utils.ErrKeyDerivation.Code, "Invalid key derivation configuration", err)
+	}
 
 	// Derive key from password
 	key, salt, err := keyManager.DeriveKeyFromPassword(password)

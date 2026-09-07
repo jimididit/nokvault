@@ -344,3 +344,81 @@ func TestFileHandler_WriteHeader_RejectsInvalidParams(t *testing.T) {
 	})
 	assert.Error(t, err)
 }
+
+func TestValidateKDFParams(t *testing.T) {
+	valid := crypto.DefaultArgon2Params()
+
+	tests := []struct {
+		name    string
+		params  *crypto.Argon2Params
+		wantErr string
+	}{
+		{name: "nil params", params: nil, wantErr: "kdf params are required"},
+		{name: "zero memory", params: &crypto.Argon2Params{Memory: 0, Time: 3, Parallelism: 4, KeyLength: 32}, wantErr: "must be non-zero"},
+		{name: "zero time", params: &crypto.Argon2Params{Memory: 65536, Time: 0, Parallelism: 4, KeyLength: 32}, wantErr: "must be non-zero"},
+		{name: "zero parallelism", params: &crypto.Argon2Params{Memory: 65536, Time: 3, Parallelism: 0, KeyLength: 32}, wantErr: "must be non-zero"},
+		{name: "wrong key length", params: &crypto.Argon2Params{Memory: 65536, Time: 3, Parallelism: 4, KeyLength: 16}, wantErr: "key length must be 32"},
+		{name: "valid defaults", params: valid, wantErr: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateKDFParams(tt.params)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
+}
+
+func TestFileHandler_V1DecryptRoundTrip(t *testing.T) {
+	password := []byte("v1-test-password")
+	plaintext := []byte("v1 legacy file decrypt payload")
+	defs := crypto.DefaultArgon2Params()
+
+	salt, err := crypto.GenerateSalt()
+	require.NoError(t, err)
+
+	km := NewKeyManager()
+	km.SetArgon2Params(defs)
+	key, err := km.DeriveKeyFromPasswordAndSalt(password, salt)
+	require.NoError(t, err)
+
+	es := NewEncryptionService()
+	ciphertext, err := es.EncryptData(plaintext, key)
+	require.NoError(t, err)
+
+	var headerBuf bytes.Buffer
+	magic := [8]byte{}
+	copy(magic[:], NokvaultMagic)
+	require.NoError(t, binary.Write(&headerBuf, binary.LittleEndian, magic))
+	require.NoError(t, binary.Write(&headerBuf, binary.LittleEndian, uint16(1)))
+	var saltArr [16]byte
+	copy(saltArr[:], salt)
+	require.NoError(t, binary.Write(&headerBuf, binary.LittleEndian, saltArr))
+	require.NoError(t, binary.Write(&headerBuf, binary.LittleEndian, uint32(0)))
+	v1Size := HeaderWireSize(1)
+	require.NoError(t, binary.Write(&headerBuf, binary.LittleEndian, uint64(v1Size)))
+
+	var fileBuf bytes.Buffer
+	fileBuf.Write(headerBuf.Bytes())
+	fileBuf.Write(ciphertext)
+
+	fh := NewFileHandler()
+	header, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(fileBuf.Bytes()))
+	require.NoError(t, err)
+	assert.Equal(t, uint16(1), header.Version)
+
+	km2 := NewKeyManager()
+	km2.SetArgon2Params(header.Argon2Params())
+	decKey, err := km2.DeriveKeyFromPasswordAndSalt(password, header.Salt[:])
+	require.NoError(t, err)
+
+	payload := fileBuf.Bytes()[header.DataOffset:]
+	got, err := es.DecryptData(payload, decKey)
+	require.NoError(t, err)
+	assert.Equal(t, plaintext, got)
+}
