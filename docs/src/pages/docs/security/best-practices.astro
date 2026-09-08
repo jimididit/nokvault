@@ -66,7 +66,6 @@ nokvault rotate-key file.nokvault \\
       </p>
       <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
         <li>Do not encrypt, decrypt, watch, schedule, rotate, or securely delete through a link. Nested-link checks apply only to commands that recurse.</li>
-        <li><code>protect</code> checks only the root and output paths you pass; it does not walk nested files (archive mode is unimplemented).</li>
         <li>Keyfiles must be regular files (mode <code>0600</code> on Unix), not symlinks.</li>
         <li>Policy errors are reported before dry-run previews and before password prompts.</li>
         <li>Do not treat this as protection against a privileged process swapping path components after validation.</li>

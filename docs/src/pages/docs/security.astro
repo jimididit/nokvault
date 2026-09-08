@@ -109,7 +109,7 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
     <section class="mb-8">
       <h2>Path containment and symlinks</h2>
       <p class="text-dark-text-muted mb-4">
-        Nokvault does not follow symbolic links, Windows junctions, or other detected reparse points. Encrypt, decrypt, rotate-key, secure-delete, watch, schedule, and keyfiles share that default-deny policy. <code>protect</code> only checks the supplied root and output components. There is no follow opt-in. Nested-link rejection applies to commands that recurse, not to <code>protect</code>.
+        Nokvault does not follow symbolic links, Windows junctions, or other detected reparse points. Encrypt, decrypt, rotate-key, secure-delete, watch, schedule, and keyfiles share that default-deny policy. There is no follow opt-in. Nested-link rejection applies to commands that recurse.
       </p>
       <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
         <li>Validation walks existing path components with <code>Lstat</code>. Missing output leaves are allowed; an existing redirected parent is not.</li>

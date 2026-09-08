@@ -398,43 +398,15 @@ func TestSchedule_ReportsWrappedPolicyHintWithoutDuplicate(t *testing.T) {
 	require.NotContains(t, out, "Scheduled encryption failed")
 }
 
-func TestProtect_RejectsSymlinkInputBeforeDryRun(t *testing.T) {
-	dir := t.TempDir()
-	realDir := filepath.Join(dir, "real")
-	require.NoError(t, os.Mkdir(realDir, 0o700))
-	link := filepath.Join(dir, "protect-link")
-	trySymlink(t, realDir, link)
+func TestProtect_IsHiddenAndFailsWithoutTouchingPath(t *testing.T) {
+	require.True(t, protectCmd.Hidden)
 
-	err := execCLI(t, "protect", link, "--dry-run")
-	requireSymlinkDisallowed(t, err, link)
-}
-
-func TestProtect_RejectsSymlinkOutputBeforeDryRun(t *testing.T) {
-	dir := t.TempDir()
-	inDir := filepath.Join(dir, "in")
-	require.NoError(t, os.Mkdir(inDir, 0o700))
-	target := writeRegularFile(t, dir, "out-target", "keep")
-	outLink := filepath.Join(dir, "out-link.nokvault")
-	trySymlink(t, target, outLink)
-
-	err := execCLI(t, "protect", inDir, "--output", outLink, "--dry-run")
-	requireSymlinkDisallowed(t, err, outLink)
-	got, readErr := os.ReadFile(target)
-	require.NoError(t, readErr)
-	require.Equal(t, "keep", string(got))
-}
-
-func TestProtect_RejectsSymlinkBeforeUnimplemented(t *testing.T) {
-	t.Setenv("NOKVAULT_PASSWORD", "")
-	dir := t.TempDir()
-	realDir := filepath.Join(dir, "real")
-	require.NoError(t, os.Mkdir(realDir, 0o700))
-	link := filepath.Join(dir, "protect-input-link")
-	trySymlink(t, realDir, link)
-
-	err := execCLI(t, "protect", link, "--no-prompt")
-	requireSymlinkDisallowed(t, err, link)
-	require.NotContains(t, err.Error(), "not yet implemented")
+	missing := filepath.Join(t.TempDir(), "does-not-exist")
+	err := execCLI(t, "protect", missing, "--dry-run")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "COMMAND_UNAVAILABLE")
+	require.Contains(t, err.Error(), "protect archive mode is not implemented")
+	require.NotContains(t, err.Error(), "does not exist")
 }
 
 func TestDecrypt_Directory_NonStrictPreservesPathEscape(t *testing.T) {

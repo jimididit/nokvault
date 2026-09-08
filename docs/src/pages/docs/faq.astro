@@ -99,7 +99,7 @@ nokvault encrypt file.txt --no-prompt`} lang="bash" />
         <div class="mb-6">
           <h3>Why was my path rejected with SYMLINK_DISALLOWED or PATH_ESCAPE?</h3>
           <p class="text-dark-text-muted">
-            Nokvault does not follow symbolic links, Windows junctions, or other detected reparse points, and directory outputs must stay inside the selected root. Nested links are rejected by commands that recurse; <code>protect</code> only checks the supplied root and output paths. There is no follow opt-in. Point the command at a regular file or directory, or choose an output that does not escape the destination. These checks run before <code>--dry-run</code> and before password prompts. They do not claim to stop a privileged local attacker who replaces a path after validation.
+            Nokvault does not follow symbolic links, Windows junctions, or other detected reparse points, and directory outputs must stay inside the selected root. Nested links are rejected by commands that recurse. There is no follow opt-in. Point the command at a regular file or directory, or choose an output that does not escape the destination. These checks run before <code>--dry-run</code> and before password prompts. They do not claim to stop a privileged local attacker who replaces a path after validation.
           </p>
         </div>
 
@@ -152,7 +152,6 @@ done`} lang="bash" />
           </p>
           <ul class="list-disc list-inside space-y-2 text-dark-text-muted mt-2">
             <li>Use <code>--verbose</code> to see progress</li>
-            <li>Exclude unnecessary files with <code>--exclude</code></li>
             <li>Consider using compression for text files: <code>--compress</code></li>
           </ul>
         </div>

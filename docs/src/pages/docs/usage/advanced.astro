@@ -26,18 +26,6 @@ nokvault decrypt large-file.txt.nokvault`} lang="bash" />
     </section>
 
     <section class="mb-8">
-      <h2>Excluding Files</h2>
-      <p class="text-dark-text-muted mb-4">
-        When encrypting directories, exclude certain files or patterns:
-      </p>
-      <CodeBlock code={`# Exclude temporary files
-nokvault encrypt ./documents --exclude "*.tmp" --exclude "*.log"
-
-# Exclude specific directories
-nokvault encrypt ./project --exclude "node_modules" --exclude ".git"`} lang="bash" />
-    </section>
-
-    <section class="mb-8">
       <h2>Auto-Encryption with File Watching</h2>
       <p class="text-dark-text-muted mb-4">
         Automatically encrypt files when they're created or modified in a directory:
