@@ -189,14 +189,13 @@ nokvault secure-delete sensitive-file.txt --yes --passes 7`} lang="bash" />
       <section>
         <h2><code>config</code></h2>
         <p class="text-dark-text-muted mb-4">
-          Manage configuration settings. View, set, or initialize configuration files.
+          Initialize or inspect the Argon2id settings used for new encryptions.
         </p>
         <h3>Subcommands</h3>
         <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
           <li><code>--init</code>: Initialize default configuration</li>
           <li><code>--show</code>: Show current configuration</li>
-          <li><code>--get &lt;key&gt;</code>: Get a specific configuration value</li>
-          <li><code>--set &lt;key&gt;=&lt;value&gt;</code>: Set a configuration value</li>
+          <li><code>--get &lt;key&gt;</code>: Read <code>memory_cost</code>, <code>time_cost</code>, or <code>parallelism</code></li>
         </ul>
         <h3>Examples</h3>
         <CodeBlock code={`# Initialize configuration
@@ -205,11 +204,8 @@ nokvault config --init
 # View current configuration
 nokvault config --show
 
-# Get specific value
-nokvault config --get compression
-
-# Set a value
-nokvault config --set compression=true`} lang="bash" />
+# Get a specific value
+nokvault config --get memory_cost`} lang="bash" />
       </section>
     </div>
   </div>

@@ -10,7 +10,12 @@ import (
 
 func TestKeyManager_ParamsReturnsCopy(t *testing.T) {
 	km := NewKeyManager()
-	km.SetParams(32768, 2, 2, crypto.DefaultKeyLength)
+	km.SetArgon2Params(&crypto.Argon2Params{
+		Memory:      32768,
+		Time:        2,
+		Parallelism: 2,
+		KeyLength:   crypto.DefaultKeyLength,
+	})
 
 	params := km.Params()
 	require.NotNil(t, params)

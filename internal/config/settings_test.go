@@ -9,18 +9,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func newIsolatedConfigManager(t *testing.T) (*ConfigManager, string) {
+	t.Helper()
+	t.Chdir(t.TempDir())
+	configDir := t.TempDir()
+	return newConfigManager(configDir), configDir
+}
+
 func TestDefaultConfig(t *testing.T) {
 	config := DefaultConfig()
 
-	assert.Equal(t, "aes256gcm", config.Encryption.Algorithm, "Encryption algorithm should match")
-	assert.Equal(t, "argon2id", config.KeyDerivation.Algorithm, "Key derivation algorithm should match")
 	assert.NotZero(t, config.KeyDerivation.MemoryCost, "Memory cost should not be zero")
 	assert.NotZero(t, config.KeyDerivation.TimeCost, "Time cost should not be zero")
-	assert.NotZero(t, config.Security.DeletePasses, "Delete passes should not be zero")
+	assert.NotZero(t, config.KeyDerivation.Parallelism, "Parallelism should not be zero")
 }
 
 func TestConfigManager_Load_NoConfigFile(t *testing.T) {
-	cm := NewConfigManager()
+	cm, _ := newIsolatedConfigManager(t)
 
 	// Load should succeed even if config file doesn't exist (uses defaults)
 	err := cm.Load()
@@ -29,16 +34,13 @@ func TestConfigManager_Load_NoConfigFile(t *testing.T) {
 	config := cm.Get()
 	require.NotNil(t, config, "Config should not be nil")
 
-	// Verify defaults are set
-	assert.Equal(t, "aes256gcm", config.Encryption.Algorithm, "Expected default algorithm")
+	assert.Equal(t, uint32(65536), config.KeyDerivation.MemoryCost)
 }
 
 func TestConfigManager_Save_Load(t *testing.T) {
-	cm := NewConfigManager()
+	cm, configDir := newIsolatedConfigManager(t)
 
-	// Modify config
 	config := cm.Get()
-	config.Encryption.Compression = true
 	config.KeyDerivation.MemoryCost = 32768
 
 	// Save config (will save to actual config directory)
@@ -51,34 +53,55 @@ func TestConfigManager_Save_Load(t *testing.T) {
 	}
 
 	// Verify config file exists
-	configPath := GetConfigPath()
+	configPath := filepath.Join(configDir, "config.toml")
 	_, err = os.Stat(configPath)
 	require.NoError(t, err, "Config file should be created")
 	defer os.Remove(configPath) // Clean up
 
 	// Create new config manager and load
-	cm2 := NewConfigManager()
+	cm2 := newConfigManager(configDir)
 	err = cm2.Load()
 	require.NoError(t, err, "Failed to load config")
 
 	loadedConfig := cm2.Get()
-	// Note: Config loading may merge with defaults, so we check that at least compression was saved
-	// The exact behavior depends on how viper merges configs
-	assert.Equal(t, config.Encryption.Compression, loadedConfig.Encryption.Compression,
-		"Compression setting should be loaded correctly")
 	require.NotNil(t, loadedConfig, "Loaded config should not be nil")
+	assert.Equal(t, config.KeyDerivation.MemoryCost, loadedConfig.KeyDerivation.MemoryCost,
+		"Memory cost should be loaded correctly")
+}
+
+func TestConfigManager_Load_IgnoresLegacyDeadKeys(t *testing.T) {
+	cm, configDir := newIsolatedConfigManager(t)
+	legacy := []byte(`[encryption]
+algorithm = "chacha20"
+compression = true
+
+[key_derivation]
+memory_cost = 32768
+time_cost = 2
+parallelism = 2
+
+[security]
+key_cache_timeout = 300
+`)
+	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.toml"), legacy, 0o600))
+	require.NoError(t, cm.Load())
+
+	cfg := cm.Get()
+	assert.Equal(t, uint32(32768), cfg.KeyDerivation.MemoryCost)
+	assert.Equal(t, uint32(2), cfg.KeyDerivation.TimeCost)
+	assert.Equal(t, uint8(2), cfg.KeyDerivation.Parallelism)
 }
 
 func TestConfigManager_SetConfig(t *testing.T) {
 	cm := NewConfigManager()
 
 	newConfig := DefaultConfig()
-	newConfig.Encryption.Compression = true
+	newConfig.KeyDerivation.MemoryCost = 32768
 
 	cm.SetConfig(newConfig)
 
 	config := cm.Get()
-	assert.True(t, config.Encryption.Compression, "Config should be set correctly")
+	assert.Equal(t, uint32(32768), config.KeyDerivation.MemoryCost, "Config should be set correctly")
 }
 
 func TestGetConfigPath(t *testing.T) {
