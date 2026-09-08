@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `decrypt --strict` to abort directory decrypt on the first failure
 - Default-deny symlink / Windows junction / reparse-point policy on file-touching commands (encrypt, decrypt, rotate-key, secure-delete, watch, schedule, and keyfiles) (NV-017)
 - Lexical directory output containment (`SafeJoin` + `filepath.Rel`) that rejects `..`, non-local, reserved-device, rooted-backslash, and volume-qualified relatives as `PATH_ESCAPE` (NV-030)
+- Blocking `gosec` analysis in CI and GitHub build-provenance attestations for release binaries
 
 ### Changed
 
@@ -25,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed documentation for the nonexistent `encrypt --exclude` flag; `--exclude` remains supported by `watch`
 - Configuration now exposes only the Argon2id memory, time, and parallelism settings that affect new encryptions
 - Removed the nonfunctional `config --set` flags, unused key cache, and false multiple-algorithm claims
+- Newly created output and configuration directories use owner-only permissions on Unix
+- Encrypted-file offsets are bounds-checked before integer conversion, seeking, or slicing
 
 ## [0.2.0] - 2026-09-07
 

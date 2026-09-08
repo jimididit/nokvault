@@ -52,7 +52,7 @@ We will coordinate with you on the disclosure timeline. Once a fix is available:
 4. **Use Keyfiles**: Prefer keyfiles over passwords when possible
 5. **Secure Deletion**: Use `secure-delete` for sensitive files
 6. **Rotate Keys**: Periodically rotate encryption keys using `rotate-key`
-7. **Verify Downloads**: Always verify checksums when downloading binaries
+7. **Verify Downloads**: Verify release checksums and GitHub build provenance with `gh attestation verify <binary> --repo jimididit/nokvault`
 8. **Regular Paths**: Point commands at regular files and directories; Nokvault does not follow symlinks or junctions
 
 ### For Developers
@@ -61,6 +61,7 @@ We will coordinate with you on the disclosure timeline. Once a fix is available:
 2. **Code Review**: All security-sensitive code changes require review
 3. **Testing**: Ensure security-related tests pass before merging
 4. **Documentation**: Document security implications of changes
+5. **Automated Analysis**: CI runs vulnerability, static, and security-focused analysis on every change
 
 ## Security Features
 

@@ -34,6 +34,16 @@ A modern, feature-rich CLI tool for encrypting local files and folders. Built wi
 # Download the binary for your platform
 ```
 
+Release binaries published after provenance support was enabled include SHA-256
+checksums and a GitHub build attestation. Verify the downloaded binary with:
+
+```bash
+gh attestation verify ./nokvault-linux-amd64 --repo jimididit/nokvault
+```
+
+Compare its SHA-256 digest with the accompanying `checksums.txt` before running
+it. Replace the filename above with the artifact for your platform.
+
 **Or build from source:**
 
 ```bash

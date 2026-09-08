@@ -76,6 +76,5 @@ func runConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	// Show help if no action specified
-	cmd.Help()
-	return nil
+	return cmd.Help()
 }

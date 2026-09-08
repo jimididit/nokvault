@@ -23,6 +23,7 @@ func NewSecureDeleteService(passes int) *SecureDeleteService {
 
 // Delete securely deletes a file by overwriting it multiple times
 func (sds *SecureDeleteService) Delete(filePath string) error {
+	// #nosec G304 -- the CLI validates the user-selected path before invoking this service.
 	file, err := os.OpenFile(filePath, os.O_RDWR, 0)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
@@ -38,7 +39,9 @@ func (sds *SecureDeleteService) Delete(filePath string) error {
 
 	if fileSize == 0 {
 		// Empty file, just delete it
-		file.Close()
+		if err := file.Close(); err != nil {
+			return fmt.Errorf("failed to close file: %w", err)
+		}
 		return os.Remove(filePath)
 	}
 
@@ -50,7 +53,9 @@ func (sds *SecureDeleteService) Delete(filePath string) error {
 	}
 
 	// Close file before deletion
-	file.Close()
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("failed to close file: %w", err)
+	}
 
 	// Delete the file
 	if err := os.Remove(filePath); err != nil {

@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -127,6 +128,7 @@ func (de *DirectoryEncryptor) encryptFileWithMetadata(inputPath, outputPath stri
 	metadata.RelativePath = filepath.Base(inputPath)
 
 	// Read file data
+	// #nosec G304 -- directory walking and output preflight validate this caller-selected path.
 	data, err := os.ReadFile(inputPath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
@@ -266,6 +268,7 @@ func (dd *DirectoryDecryptor) DecryptDirectory(inputDir, outputDir string, passw
 // decryptFileWithMetadata decrypts a file and restores metadata
 func (dd *DirectoryDecryptor) decryptFileWithMetadata(inputPath, outputPath string, password []byte) error {
 	// Open input file
+	// #nosec G304 -- directory walking and output preflight validate this caller-selected path.
 	inputFile, err := os.Open(inputPath)
 	if err != nil {
 		return fmt.Errorf("failed to open input file: %w", err)
@@ -288,13 +291,20 @@ func (dd *DirectoryDecryptor) decryptFileWithMetadata(inputPath, outputPath stri
 	defer utils.ZeroizeKey(key)
 
 	// Read encrypted data
+	// #nosec G304 -- directory walking and output preflight validate this caller-selected path.
 	ciphertext, err := os.ReadFile(inputPath)
 	if err != nil {
 		return fmt.Errorf("failed to read encrypted data: %w", err)
 	}
 
 	// Skip header and metadata
-	dataStart := int64(header.DataOffset)
+	if header.DataOffset > math.MaxInt {
+		return fmt.Errorf("encrypted data offset %d exceeds platform limit", header.DataOffset)
+	}
+	dataStart := int(header.DataOffset)
+	if dataStart > len(ciphertext) {
+		return fmt.Errorf("encrypted data offset %d exceeds file size %d", header.DataOffset, len(ciphertext))
+	}
 	ciphertext = ciphertext[dataStart:]
 
 	// Decrypt data

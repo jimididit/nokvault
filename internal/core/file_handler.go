@@ -37,10 +37,11 @@ type NokvaultHeader struct {
 }
 
 const (
-	NokvaultMagic  = "NOKVAULT"
-	Version1       = uint16(1)
-	Version2       = uint16(2)
-	CurrentVersion = Version2
+	NokvaultMagic   = "NOKVAULT"
+	Version1        = uint16(1)
+	Version2        = uint16(2)
+	CurrentVersion  = Version2
+	maxMetadataSize = 1 << 20
 )
 
 // HeaderWireSize returns on-disk header size for a format version (excluding JSON metadata).
@@ -156,8 +157,16 @@ func (fh *FileHandler) WriteHeader(writer io.Writer, salt []byte, metadata *File
 		}
 	}
 
+	if len(metadataJSON) > maxMetadataSize {
+		return fmt.Errorf("metadata exceeds maximum size of %d bytes", maxMetadataSize)
+	}
+	// #nosec G115 -- the explicit MaxUint32 bound above makes this conversion safe.
+	metadataLength := uint32(len(metadataJSON))
 	headerSize := HeaderWireSize(CurrentVersion)
-	dataOffset := uint64(headerSize) + uint64(len(metadataJSON))
+	if headerSize < 0 {
+		return fmt.Errorf("unsupported header version: %d", CurrentVersion)
+	}
+	dataOffset := uint64(headerSize) + uint64(metadataLength)
 
 	var magic [8]byte
 	copy(magic[:], NokvaultMagic)
@@ -173,7 +182,7 @@ func (fh *FileHandler) WriteHeader(writer io.Writer, salt []byte, metadata *File
 	if err := binary.Write(writer, binary.LittleEndian, saltArr); err != nil {
 		return fmt.Errorf("failed to write header: %w", err)
 	}
-	if err := binary.Write(writer, binary.LittleEndian, uint32(len(metadataJSON))); err != nil {
+	if err := binary.Write(writer, binary.LittleEndian, metadataLength); err != nil {
 		return fmt.Errorf("failed to write header: %w", err)
 	}
 	if err := binary.Write(writer, binary.LittleEndian, dataOffset); err != nil {
@@ -257,6 +266,18 @@ func (fh *FileHandler) ReadHeader(reader io.Reader) (*NokvaultHeader, error) {
 	default:
 		return nil, fmt.Errorf("unsupported version: %d", h.Version)
 	}
+
+	if h.MetadataSize > maxMetadataSize {
+		return nil, fmt.Errorf("metadata size %d exceeds maximum of %d bytes", h.MetadataSize, maxMetadataSize)
+	}
+	headerSize := HeaderWireSize(h.Version)
+	if headerSize < 0 {
+		return nil, fmt.Errorf("unsupported version: %d", h.Version)
+	}
+	expectedDataOffset := uint64(headerSize) + uint64(h.MetadataSize)
+	if h.DataOffset != expectedDataOffset {
+		return nil, fmt.Errorf("invalid data offset %d (expected %d)", h.DataOffset, expectedDataOffset)
+	}
 	return h, nil
 }
 
@@ -286,7 +307,7 @@ func (fh *FileHandler) ReadHeaderWithMetadata(reader io.Reader) (*NokvaultHeader
 
 // EnsureDirectory ensures a directory exists
 func (fh *FileHandler) EnsureDirectory(path string) error {
-	return os.MkdirAll(path, 0755)
+	return os.MkdirAll(path, 0700)
 }
 
 // GetRelativePath returns the relative path from base
@@ -296,12 +317,14 @@ func (fh *FileHandler) GetRelativePath(base, target string) (string, error) {
 
 // CopyFile copies a file from src to dst
 func (fh *FileHandler) CopyFile(src, dst string) error {
+	// #nosec G304 -- this low-level helper intentionally copies caller-selected paths.
 	sourceFile, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("failed to open source file: %w", err)
 	}
 	defer sourceFile.Close()
 
+	// #nosec G304 -- this low-level helper intentionally copies caller-selected paths.
 	destFile, err := os.Create(dst)
 	if err != nil {
 		return fmt.Errorf("failed to create destination file: %w", err)

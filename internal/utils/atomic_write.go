@@ -40,7 +40,7 @@ func atomicWriteFunc(filePath string, perm os.FileMode, replace bool, write func
 	if dir == "" || dir == "." {
 		dir = "."
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 

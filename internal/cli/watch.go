@@ -242,6 +242,7 @@ func encryptFileAuto(filePath string, encryptionService *core.EncryptionService,
 	}
 
 	// Read file data
+	// #nosec G304 -- watch validates filePath and its components before this read.
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if verbose {

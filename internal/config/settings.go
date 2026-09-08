@@ -92,7 +92,7 @@ func (cm *ConfigManager) Load() error {
 
 // Save saves configuration to global config file
 func (cm *ConfigManager) Save() error {
-	if err := os.MkdirAll(cm.configDir, 0755); err != nil {
+	if err := os.MkdirAll(cm.configDir, 0700); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 

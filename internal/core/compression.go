@@ -22,7 +22,9 @@ func (cs *CompressionService) Compress(data []byte) ([]byte, error) {
 	writer := gzip.NewWriter(&buf)
 
 	if _, err := writer.Write(data); err != nil {
-		writer.Close()
+		if closeErr := writer.Close(); closeErr != nil {
+			return nil, fmt.Errorf("failed to write compressed data: %w (close error: %v)", err, closeErr)
+		}
 		return nil, fmt.Errorf("failed to write compressed data: %w", err)
 	}
 

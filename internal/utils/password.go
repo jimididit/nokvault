@@ -76,6 +76,7 @@ func readKeyfile(path string) ([]byte, error) {
 		}
 	}
 
+	// #nosec G304 -- keyfiles are intentionally user-selected and rejected above unless regular, non-symlink files.
 	keyfileData, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read keyfile: %w", err)
