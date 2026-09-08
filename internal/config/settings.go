@@ -11,86 +11,52 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	Encryption    EncryptionConfig    `toml:"encryption"`
-	KeyDerivation KeyDerivationConfig `toml:"key_derivation"`
-	Security      SecurityConfig      `toml:"security"`
-	Paths         PathsConfig         `toml:"paths"`
-}
-
-// EncryptionConfig holds encryption settings
-type EncryptionConfig struct {
-	Algorithm        string `toml:"algorithm"`         // "aes256gcm" or "chacha20"
-	Compression      bool   `toml:"compression"`       // Enable compression before encryption
-	PreserveMetadata bool   `toml:"preserve_metadata"` // Preserve file metadata
+	KeyDerivation KeyDerivationConfig `toml:"key_derivation" mapstructure:"key_derivation"`
 }
 
 // KeyDerivationConfig holds key derivation settings
 type KeyDerivationConfig struct {
-	Algorithm   string `toml:"algorithm"`   // "argon2id"
-	MemoryCost  uint32 `toml:"memory_cost"` // Memory cost in KB
-	TimeCost    uint32 `toml:"time_cost"`   // Time cost
-	Parallelism uint8  `toml:"parallelism"` // Parallelism factor
-}
-
-// SecurityConfig holds security settings
-type SecurityConfig struct {
-	SecureDelete    bool `toml:"secure_delete"`     // Enable secure deletion
-	DeletePasses    int  `toml:"delete_passes"`     // Number of overwrite passes
-	KeyCacheTimeout int  `toml:"key_cache_timeout"` // Key cache timeout in seconds
-}
-
-// PathsConfig holds path-related settings
-type PathsConfig struct {
-	DefaultKeyfile string `toml:"default_keyfile"` // Default keyfile path
-	BackupDir      string `toml:"backup_dir"`      // Backup directory
+	MemoryCost  uint32 `toml:"memory_cost" mapstructure:"memory_cost"` // Memory cost in KB
+	TimeCost    uint32 `toml:"time_cost" mapstructure:"time_cost"`     // Time cost
+	Parallelism uint8  `toml:"parallelism" mapstructure:"parallelism"` // Parallelism factor
 }
 
 // DefaultConfig returns a configuration with default values
 func DefaultConfig() *Config {
 	return &Config{
-		Encryption: EncryptionConfig{
-			Algorithm:        "aes256gcm",
-			Compression:      false,
-			PreserveMetadata: true,
-		},
 		KeyDerivation: KeyDerivationConfig{
-			Algorithm:   "argon2id",
 			MemoryCost:  65536, // 64 MB
 			TimeCost:    3,
 			Parallelism: 4,
-		},
-		Security: SecurityConfig{
-			SecureDelete:    false,
-			DeletePasses:    3,
-			KeyCacheTimeout: 300, // 5 minutes
-		},
-		Paths: PathsConfig{
-			DefaultKeyfile: "",
-			BackupDir:      ".nokvault-backup",
 		},
 	}
 }
 
 // ConfigManager manages configuration loading and saving
 type ConfigManager struct {
-	viper  *viper.Viper
-	config *Config
+	viper     *viper.Viper
+	config    *Config
+	configDir string
 }
 
 // NewConfigManager creates a new config manager
 func NewConfigManager() *ConfigManager {
+	return newConfigManager(getConfigDir())
+}
+
+func newConfigManager(configDir string) *ConfigManager {
 	v := viper.New()
 	v.SetConfigType("toml")
 	v.SetConfigName("config")
 
 	// Set config paths
-	configDir := getConfigDir()
 	v.AddConfigPath(configDir)
 	v.AddConfigPath(".") // Current directory for .nokvault.toml
 
 	return &ConfigManager{
-		viper:  v,
-		config: DefaultConfig(),
+		viper:     v,
+		config:    DefaultConfig(),
+		configDir: configDir,
 	}
 }
 
@@ -126,12 +92,11 @@ func (cm *ConfigManager) Load() error {
 
 // Save saves configuration to global config file
 func (cm *ConfigManager) Save() error {
-	configDir := getConfigDir()
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(cm.configDir, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	configPath := filepath.Join(configDir, "config.toml")
+	configPath := filepath.Join(cm.configDir, "config.toml")
 
 	// Marshal config to TOML
 	data, err := toml.Marshal(cm.config)

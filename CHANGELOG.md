@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - There is no `--follow-symlinks` opt-in and no silent skip of links
 - The unfinished `protect` archive command is hidden from help and fails without touching the supplied path
 - Removed documentation for the nonexistent `encrypt --exclude` flag; `--exclude` remains supported by `watch`
+- Configuration now exposes only the Argon2id memory, time, and parallelism settings that affect new encryptions
+- Removed the nonfunctional `config --set` flags, unused key cache, and false multiple-algorithm claims
 
 ## [0.2.0] - 2026-09-07
 

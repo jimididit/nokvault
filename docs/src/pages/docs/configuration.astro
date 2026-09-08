@@ -7,7 +7,7 @@ import CodeBlock from '../../components/CodeBlock.astro';
   <div class="prose prose-invert max-w-none">
     <h1>Configuration</h1>
     <p class="text-xl text-dark-text-muted mb-8">
-      Configure Nokvault with global and local settings to customize its behavior.
+      Configure Argon2id parameters used when creating new encrypted files.
     </p>
 
     <section class="mb-8">
@@ -44,7 +44,6 @@ nokvault config --init
 nokvault config --show
 
 # Get a specific value
-nokvault config --get compression
 nokvault config --get memory_cost
 nokvault config --get time_cost
 nokvault config --get parallelism`} lang="bash" />
@@ -53,10 +52,13 @@ nokvault config --get parallelism`} lang="bash" />
     <section class="mb-8">
       <h2>Changing Configuration</h2>
       <p class="text-dark-text-muted mb-4">
-        Edit <code>~/.config/nokvault/config.toml</code> or a project-local <code>.nokvault.toml</code> directly, or run <code>nokvault config --init</code> to create a default global file. Use <code>--get</code> to read individual keys (<code>algorithm</code>, <code>compression</code>, <code>preserve_metadata</code>, <code>memory_cost</code>, <code>time_cost</code>, <code>parallelism</code>, <code>secure_delete</code>, <code>delete_passes</code>).
+        Edit <code>~/.config/nokvault/config.toml</code> or a project-local <code>.nokvault.toml</code> directly, or run <code>nokvault config --init</code> to create a default global file. The supported keys are <code>memory_cost</code>, <code>time_cost</code>, and <code>parallelism</code>. The CLI intentionally has no <code>config --set</code> command.
       </p>
       <p class="text-dark-text-muted mb-4">
         <strong>Key derivation settings apply when creating encrypted files only</strong> (encrypt, rotate-key re-encryption, watch, schedule). Decryption always uses the Argon2 parameters stored in each file's header (format v2) or built-in defaults for older v1 files — changing config does not affect existing ciphertext.
+      </p>
+      <p class="text-dark-text-muted mb-4">
+        Older config files may contain previously generated encryption, security, or path keys. Those keys never affected runtime behavior; they are now ignored and are not written by <code>config --init</code>.
       </p>
     </section>
 
@@ -65,40 +67,19 @@ nokvault config --get parallelism`} lang="bash" />
       <p class="text-dark-text-muted mb-4">
         Configuration files use TOML format. Example <code>config.toml</code>:
       </p>
-      <CodeBlock code={`[encryption]
-algorithm = "aes256gcm"
-compression = false
-preserve_metadata = true
-
-[key_derivation]
-algorithm = "argon2id"
+      <CodeBlock code={`[key_derivation]
 memory_cost = 65536  # KiB (64 MiB)
 time_cost = 3
-parallelism = 4
-
-[security]
-secure_delete = false
-delete_passes = 3
-key_cache_timeout = 300
-
-[paths]
-default_keyfile = ""
-backup_dir = ".nokvault-backup"`} lang="toml" />
+parallelism = 4`} lang="toml" />
     </section>
 
     <section class="mb-8">
       <h2>Environment Variables</h2>
       <p class="text-dark-text-muted mb-4">
-        Some settings can also be controlled via environment variables, which override config files:
+        Password input can be supplied non-interactively via the environment. Argon2id settings are read only from configuration files:
       </p>
       <CodeBlock code={`# Password for non-interactive use
-export NOKVAULT_PASSWORD="your-password"
-
-# Keyfile path
-export NOKVAULT_KEYFILE="~/.keys/master.key"
-
-# Enable compression
-export NOKVAULT_COMPRESSION="true"`} lang="bash" />
+export NOKVAULT_PASSWORD="your-password"`} lang="bash" />
     </section>
 
     <section class="mb-8">
@@ -107,12 +88,6 @@ export NOKVAULT_COMPRESSION="true"`} lang="bash" />
         Create a <code>.nokvault.toml</code> file in your project directory for project-specific settings:
       </p>
       <CodeBlock code={`# .nokvault.toml
-[encryption]
-compression = true
-
-[paths]
-default_keyfile = "./.keys/project.key"
-
 [key_derivation]
 memory_cost = 131072  # stronger KDF for new encryptions in this project`} lang="toml" />
       <p class="text-dark-text-muted mt-4">

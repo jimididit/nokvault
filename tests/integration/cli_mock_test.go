@@ -315,6 +315,11 @@ func TestCLI_Commands_Flags(t *testing.T) {
 		{"encrypt", "force", true},
 		{"decrypt", "force", true},
 		{"decrypt", "strict", true},
+		{"config", "init", true},
+		{"config", "show", true},
+		{"config", "get", true},
+		{"config", "set", false},
+		{"config", "value", false},
 	}
 
 	for _, tt := range tests {
@@ -324,6 +329,9 @@ func TestCLI_Commands_Flags(t *testing.T) {
 		if tt.shouldHave {
 			flag := cmd.Flags().Lookup(tt.flagName)
 			assert.NotNil(t, flag, "Command %s should have flag %s", tt.command, tt.flagName)
+		} else {
+			flag := cmd.Flags().Lookup(tt.flagName)
+			assert.Nil(t, flag, "Command %s should not have flag %s", tt.command, tt.flagName)
 		}
 	}
 }

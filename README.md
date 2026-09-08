@@ -100,11 +100,11 @@ nokvault secure-delete ./secrets --dry-run
 | `schedule encrypt <path>` | Schedule periodic encryption operations. Re-validates the tree on every run. |
 | `rotate-key <path>` | Rotate encryption key for a file. Rejects symlink/reparse inputs. |
 | `secure-delete <path>` | Securely delete (`--yes` / `--dry-run`). Refuses symlink/reparse paths and does not follow them. |
-| `config` | Manage configuration settings |
+| `config` | Initialize or inspect Argon2id settings for new encryptions |
 
 ## Configuration
 
-Initialize configuration:
+Initialize the supported Argon2id configuration:
 
 ```bash
 nokvault config --init

@@ -17,15 +17,15 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "nokvault",
-	Short: "A modern CLI tool for encrypting and protecting local folders",
-	Long: `Nokvault is a comprehensive CLI tool for encrypting and protecting 
-local folders and files. It provides beginner-friendly commands while offering 
+	Short: "A modern CLI tool for encrypting local files and folders",
+	Long: `Nokvault is a comprehensive CLI tool for encrypting local files and
+folders. It provides beginner-friendly commands while offering
 advanced features for power users.
 
 Features:
   - Simple encryption/decryption commands
   - Password and keyfile support
-  - Multiple encryption algorithms
+  - AES-256-GCM authenticated encryption
   - File watching and automation
   - Secure deletion
   - Cross-platform support (Windows, Linux, macOS)`,

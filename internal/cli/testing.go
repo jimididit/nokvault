@@ -68,6 +68,4 @@ func ResetCLIStateForTest() {
 	configShow = false
 	configInit = false
 	configGet = ""
-	configSet = ""
-	configValue = ""
 }
