@@ -5,7 +5,7 @@
 [![Build Status](https://img.shields.io/github/actions/workflow/status/jimididit/nokvault/release.yml?style=flat-square)](https://github.com/jimididit/nokvault/actions)
 [![Release](https://img.shields.io/github/v/release/jimididit/nokvault?style=flat-square)](https://github.com/jimididit/nokvault/releases)
 
-A modern, feature-rich CLI tool for encrypting and protecting local folders and files. Built with Go for cross-platform support (Windows, Linux, macOS).
+A modern, feature-rich CLI tool for encrypting local files and folders. Built with Go for cross-platform support (Windows, Linux, macOS).
 
 ## Features
 

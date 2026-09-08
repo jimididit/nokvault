@@ -18,10 +18,10 @@ if (type === 'SoftwareApplication' && data) {
     name: data.name || 'Nokvault',
     applicationCategory: 'SecurityApplication',
     operatingSystem: 'Windows, Linux, macOS',
-    description: data.description || 'A modern CLI tool for encrypting and protecting local folders and files',
+    description: data.description || 'A modern CLI tool for encrypting local files and folders',
     url: `${siteUrl}${base}`,
     downloadUrl: data.downloadUrl || `https://github.com/jimididit/nokvault/releases`,
-    softwareVersion: data.version || '0.1.0',
+    softwareVersion: data.version || '0.2.0',
     releaseNotes: `${siteUrl}${base}docs/changelog`,
     license: 'https://opensource.org/licenses/MIT',
     author: {
@@ -57,7 +57,7 @@ if (type === 'SoftwareApplication' && data) {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'Nokvault',
-    description: 'A modern CLI tool for encrypting and protecting local folders and files',
+    description: 'A modern CLI tool for encrypting local files and folders',
     url: `${siteUrl}${base}`,
     potentialAction: {
       '@type': 'SearchAction',
