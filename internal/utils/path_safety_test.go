@@ -42,6 +42,18 @@ func trySymlink(t *testing.T, oldname, newname string) {
 	}
 }
 
+func isJunctionCreationUnavailable(err error, out []byte) bool {
+	if err == nil {
+		return false
+	}
+	if isLinkCreationUnavailable(err) {
+		return true
+	}
+	msg := strings.ToLower(string(out) + err.Error())
+	return strings.Contains(msg, "privilege") ||
+		strings.Contains(msg, "not supported")
+}
+
 func tryJunction(t *testing.T, oldname, newname string) {
 	t.Helper()
 	if runtime.GOOS != "windows" {
@@ -49,14 +61,22 @@ func tryJunction(t *testing.T, oldname, newname string) {
 	}
 	out, err := exec.Command("cmd", "/c", "mklink", "/J", newname, oldname).CombinedOutput()
 	if err != nil {
-		msg := strings.ToLower(string(out) + err.Error())
-		if isLinkCreationUnavailable(err) ||
-			strings.Contains(msg, "privilege") ||
-			strings.Contains(msg, "not supported") ||
-			strings.Contains(msg, "cannot create") {
+		if isJunctionCreationUnavailable(err, out) {
 			t.Skipf("junction creation unavailable: %v: %s", err, out)
 		}
 		t.Fatalf("junction creation failed: %v: %s", err, out)
+	}
+}
+
+func TestIsJunctionCreationUnavailable(t *testing.T) {
+	if isJunctionCreationUnavailable(errors.New("exit status 1"), []byte("Cannot create a file when that file already exists.")) {
+		t.Fatal(`generic "cannot create" must not skip`)
+	}
+	if !isJunctionCreationUnavailable(syscall.Errno(1314), nil) {
+		t.Fatal("ERROR_PRIVILEGE_NOT_HELD must skip")
+	}
+	if !isJunctionCreationUnavailable(errors.New("exit status 1"), []byte("You do not have sufficient privilege to perform this operation.")) {
+		t.Fatal("privilege text in mklink output must skip")
 	}
 }
 

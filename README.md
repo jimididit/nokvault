@@ -165,12 +165,12 @@ nokvault encrypt ./files -v
 
 ## Known Limitations
 
-- **`protect` command**: Directory protection (archive mode) is not yet fully implemented. Path policy still runs first; use `encrypt` for files or directories.
+- **`protect` command**: Archive mode is not implemented. Only the supplied root and output path components are validated before `Lstat`/`--dry-run`; nested input is not traversed. Use `encrypt` for files or directories.
 - **Package managers**: Homebrew, Scoop, and APT support is planned but not yet available. Download binaries from [GitHub Releases](https://github.com/jimididit/nokvault/releases).
 - **Edge cases**: Some edge cases may need additional testing. Please report any issues you encounter.
 - **No-replace filesystem support**: Race-safe encrypt/decrypt writes without `--force` require hard-link support on the destination filesystem. FAT/exFAT and some network filesystems may reject the operation; choose a supported destination rather than weakening overwrite protection.
 - **No symlink follow opt-in**: There is no `--follow-symlinks` flag. Use a regular file or directory path instead of a link.
-- **Windows reparse points**: Junctions and other reparse points are treated like symlinks and rejected. Cloud placeholders or volume mount points may also fail closed.
+- **Windows reparse points**: `Lstat`-visible symlinks and `ModeIrregular` entries are rejected, as are paths with readable reparse attributes (junctions, and some cloud placeholders or volume mount points). If `GetFileAttributes` fails on an ordinary-looking path, that component cannot be conclusively classified.
 - **Concurrent path replacement**: Validation uses `Lstat` before open. A privileged local attacker who replaces a path component between those steps is outside this policy; descriptor-relative OS APIs are not used.
 
 ## Security
@@ -180,7 +180,7 @@ nokvault encrypt ./files -v
 - **Memory Safety**: Sensitive data zeroized after use
 - **Atomic encrypt writes**: Temp file + fsync + rename
 - **Decrypt modes**: Clamped to ≤0600 / ≤0700 unless `--preserve-mode`
-- **Path policy**: Default-deny for symlinks, Windows junctions, and other reparse points on encrypt, decrypt, rotate-key, secure-delete, watch, schedule, keyfiles, and `protect` path checks. Directory outputs are contained with lexical `SafeJoin` (`filepath.Rel`, not string-prefix matching).
+- **Path policy**: Default-deny for detected symlinks, Windows junctions, and other reparse points on encrypt, decrypt, rotate-key, secure-delete, watch, schedule, and keyfiles. Nested-link rejection applies only to commands that recurse. `protect` validates only the supplied root/output components. Directory outputs are contained with lexical `SafeJoin` (`filepath.Rel`, not string-prefix matching).
 - **Policy errors**: `SYMLINK_DISALLOWED` (use a regular path; links are not followed) and `PATH_ESCAPE` (stay inside the selected output directory). Checks run before `--dry-run`, password prompts, reads, writes, or deletes.
 - **Timing Attack Protection**: Constant-time operations
 - **File Integrity**: Built-in authentication tags

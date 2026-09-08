@@ -19,10 +19,11 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
     <section class="mb-8">
       <h2>Path and symlink policy</h2>
       <p class="text-dark-text-muted mb-4">
-        File-touching commands use one default-deny policy: encrypt, decrypt, rotate-key, secure-delete, watch, schedule, keyfile reads, and <code>protect</code> path checks. There is no <code>--follow-symlinks</code> flag and links are never skipped silently.
+        File-touching commands share a default-deny policy. There is no <code>--follow-symlinks</code> flag and links are never skipped silently.
       </p>
       <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Any symlink, Windows junction, or other reparse point in an input, output leaf, or existing parent component aborts the operation and names the rejected path.</li>
+        <li>Any symlink, Windows junction, or other detected reparse point in a supplied input, output leaf, or existing parent component aborts the operation and names the rejected path.</li>
+        <li>Nested links inside a tree are rejected only by commands that recurse (directory encrypt/decrypt, tree <code>secure-delete</code>, schedule directory runs, and watch events). <code>protect</code> does not walk nested input.</li>
         <li>Checks run before <code>--dry-run</code>, password prompts, reads, writes, overwrite checks, or deletes.</li>
         <li>Directory outputs are joined with lexical containment (<code>filepath.Clean</code> + <code>filepath.Rel</code>, never string-prefix matching). Absolute, <code>..</code>, non-local, reserved-device (<code>NUL</code>/<code>CON</code>/<code>COM1</code>), rooted-backslash, and volume-qualified relatives are rejected.</li>
         <li><code>SYMLINK_DISALLOWED</code>: use a regular file or directory path. Symlinks are not followed.</li>
@@ -187,6 +188,13 @@ nokvault secure-delete sensitive-file.txt --yes
 
 # Secure delete with custom passes
 nokvault secure-delete sensitive-file.txt --yes --passes 7`} lang="bash" />
+      </section>
+
+      <section>
+        <h2><code>protect &lt;path&gt;</code></h2>
+        <p class="text-dark-text-muted mb-4">
+          Archive mode is not implemented. Before <code>Lstat</code> or <code>--dry-run</code>, <code>protect</code> validates only the supplied directory root and output path components. It does not traverse nested input. Use <code>encrypt</code> for files or directories.
+        </p>
       </section>
 
       <section>

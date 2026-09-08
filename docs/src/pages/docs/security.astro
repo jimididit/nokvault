@@ -109,11 +109,11 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
     <section class="mb-8">
       <h2>Path containment and symlinks</h2>
       <p class="text-dark-text-muted mb-4">
-        Nokvault does not follow symbolic links, Windows junctions, or other reparse points. The same default-deny policy applies to encrypt, decrypt, rotate-key, secure-delete, watch, schedule, keyfiles, and <code>protect</code> path checks. There is no follow opt-in.
+        Nokvault does not follow symbolic links, Windows junctions, or other detected reparse points. Encrypt, decrypt, rotate-key, secure-delete, watch, schedule, and keyfiles share that default-deny policy. <code>protect</code> only checks the supplied root and output components. There is no follow opt-in. Nested-link rejection applies to commands that recurse, not to <code>protect</code>.
       </p>
       <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
         <li>Validation walks existing path components with <code>Lstat</code>. Missing output leaves are allowed; an existing redirected parent is not.</li>
-        <li>On Windows, reparse attributes are treated as redirects. If attributes cannot be read, the path fails closed.</li>
+        <li>On Windows, <code>Lstat</code>-visible symlinks and <code>ModeIrregular</code> entries are rejected, as are paths whose reparse attributes can be read. If <code>GetFileAttributes</code> fails on an ordinary-looking path, that component cannot be conclusively classified and is not treated as a redirect.</li>
         <li>Directory outputs must remain under the selected root. Containment uses cleaned absolute paths and <code>filepath.Rel</code>, not a string-prefix check.</li>
         <li>Rejected paths return <code>SYMLINK_DISALLOWED</code> or <code>PATH_ESCAPE</code> with a hint. Replace the link with a regular path, or keep the relative output inside the chosen directory.</li>
         <li>These checks run before dry-run previews and before any password prompt.</li>
