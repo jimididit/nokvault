@@ -129,12 +129,6 @@ Configuration files:
 nokvault encrypt large-file.bin --compress
 ```
 
-**Exclude patterns:**
-
-```bash
-nokvault encrypt ./documents --exclude "*.tmp" --exclude "*.log"
-```
-
 **Use environment variable:**
 
 ```bash
@@ -165,7 +159,7 @@ nokvault encrypt ./files -v
 
 ## Known Limitations
 
-- **`protect` command**: Archive mode is not implemented. Only the supplied root and output path components are validated before `Lstat`/`--dry-run`; nested input is not traversed. Use `encrypt` for files or directories.
+- **`protect` command**: Hidden because archive mode is not implemented. Direct invocation fails without touching the supplied path. Use `encrypt` for files or directories.
 - **Package managers**: Homebrew, Scoop, and APT support is planned but not yet available. Download binaries from [GitHub Releases](https://github.com/jimididit/nokvault/releases).
 - **Edge cases**: Some edge cases may need additional testing. Please report any issues you encounter.
 - **No-replace filesystem support**: Race-safe encrypt/decrypt writes without `--force` require hard-link support on the destination filesystem. FAT/exFAT and some network filesystems may reject the operation; choose a supported destination rather than weakening overwrite protection.
@@ -180,7 +174,7 @@ nokvault encrypt ./files -v
 - **Memory Safety**: Sensitive data zeroized after use
 - **Atomic encrypt writes**: Temp file + fsync + rename
 - **Decrypt modes**: Clamped to ≤0600 / ≤0700 unless `--preserve-mode`
-- **Path policy**: Default-deny for detected symlinks, Windows junctions, and other reparse points on encrypt, decrypt, rotate-key, secure-delete, watch, schedule, and keyfiles. Nested-link rejection applies only to commands that recurse. `protect` validates only the supplied root/output components. Directory outputs are contained with lexical `SafeJoin` (`filepath.Rel`, not string-prefix matching).
+- **Path policy**: Default-deny for detected symlinks, Windows junctions, and other reparse points on encrypt, decrypt, rotate-key, secure-delete, watch, schedule, and keyfiles. Nested-link rejection applies only to commands that recurse. Directory outputs are contained with lexical `SafeJoin` (`filepath.Rel`, not string-prefix matching).
 - **Policy errors**: `SYMLINK_DISALLOWED` (use a regular path; links are not followed) and `PATH_ESCAPE` (stay inside the selected output directory). Checks run before `--dry-run`, password prompts, reads, writes, or deletes.
 - **Timing Attack Protection**: Constant-time operations
 - **File Integrity**: Built-in authentication tags

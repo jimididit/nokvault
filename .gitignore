@@ -97,6 +97,8 @@ desktop.ini
 HELP_DOCS/
 ROADMAP.md
 AUDIT_REPORT.md
+.superpowers/
+docs/superpowers/
 
 # Package manager templates (not ready for distribution yet)
 Formula/

@@ -1,23 +1,16 @@
 package cli
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/jimididit/nokvault/internal/utils"
 	"github.com/spf13/cobra"
 )
 
 var protectCmd = &cobra.Command{
-	Use:   "protect <path>",
-	Short: "Protect a folder by creating an encrypted archive",
-	Long: `Protect a folder by creating an encrypted .nokvault archive file.
-
-This command creates a single encrypted archive file containing all files
-from the specified directory. This is useful for backing up or sharing
-entire directory structures securely.`,
-	Args: cobra.ExactArgs(1),
-	RunE: runProtect,
+	Use:    "protect <path>",
+	Short:  "Unavailable encrypted archive command",
+	Hidden: true,
+	Args:   cobra.ExactArgs(1),
+	RunE:   runProtect,
 }
 
 var (
@@ -41,45 +34,10 @@ func init() {
 }
 
 func runProtect(cmd *cobra.Command, args []string) error {
-	inputPath := args[0]
-
-	if err := utils.ValidateNoSymlinkComponents(inputPath); err != nil {
-		return err
-	}
-
-	info, err := os.Lstat(inputPath)
-	if os.IsNotExist(err) {
-		PrintError(fmt.Sprintf("Path does not exist: %s", inputPath))
-		return utils.NewError(utils.ErrInvalidPath.Code, fmt.Sprintf("Path does not exist: %s", inputPath), err)
-	}
-	if err != nil {
-		return err
-	}
-
-	if !info.IsDir() {
-		PrintError("protect command only works with directories. Use 'encrypt' for files.")
-		return fmt.Errorf("protect command requires a directory")
-	}
-
-	// Determine output path
-	outputPath := protectOutput
-	if outputPath == "" {
-		outputPath = inputPath + ".nokvault"
-	}
-
-	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
-		return err
-	}
-
-	if protectDryRun {
-		PrintInfo(fmt.Sprintf("Would protect directory: %s -> %s", inputPath, outputPath))
-		return nil
-	}
-
-	PrintInfo("Directory protection (archive mode) is not yet fully implemented.")
-	PrintInfo("For now, use 'encrypt' command on individual files.")
-	return fmt.Errorf("directory protection not yet implemented - use 'encrypt' for files")
-
-	// TODO: Implement directory archiving with compression
-	// This will be implemented in Phase 2
+	return utils.NewErrorWithHint(
+		"COMMAND_UNAVAILABLE",
+		"protect archive mode is not implemented",
+		nil,
+		"Use 'nokvault encrypt <path>' to encrypt a file or directory.",
+	)
 }
