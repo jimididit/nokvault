@@ -18,13 +18,17 @@ func isPathPolicyError(err error) bool {
 	return nv.Code == utils.ErrSymlinkDisallowed.Code || nv.Code == utils.ErrPathEscape.Code
 }
 
-// reportWatchValidationError always prints typed path-policy errors.
+// reportWatchValidationError always prints typed path-policy errors with hints.
 // Ordinary permission/I/O validation errors print only when verbose.
 func reportWatchValidationError(err error, verbose bool) {
 	if err == nil {
 		return
 	}
-	if isPathPolicyError(err) || verbose {
+	if isPathPolicyError(err) {
+		printPathPolicyError(err)
+		return
+	}
+	if verbose {
 		PrintError(err.Error())
 	}
 }
@@ -33,9 +37,22 @@ func logScheduleEncryptError(err error) {
 	if err == nil {
 		return
 	}
-	if isPathPolicyError(err) || scheduleVerbose {
+	if isPathPolicyError(err) {
+		printPathPolicyError(err)
+		return
+	}
+	if scheduleVerbose {
 		PrintError(fmt.Sprintf("Scheduled encryption failed: %v", err))
 	}
+}
+
+func printPathPolicyError(err error) {
+	var nv *utils.NokvaultError
+	if errors.As(err, &nv) {
+		PrintErrorWithHint(nv)
+		return
+	}
+	PrintErrorWithHint(err)
 }
 
 func preflightContainedOutputs(inputPath, outputRoot string, outputRel func(relPath string) (string, bool)) error {

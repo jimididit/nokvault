@@ -69,6 +69,14 @@ func requirePathEscape(t *testing.T, err error) {
 	require.NotContains(t, err.Error(), "directory decryption completed")
 }
 
+func requireReportedPolicyHint(t *testing.T, out, code, hint string) {
+	t.Helper()
+	require.Contains(t, out, code)
+	require.Contains(t, out, hint)
+	require.Contains(t, out, "Hint:")
+	require.Equal(t, 1, strings.Count(out, "Error:"), "policy report must not duplicate the error line")
+}
+
 func captureStderr(t *testing.T) func() string {
 	t.Helper()
 	old := os.Stderr
@@ -345,8 +353,8 @@ func TestSchedule_ReportsPathPolicyWithoutVerbose(t *testing.T) {
 	readPolicy := captureStderr(t)
 	logScheduleEncryptError(policyErr)
 	policyOut := readPolicy()
-	require.Contains(t, policyOut, "SYMLINK_DISALLOWED")
 	require.Contains(t, policyOut, "scheduled-link")
+	requireReportedPolicyHint(t, policyOut, "SYMLINK_DISALLOWED", "Use a regular file or directory path. Symlinks are not followed.")
 
 	escapeErr := utils.NewErrorWithHint(
 		utils.ErrPathEscape.Code,
@@ -356,11 +364,38 @@ func TestSchedule_ReportsPathPolicyWithoutVerbose(t *testing.T) {
 	)
 	readEscape := captureStderr(t)
 	logScheduleEncryptError(escapeErr)
-	require.Contains(t, readEscape(), "PATH_ESCAPE")
+	requireReportedPolicyHint(t, readEscape(), "PATH_ESCAPE", "Use a relative path that stays inside the selected output directory.")
 
 	readOrdinary := captureStderr(t)
 	logScheduleEncryptError(fmt.Errorf("disk full"))
 	require.Empty(t, readOrdinary(), "ordinary schedule errors stay quiet without --verbose")
+
+	scheduleVerbose = true
+	readOrdinaryVerbose := captureStderr(t)
+	logScheduleEncryptError(fmt.Errorf("disk full"))
+	ordinaryVerbose := readOrdinaryVerbose()
+	require.Contains(t, ordinaryVerbose, "Scheduled encryption failed")
+	require.Contains(t, ordinaryVerbose, "disk full")
+	require.NotContains(t, ordinaryVerbose, "Hint:")
+}
+
+func TestSchedule_ReportsWrappedPolicyHintWithoutDuplicate(t *testing.T) {
+	ResetCLIStateForTest()
+	t.Cleanup(ResetCLIStateForTest)
+	scheduleVerbose = false
+
+	wrapped := fmt.Errorf("tick: %w", utils.NewErrorWithHint(
+		utils.ErrSymlinkDisallowed.Code,
+		"Symlink paths are not allowed: wrapped-link",
+		nil,
+		"Use a regular file or directory path. Symlinks are not followed.",
+	))
+	read := captureStderr(t)
+	logScheduleEncryptError(wrapped)
+	out := read()
+	require.Contains(t, out, "wrapped-link")
+	requireReportedPolicyHint(t, out, "SYMLINK_DISALLOWED", "Use a regular file or directory path. Symlinks are not followed.")
+	require.NotContains(t, out, "Scheduled encryption failed")
 }
 
 func TestProtect_RejectsSymlinkInputBeforeDryRun(t *testing.T) {
@@ -452,14 +487,17 @@ func TestReportWatchValidationError(t *testing.T) {
 	t.Run("policy_verbose_off_visible", func(t *testing.T) {
 		read := captureStderr(t)
 		reportWatchValidationError(policyErr, false)
-		out := read()
-		require.Contains(t, out, "SYMLINK_DISALLOWED")
+		requireReportedPolicyHint(t, read(), "SYMLINK_DISALLOWED", "Use a regular file or directory path. Symlinks are not followed.")
 	})
 	t.Run("policy_verbose_on_visible", func(t *testing.T) {
 		read := captureStderr(t)
 		reportWatchValidationError(policyErr, true)
-		out := read()
-		require.Contains(t, out, "SYMLINK_DISALLOWED")
+		requireReportedPolicyHint(t, read(), "SYMLINK_DISALLOWED", "Use a regular file or directory path. Symlinks are not followed.")
+	})
+	t.Run("wrapped_policy_hint", func(t *testing.T) {
+		read := captureStderr(t)
+		reportWatchValidationError(fmt.Errorf("event: %w", policyErr), false)
+		requireReportedPolicyHint(t, read(), "SYMLINK_DISALLOWED", "Use a regular file or directory path. Symlinks are not followed.")
 	})
 	t.Run("ordinary_verbose_off_silent", func(t *testing.T) {
 		read := captureStderr(t)
@@ -471,6 +509,7 @@ func TestReportWatchValidationError(t *testing.T) {
 		reportWatchValidationError(ordinary, true)
 		out := read()
 		require.Contains(t, out, ordinary.Error())
+		require.NotContains(t, out, "Hint:")
 	})
 }
 
@@ -489,8 +528,8 @@ func TestWatch_CallbackReportsPolicyWithVerbose(t *testing.T) {
 	cb(link, fsnotify.Event{Name: link, Op: fsnotify.Write})
 	output := readStderr()
 
-	require.Contains(t, output, "SYMLINK_DISALLOWED")
 	require.Contains(t, output, link)
+	requireReportedPolicyHint(t, output, "SYMLINK_DISALLOWED", "Use a regular file or directory path. Symlinks are not followed.")
 }
 
 func TestWatch_CallbackOrdinaryValidationSilentWithoutVerbose(t *testing.T) {
@@ -520,6 +559,7 @@ func TestWatch_CallbackOrdinaryValidationReportsWhenVerbose(t *testing.T) {
 	cb(missing, fsnotify.Event{Name: missing, Op: fsnotify.Write})
 	output := readStderr()
 	require.Contains(t, output, "gone.txt")
+	require.NotContains(t, output, "Hint:")
 }
 
 func TestWatch_CallbackReportsPolicyWithoutVerbose(t *testing.T) {
@@ -537,8 +577,8 @@ func TestWatch_CallbackReportsPolicyWithoutVerbose(t *testing.T) {
 	cb(link, fsnotify.Event{Name: link, Op: fsnotify.Write})
 	output := readStderr()
 
-	require.Contains(t, output, "SYMLINK_DISALLOWED")
 	require.Contains(t, output, link)
+	requireReportedPolicyHint(t, output, "SYMLINK_DISALLOWED", "Use a regular file or directory path. Symlinks are not followed.")
 	_, statErr := os.Lstat(link + ".nokvault")
 	require.True(t, os.IsNotExist(statErr), "symlink event must not be scheduled for encryption")
 }
@@ -562,7 +602,7 @@ func TestWatch_DelayedEncryptReportsPolicyWithoutVerbose(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 	output := readStderr()
 
-	require.Contains(t, output, "SYMLINK_DISALLOWED")
+	requireReportedPolicyHint(t, output, "SYMLINK_DISALLOWED", "Use a regular file or directory path. Symlinks are not followed.")
 	_, statErr := os.Lstat(regular + ".nokvault")
 	require.True(t, os.IsNotExist(statErr))
 }
