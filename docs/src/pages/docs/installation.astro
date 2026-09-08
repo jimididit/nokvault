@@ -30,6 +30,17 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
     </section>
 
     <section class="mb-8">
+      <h2>Verify Release Provenance</h2>
+      <p class="text-dark-text-muted mb-4">
+        Releases published after provenance support was enabled include SHA-256 checksums and a GitHub build attestation. Compare the downloaded binary with <code>checksums.txt</code>, then verify that GitHub Actions built it from this repository:
+      </p>
+      <CodeBlock code="gh attestation verify ./nokvault-linux-amd64 --repo jimididit/nokvault" lang="bash" />
+      <p class="text-dark-text-muted mt-4">
+        Replace the filename with the artifact for your platform. The command requires the GitHub CLI and an internet connection.
+      </p>
+    </section>
+
+    <section class="mb-8">
       <h2>Build from Source</h2>
       <p class="text-dark-text-muted mb-4">
         Build Nokvault from source if you want the latest features or need to customize the build.

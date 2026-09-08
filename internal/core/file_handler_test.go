@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -194,11 +195,35 @@ func TestFileHandler_ReadHeader_InvalidSalt(t *testing.T) {
 	assert.Error(t, err, "Expected error for invalid salt size")
 }
 
+func TestFileHandler_ReadHeader_RejectsOversizedMetadataBeforeAllocation(t *testing.T) {
+	fh := NewFileHandler()
+	var buf bytes.Buffer
+	require.NoError(t, fh.WriteHeader(&buf, make([]byte, 16), nil, crypto.DefaultArgon2Params()))
+
+	raw := append([]byte(nil), buf.Bytes()...)
+	binary.LittleEndian.PutUint32(raw[26:30], maxMetadataSize+1)
+	binary.LittleEndian.PutUint64(raw[30:38], uint64(HeaderWireSize(Version2))+maxMetadataSize+1)
+
+	_, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(raw))
+	require.ErrorContains(t, err, "metadata size")
+}
+
+func TestFileHandler_ReadHeader_RejectsInconsistentDataOffset(t *testing.T) {
+	fh := NewFileHandler()
+	var buf bytes.Buffer
+	require.NoError(t, fh.WriteHeader(&buf, make([]byte, 16), nil, crypto.DefaultArgon2Params()))
+
+	raw := append([]byte(nil), buf.Bytes()...)
+	binary.LittleEndian.PutUint64(raw[30:38], uint64(HeaderWireSize(Version2)+1))
+
+	_, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(raw))
+	require.ErrorContains(t, err, "invalid data offset")
+}
+
 func TestFileHandler_EnsureDirectory(t *testing.T) {
 	fh := NewFileHandler()
 
-	tmpDir := filepath.Join(os.TempDir(), "nokvault-test-dir")
-	defer os.RemoveAll(tmpDir)
+	tmpDir := filepath.Join(t.TempDir(), "output")
 
 	err := fh.EnsureDirectory(tmpDir)
 	require.NoError(t, err, "Failed to create directory")
@@ -207,6 +232,9 @@ func TestFileHandler_EnsureDirectory(t *testing.T) {
 	require.NoError(t, err, "Directory was not created")
 
 	assert.True(t, info.IsDir(), "Created path should be a directory")
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, os.FileMode(0700), info.Mode().Perm())
+	}
 }
 
 func TestFileHandler_GetRelativePath(t *testing.T) {

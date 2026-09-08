@@ -131,6 +131,7 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 	}
 
 	// Read file data
+	// #nosec G304 -- runEncrypt validates the user-selected input path before this read.
 	data, err := os.ReadFile(inputPath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
@@ -168,7 +169,7 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 
 	// Ensure output directory exists (only if not root directory)
 	if outputDir := filepath.Dir(outputPath); outputDir != "." && outputDir != "" {
-		if err := os.MkdirAll(outputDir, 0755); err != nil {
+		if err := os.MkdirAll(outputDir, 0700); err != nil {
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 	}

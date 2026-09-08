@@ -60,6 +60,7 @@ func (es *EncryptionService) DecryptData(ciphertext []byte, key []byte) ([]byte,
 
 // EncryptFile encrypts a file
 func (es *EncryptionService) EncryptFile(inputPath string, outputPath string, key []byte) error {
+	// #nosec G304 -- this service intentionally accepts a caller-selected input path.
 	data, err := os.ReadFile(inputPath)
 	if err != nil {
 		return fmt.Errorf("failed to read input file: %w", err)
@@ -79,6 +80,7 @@ func (es *EncryptionService) EncryptFile(inputPath string, outputPath string, ke
 
 // DecryptFile decrypts a file
 func (es *EncryptionService) DecryptFile(inputPath string, outputPath string, key []byte) error {
+	// #nosec G304 -- this service intentionally accepts a caller-selected input path.
 	ciphertext, err := os.ReadFile(inputPath)
 	if err != nil {
 		return fmt.Errorf("failed to read input file: %w", err)

@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -114,6 +115,7 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 	}
 
 	// Open input file
+	// #nosec G304 -- runDecrypt validates the user-selected input path before this open.
 	inputFile, err := os.Open(inputPath)
 	if err != nil {
 		return fmt.Errorf("failed to open input file: %w", err)
@@ -143,7 +145,13 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 	// to avoid deadlock issues. Progress bars work better for directory operations.
 
 	// Read encrypted data (skip header)
-	inputFile.Seek(int64(header.DataOffset), io.SeekStart)
+	dataOffset, err := checkedDataOffset(header.DataOffset)
+	if err != nil {
+		return err
+	}
+	if _, err := inputFile.Seek(dataOffset, io.SeekStart); err != nil {
+		return fmt.Errorf("failed to seek encrypted data: %w", err)
+	}
 	ciphertext, err := io.ReadAll(inputFile)
 	if err != nil {
 		return fmt.Errorf("failed to read encrypted data: %w", err)
@@ -172,7 +180,7 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 
 	// Ensure output directory exists (only if not root directory)
 	if outputDir := filepath.Dir(outputPath); outputDir != "." && outputDir != "" {
-		if err := os.MkdirAll(outputDir, 0755); err != nil {
+		if err := os.MkdirAll(outputDir, 0700); err != nil {
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 	}
@@ -295,6 +303,7 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		}
 
 		// Read header to get salt
+		// #nosec G304 -- WalkDirectory validates every path before this open.
 		inputFile, err := os.Open(path)
 		if err != nil {
 			return recordFailure(relPath, err)
@@ -359,6 +368,7 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 
 func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionService *core.EncryptionService, fileHandler *core.FileHandler) error {
 	// Open input file
+	// #nosec G304 -- WalkDirectory validates the caller-selected input path before this open.
 	inputFile, err := os.Open(inputPath)
 	if err != nil {
 		return fmt.Errorf("failed to open input file: %w", err)
@@ -372,7 +382,13 @@ func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionServi
 	}
 
 	// Read encrypted data (skip header)
-	inputFile.Seek(int64(header.DataOffset), io.SeekStart)
+	dataOffset, err := checkedDataOffset(header.DataOffset)
+	if err != nil {
+		return err
+	}
+	if _, err := inputFile.Seek(dataOffset, io.SeekStart); err != nil {
+		return fmt.Errorf("failed to seek encrypted data: %w", err)
+	}
 	ciphertext, err := io.ReadAll(inputFile)
 	if err != nil {
 		return fmt.Errorf("failed to read encrypted data: %w", err)
@@ -396,7 +412,7 @@ func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionServi
 
 	// Ensure output directory exists (only if not root directory)
 	if outputDir := filepath.Dir(outputPath); outputDir != "." && outputDir != "" {
-		if err := os.MkdirAll(outputDir, 0755); err != nil {
+		if err := os.MkdirAll(outputDir, 0700); err != nil {
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 	}
@@ -422,4 +438,11 @@ func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionServi
 	}
 
 	return nil
+}
+
+func checkedDataOffset(offset uint64) (int64, error) {
+	if offset > math.MaxInt64 {
+		return 0, fmt.Errorf("encrypted data offset %d exceeds platform limit", offset)
+	}
+	return int64(offset), nil
 }

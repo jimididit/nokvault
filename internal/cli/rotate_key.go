@@ -76,16 +76,17 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 	keyManager := encryptionService.GetKeyManager()
 
 	// Open input file
+	// #nosec G304 -- runRotateKey validates the user-selected input path before this open.
 	inputFile, err := os.Open(inputPath)
 	if err != nil {
 		return fmt.Errorf("failed to open input file: %w", err)
 	}
+	defer inputFile.Close()
 
 	// Read header
 	fileHandler := core.NewFileHandler()
 	header, metadata, err := fileHandler.ReadHeaderWithMetadata(inputFile)
 	if err != nil {
-		inputFile.Close()
 		PrintError("Invalid nokvault file format")
 		return utils.NewError(utils.ErrInvalidFormat.Code, "Invalid nokvault file format", err)
 	}
@@ -100,7 +101,11 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 	defer utils.ZeroizeKey(oldKey)
 
 	// Read encrypted data
-	if _, err := inputFile.Seek(int64(header.DataOffset), io.SeekStart); err != nil {
+	dataOffset, err := checkedDataOffset(header.DataOffset)
+	if err != nil {
+		return err
+	}
+	if _, err := inputFile.Seek(dataOffset, io.SeekStart); err != nil {
 		return fmt.Errorf("failed to seek encrypted data: %w", err)
 	}
 	ciphertext, err := io.ReadAll(inputFile)
