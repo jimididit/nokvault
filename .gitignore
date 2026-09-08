@@ -99,6 +99,7 @@ ROADMAP.md
 AUDIT_REPORT.md
 .superpowers/
 docs/superpowers/
+.worktrees/
 
 # Package manager templates (not ready for distribution yet)
 Formula/
