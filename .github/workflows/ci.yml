@@ -28,6 +28,13 @@ jobs:
 
       - name: Test
         run: go test ./...
+        env:
+          # macOS maps /var to /private/var with a system symlink. NokVault's
+          # default-deny path policy intentionally rejects that ancestor, so
+          # keep test fixtures under the runner's canonical workspace temp.
+          TMPDIR: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+          TEMP: ${{ runner.temp }}
 
       - name: Vet
         run: go vet ./...

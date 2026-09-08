@@ -19,6 +19,7 @@ A modern, feature-rich CLI tool for encrypting and protecting local folders and 
 - **📦 Compression**: Optional compression before encryption
 - **⚙️ Configuration**: Global and per-project configuration files (`key_derivation` applies to new encryptions)
 - **🛡️ Crash-safe writes**: Encrypt/rotate use temp+fsync+rename; decrypt clamps modes to owner-only unless `--preserve-mode`
+- **🚫 Default-deny paths**: Symlinks, Windows junctions, and other reparse points are rejected on file-touching commands; directory outputs stay inside the selected root
 - **📊 Progress Tracking**: Visual progress bars for operations
 - **🌐 Cross-Platform**: Single binary for Windows, Linux, and macOS
 
@@ -93,12 +94,12 @@ nokvault secure-delete ./secrets --dry-run
 
 | Command | Description |
 | --------- | ------------- |
-| `encrypt <path>` | Encrypt a file or directory (`--force` to overwrite outputs) |
-| `decrypt <path>` | Decrypt a nokvault encrypted file (`--force`, `--strict`) |
-| `watch <path>` | Watch directory for changes and optionally auto-encrypt |
-| `schedule encrypt <path>` | Schedule periodic encryption operations |
-| `rotate-key <path>` | Rotate encryption key for a file |
-| `secure-delete <path>` | Securely delete (`--yes` / `--dry-run`) |
+| `encrypt <path>` | Encrypt a file or directory (`--force` to overwrite outputs). Rejects symlink/reparse inputs and outputs. |
+| `decrypt <path>` | Decrypt a nokvault encrypted file (`--force`, `--strict`). Same path policy as encrypt. |
+| `watch <path>` | Watch directory for changes and optionally auto-encrypt. Symlink roots and events are rejected. |
+| `schedule encrypt <path>` | Schedule periodic encryption operations. Re-validates the tree on every run. |
+| `rotate-key <path>` | Rotate encryption key for a file. Rejects symlink/reparse inputs. |
+| `secure-delete <path>` | Securely delete (`--yes` / `--dry-run`). Refuses symlink/reparse paths and does not follow them. |
 | `config` | Manage configuration settings |
 
 ## Configuration
@@ -164,10 +165,13 @@ nokvault encrypt ./files -v
 
 ## Known Limitations
 
-- **`protect` command**: Directory protection (archive mode) is not yet fully implemented. Use `encrypt` for individual files or directories.
+- **`protect` command**: Archive mode is not implemented. Only the supplied root and output path components are validated before `Lstat`/`--dry-run`; nested input is not traversed. Use `encrypt` for files or directories.
 - **Package managers**: Homebrew, Scoop, and APT support is planned but not yet available. Download binaries from [GitHub Releases](https://github.com/jimididit/nokvault/releases).
 - **Edge cases**: Some edge cases may need additional testing. Please report any issues you encounter.
 - **No-replace filesystem support**: Race-safe encrypt/decrypt writes without `--force` require hard-link support on the destination filesystem. FAT/exFAT and some network filesystems may reject the operation; choose a supported destination rather than weakening overwrite protection.
+- **No symlink follow opt-in**: There is no `--follow-symlinks` flag. Use a regular file or directory path instead of a link.
+- **Windows reparse points**: `Lstat`-visible symlinks and `ModeIrregular` entries are rejected, as are paths with readable reparse attributes (junctions, and some cloud placeholders or volume mount points). If `GetFileAttributes` fails on an ordinary-looking path, that component cannot be conclusively classified.
+- **Concurrent path replacement**: Validation uses `Lstat` before open. A privileged local attacker who replaces a path component between those steps is outside this policy; descriptor-relative OS APIs are not used.
 
 ## Security
 
@@ -176,6 +180,8 @@ nokvault encrypt ./files -v
 - **Memory Safety**: Sensitive data zeroized after use
 - **Atomic encrypt writes**: Temp file + fsync + rename
 - **Decrypt modes**: Clamped to ≤0600 / ≤0700 unless `--preserve-mode`
+- **Path policy**: Default-deny for detected symlinks, Windows junctions, and other reparse points on encrypt, decrypt, rotate-key, secure-delete, watch, schedule, and keyfiles. Nested-link rejection applies only to commands that recurse. `protect` validates only the supplied root/output components. Directory outputs are contained with lexical `SafeJoin` (`filepath.Rel`, not string-prefix matching).
+- **Policy errors**: `SYMLINK_DISALLOWED` (use a regular path; links are not followed) and `PATH_ESCAPE` (stay inside the selected output directory). Checks run before `--dry-run`, password prompts, reads, writes, or deletes.
 - **Timing Attack Protection**: Constant-time operations
 - **File Integrity**: Built-in authentication tags
 
@@ -188,6 +194,7 @@ nokvault encrypt ./files -v
 5. **Never commit** passwords or keyfiles to version control
 6. **Prefer keyfiles over** `NOKVAULT_PASSWORD` for automation (env vars remain visible to local processes)
 7. **Pass `--force`** when intentionally overwriting encrypt/decrypt outputs
+8. **Use regular paths** — replace any symlink or junction with the real file or directory; Nokvault will not follow it
 
 ## Contributing
 

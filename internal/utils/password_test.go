@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -67,12 +68,30 @@ func TestGetPassword_KeyfileRejectsSymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 	link := filepath.Join(dir, "link")
-	if err := os.Symlink(target, link); err != nil {
-		t.Skipf("symlink not supported: %v", err)
-	}
+	trySymlink(t, target, link)
 	_, err := GetPassword("", link, true, false)
 	if err == nil {
 		t.Fatal("expected error for symlink keyfile")
+	}
+}
+
+func TestGetPassword_KeyfileRejectsSymlinkParent(t *testing.T) {
+	dir := t.TempDir()
+	realDir := filepath.Join(dir, "real")
+	if err := os.Mkdir(realDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	keyfile := filepath.Join(realDir, "key")
+	if err := os.WriteFile(keyfile, []byte("from-keyfile\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	linkDir := filepath.Join(dir, "link-parent")
+	trySymlink(t, realDir, linkDir)
+
+	_, err := GetPassword("", filepath.Join(linkDir, "key"), true, false)
+	requireErrorCode(t, err, "SYMLINK_DISALLOWED")
+	if !strings.Contains(err.Error(), linkDir) {
+		t.Fatalf("error %q should name symlink parent %s", err, linkDir)
 	}
 }
 

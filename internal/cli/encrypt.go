@@ -50,15 +50,32 @@ func init() {
 func runEncrypt(cmd *cobra.Command, args []string) error {
 	inputPath := args[0]
 
-	// Validate input path
-	if _, err := os.Stat(inputPath); os.IsNotExist(err) {
+	if err := utils.ValidateNoSymlinkComponents(inputPath); err != nil {
+		return err
+	}
+
+	info, err := os.Lstat(inputPath)
+	if os.IsNotExist(err) {
 		return utils.NewError(utils.ErrInvalidPath.Code, fmt.Sprintf("Path does not exist: %s", inputPath), err)
+	}
+	if err != nil {
+		return err
 	}
 
 	// Determine output path
 	outputPath := encryptOutput
 	if outputPath == "" {
 		outputPath = inputPath + ".nokvault"
+	}
+
+	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
+		return err
+	}
+
+	if info.IsDir() {
+		if err := preflightDirectoryEncryptOutputs(inputPath, outputPath); err != nil {
+			return err
+		}
 	}
 
 	if encryptDryRun {
@@ -86,12 +103,6 @@ func runEncrypt(cmd *cobra.Command, args []string) error {
 		return utils.NewError(utils.ErrKeyDerivation.Code, "Failed to derive encryption key", err)
 	}
 	defer utils.ZeroizeKey(key)
-
-	// Encrypt file or directory
-	info, err := os.Stat(inputPath)
-	if err != nil {
-		return err
-	}
 
 	if info.IsDir() {
 		return encryptDirectory(inputPath, outputPath, key, salt, encryptionService)
@@ -236,7 +247,10 @@ func encryptDirectoryWithCompression(inputPath, outputPath string, key, salt []b
 		if relErr != nil {
 			return relErr
 		}
-		out := filepath.Join(outputPath, relPath+".nokvault")
+		out, joinErr := utils.SafeJoin(outputPath, relPath+".nokvault")
+		if joinErr != nil {
+			return joinErr
+		}
 		if refuseErr := refuseIfExists(out, encryptForce); refuseErr != nil {
 			PrintError(refuseErr.Error())
 			return refuseErr

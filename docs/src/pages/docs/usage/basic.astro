@@ -84,7 +84,7 @@ nokvault encrypt ./documents
 # The directory structure is preserved
 # Each file is encrypted individually`} lang="bash" />
       <p class="text-dark-text-muted mt-4">
-        When encrypting directories, each file is encrypted separately, allowing you to decrypt individual files if needed.
+        When encrypting directories, each file is encrypted separately, allowing you to decrypt individual files if needed. A nested symlink, junction, or other reparse point aborts the whole operation; no ciphertext is written for that link.
       </p>
     </section>
 
@@ -103,7 +103,7 @@ nokvault decrypt document.nokvault --output ./decrypted/restored.txt`} lang="bas
     <section class="mb-8">
       <h2>Dry Run</h2>
       <p class="text-dark-text-muted mb-4">
-        Before encrypting, you can preview what would happen with the <code>--dry-run</code> flag:
+        Before encrypting, you can preview what would happen with the <code>--dry-run</code> flag. Path policy still runs first: a symlink or escaping output is rejected before the preview and before any password prompt.
       </p>
       <CodeBlock code={`# See what would be encrypted
 nokvault encrypt ./documents --dry-run

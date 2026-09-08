@@ -16,11 +16,28 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
       Complete reference for all Nokvault commands and their options.
     </p>
 
+    <section class="mb-8">
+      <h2>Path and symlink policy</h2>
+      <p class="text-dark-text-muted mb-4">
+        File-touching commands share a default-deny policy. There is no <code>--follow-symlinks</code> flag and links are never skipped silently.
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Any symlink, Windows junction, or other detected reparse point in a supplied input, output leaf, or existing parent component aborts the operation and names the rejected path.</li>
+        <li>Nested links inside a tree are rejected only by commands that recurse (directory encrypt/decrypt, tree <code>secure-delete</code>, schedule directory runs, and watch events). <code>protect</code> does not walk nested input.</li>
+        <li>Checks run before <code>--dry-run</code>, password prompts, reads, writes, overwrite checks, or deletes.</li>
+        <li>Directory outputs are joined with lexical containment (<code>filepath.Clean</code> + <code>filepath.Rel</code>, never string-prefix matching). Absolute, <code>..</code>, non-local, reserved-device (<code>NUL</code>/<code>CON</code>/<code>COM1</code>), rooted-backslash, and volume-qualified relatives are rejected.</li>
+        <li><code>SYMLINK_DISALLOWED</code>: use a regular file or directory path. Symlinks are not followed.</li>
+        <li><code>PATH_ESCAPE</code>: use a relative path that stays inside the selected output directory.</li>
+        <li>Watch and schedule always print those two policy errors. Ordinary watch permission/I/O errors still require <code>--verbose</code>.</li>
+        <li>This is not race-proof against a privileged local attacker replacing a path component between validation and open. Descriptor-relative OS APIs are out of scope.</li>
+      </ul>
+    </section>
+
     <div class="space-y-8">
       <section>
         <h2><code>encrypt &lt;path&gt;</code></h2>
         <p class="text-dark-text-muted mb-4">
-          Encrypt a file or directory using AES-256-GCM encryption. Supports both files and recursive directory encryption.
+          Encrypt a file or directory using AES-256-GCM encryption. Supports both files and recursive directory encryption. Nested input or output links abort the whole tree; no ciphertext is written for the rejected path.
         </p>
         <h3>Options</h3>
         <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
@@ -54,7 +71,7 @@ nokvault encrypt file.txt --keyfile ~/.keys/master.key`} lang="bash" />
       <section>
         <h2><code>decrypt &lt;path&gt;</code></h2>
         <p class="text-dark-text-muted mb-4">
-          Decrypt a nokvault encrypted file or directory. Automatically detects encrypted files and restores original structure.
+          Decrypt a nokvault encrypted file or directory. Automatically detects encrypted files and restores original structure. A symlink or reparse output parent is rejected before credentials are read. Policy errors stay typed even without <code>--strict</code>.
         </p>
         <h3>Options</h3>
         <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
@@ -85,7 +102,7 @@ nokvault decrypt ./encrypted-documents`} lang="bash" />
       <section>
         <h2><code>watch &lt;path&gt;</code></h2>
         <p class="text-dark-text-muted mb-4">
-          Watch a directory for file changes and optionally auto-encrypt files when they're created or modified.
+          Watch a directory for file changes and optionally auto-encrypt files when they're created or modified. A symlink watch root is refused at startup. Symlink events are rejected and never encrypted; delayed encrypt re-checks the path before writing.
         </p>
         <h3>Options</h3>
         <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
@@ -110,7 +127,7 @@ nokvault watch ./sensitive --auto-encrypt \\
       <section>
         <h2><code>schedule encrypt &lt;path&gt;</code></h2>
         <p class="text-dark-text-muted mb-4">
-          Schedule periodic encryption operations. Useful for automated backups and regular encryption tasks.
+          Schedule periodic encryption operations. Useful for automated backups and regular encryption tasks. The configured path and generated outputs are validated at startup and again on every tick before mutation.
         </p>
         <h3>Options</h3>
         <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
@@ -130,7 +147,7 @@ nokvault schedule encrypt ./documents --interval 24h`} lang="bash" />
       <section>
         <h2><code>rotate-key &lt;path&gt;</code></h2>
         <p class="text-dark-text-muted mb-4">
-          Re-key an encrypted file by decrypting with the old credential and re-encrypting with a new one (new salt and ciphertext). Prefer keyfiles over prompts for automation.
+          Re-key an encrypted file by decrypting with the old credential and re-encrypting with a new one (new salt and ciphertext). Prefer keyfiles over prompts for automation. Symlink or reparse inputs are rejected before passwords are requested.
         </p>
         <h3>Options</h3>
         <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
@@ -153,7 +170,7 @@ nokvault rotate-key file.nokvault \\
       <section>
         <h2><code>secure-delete &lt;path&gt;</code></h2>
         <p class="text-dark-text-muted mb-4">
-          Best-effort overwrite and deletion for traditional spinning disks. SSD wear leveling, snapshots, and copy-on-write filesystems may retain prior data; this is not a guaranteed forensic wipe.
+          Best-effort overwrite and deletion for traditional spinning disks. SSD wear leveling, snapshots, and copy-on-write filesystems may retain prior data; this is not a guaranteed forensic wipe. Symlink or reparse paths are refused; the link and its target are left untouched.
         </p>
         <h3>Options</h3>
         <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
@@ -171,6 +188,13 @@ nokvault secure-delete sensitive-file.txt --yes
 
 # Secure delete with custom passes
 nokvault secure-delete sensitive-file.txt --yes --passes 7`} lang="bash" />
+      </section>
+
+      <section>
+        <h2><code>protect &lt;path&gt;</code></h2>
+        <p class="text-dark-text-muted mb-4">
+          Archive mode is not implemented. Before <code>Lstat</code> or <code>--dry-run</code>, <code>protect</code> validates only the supplied directory root and output path components. It does not traverse nested input. Use <code>encrypt</code> for files or directories.
+        </p>
       </section>
 
       <section>

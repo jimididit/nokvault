@@ -97,6 +97,13 @@ nokvault encrypt file.txt --no-prompt`} lang="bash" />
         </div>
 
         <div class="mb-6">
+          <h3>Why was my path rejected with SYMLINK_DISALLOWED or PATH_ESCAPE?</h3>
+          <p class="text-dark-text-muted">
+            Nokvault does not follow symbolic links, Windows junctions, or other detected reparse points, and directory outputs must stay inside the selected root. Nested links are rejected by commands that recurse; <code>protect</code> only checks the supplied root and output paths. There is no follow opt-in. Point the command at a regular file or directory, or choose an output that does not escape the destination. These checks run before <code>--dry-run</code> and before password prompts. They do not claim to stop a privileged local attacker who replaces a path after validation.
+          </p>
+        </div>
+
+        <div class="mb-6">
           <h3>How do I decrypt multiple files at once?</h3>
           <p class="text-dark-text-muted">
             You can use shell loops or provide a directory path:

@@ -60,6 +60,20 @@ nokvault rotate-key file.nokvault \\
     </section>
 
     <section class="mb-8">
+      <h2>Use Regular Paths, Not Symlinks</h2>
+      <p class="text-dark-text-muted mb-4">
+        Nokvault refuses symbolic links, Windows junctions, and other detected reparse points. There is no <code>--follow-symlinks</code> flag. If you see <code>SYMLINK_DISALLOWED</code>, replace the link with the real file or directory and rerun. If you see <code>PATH_ESCAPE</code>, keep the output relative path inside the selected directory.
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Do not encrypt, decrypt, watch, schedule, rotate, or securely delete through a link. Nested-link checks apply only to commands that recurse.</li>
+        <li><code>protect</code> checks only the root and output paths you pass; it does not walk nested files (archive mode is unimplemented).</li>
+        <li>Keyfiles must be regular files (mode <code>0600</code> on Unix), not symlinks.</li>
+        <li>Policy errors are reported before dry-run previews and before password prompts.</li>
+        <li>Do not treat this as protection against a privileged process swapping path components after validation.</li>
+      </ul>
+    </section>
+
+    <section class="mb-8">
       <h2>Use Secure Deletion</h2>
       <p class="text-dark-text-muted mb-4">
         When deleting sensitive unencrypted files, use secure deletion:

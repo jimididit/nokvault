@@ -107,6 +107,23 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
     </section>
 
     <section class="mb-8">
+      <h2>Path containment and symlinks</h2>
+      <p class="text-dark-text-muted mb-4">
+        Nokvault does not follow symbolic links, Windows junctions, or other detected reparse points. Encrypt, decrypt, rotate-key, secure-delete, watch, schedule, and keyfiles share that default-deny policy. <code>protect</code> only checks the supplied root and output components. There is no follow opt-in. Nested-link rejection applies to commands that recurse, not to <code>protect</code>.
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li>Validation walks existing path components with <code>Lstat</code>. Missing output leaves are allowed; an existing redirected parent is not.</li>
+        <li>On Windows, <code>Lstat</code>-visible symlinks and <code>ModeIrregular</code> entries are rejected, as are paths whose reparse attributes can be read. If <code>GetFileAttributes</code> fails on an ordinary-looking path, that component cannot be conclusively classified and is not treated as a redirect.</li>
+        <li>Directory outputs must remain under the selected root. Containment uses cleaned absolute paths and <code>filepath.Rel</code>, not a string-prefix check.</li>
+        <li>Rejected paths return <code>SYMLINK_DISALLOWED</code> or <code>PATH_ESCAPE</code> with a hint. Replace the link with a regular path, or keep the relative output inside the chosen directory.</li>
+        <li>These checks run before dry-run previews and before any password prompt.</li>
+      </ul>
+      <p class="text-dark-text-muted">
+        This policy stops Nokvault from following links that exist at validation time. It does not claim protection against a privileged local attacker who replaces a path component between validation and open; that would require descriptor-relative OS APIs, which are explicitly out of scope. X1 atomic no-replace writes still cover output-file replacement races on supported filesystems.
+      </p>
+    </section>
+
+    <section class="mb-8">
       <h2>Best Practices</h2>
       <p class="text-dark-text-muted mb-4">
         For additional security, follow these recommendations:
@@ -121,6 +138,7 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
         <li>Never commit passwords or keyfiles to version control</li>
         <li>Prefer keyfiles over <code>NOKVAULT_PASSWORD</code> for automation (env vars are still visible to local processes)</li>
         <li>Keep Nokvault updated to the latest version</li>
+        <li>Point commands at regular files and directories, not symlinks or junctions</li>
       </ul>
       <p class="text-dark-text-muted">
         See the <a href={`${base}docs/security/best-practices`} class="text-blue-400 hover:underline">Best Practices</a> page for detailed guidance.

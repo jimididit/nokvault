@@ -50,6 +50,10 @@ func getDefaultHint(code string) string {
 		return "Re-run with --yes to confirm, or run interactively in a terminal and type yes."
 	case "OUTPUT_EXISTS":
 		return "Pass --force to overwrite the existing output path."
+	case "SYMLINK_DISALLOWED":
+		return "Use a regular file or directory path. Symlinks are not followed."
+	case "PATH_ESCAPE":
+		return "Use a relative path that stays inside the selected output directory."
 	default:
 		return "Check the documentation or use --verbose for more details."
 	}
@@ -57,15 +61,17 @@ func getDefaultHint(code string) string {
 
 // Common error codes
 var (
-	ErrInvalidPath      = &NokvaultError{Code: "INVALID_PATH", Message: "Invalid file or directory path"}
-	ErrEncryptionFailed = &NokvaultError{Code: "ENCRYPTION_FAILED", Message: "Encryption operation failed"}
-	ErrDecryptionFailed = &NokvaultError{Code: "DECRYPTION_FAILED", Message: "Decryption operation failed"}
-	ErrInvalidPassword  = &NokvaultError{Code: "INVALID_PASSWORD", Message: "Invalid password or key"}
-	ErrFileNotFound     = &NokvaultError{Code: "FILE_NOT_FOUND", Message: "File not found"}
-	ErrKeyDerivation    = &NokvaultError{Code: "KEY_DERIVATION_FAILED", Message: "Key derivation failed"}
-	ErrInvalidFormat         = &NokvaultError{Code: "INVALID_FORMAT", Message: "Invalid file format"}
-	ErrConfirmationRequired  = &NokvaultError{Code: "CONFIRMATION_REQUIRED", Message: "Confirmation required"}
-	ErrOutputExists          = &NokvaultError{Code: "OUTPUT_EXISTS", Message: "Output path already exists"}
+	ErrInvalidPath          = &NokvaultError{Code: "INVALID_PATH", Message: "Invalid file or directory path"}
+	ErrEncryptionFailed     = &NokvaultError{Code: "ENCRYPTION_FAILED", Message: "Encryption operation failed"}
+	ErrDecryptionFailed     = &NokvaultError{Code: "DECRYPTION_FAILED", Message: "Decryption operation failed"}
+	ErrInvalidPassword      = &NokvaultError{Code: "INVALID_PASSWORD", Message: "Invalid password or key"}
+	ErrFileNotFound         = &NokvaultError{Code: "FILE_NOT_FOUND", Message: "File not found"}
+	ErrKeyDerivation        = &NokvaultError{Code: "KEY_DERIVATION_FAILED", Message: "Key derivation failed"}
+	ErrInvalidFormat        = &NokvaultError{Code: "INVALID_FORMAT", Message: "Invalid file format"}
+	ErrConfirmationRequired = &NokvaultError{Code: "CONFIRMATION_REQUIRED", Message: "Confirmation required"}
+	ErrOutputExists         = &NokvaultError{Code: "OUTPUT_EXISTS", Message: "Output path already exists"}
+	ErrSymlinkDisallowed    = &NokvaultError{Code: "SYMLINK_DISALLOWED", Message: "Symlink paths are not allowed"}
+	ErrPathEscape           = &NokvaultError{Code: "PATH_ESCAPE", Message: "Path escapes the output root"}
 )
 
 // NewError creates a new error with context

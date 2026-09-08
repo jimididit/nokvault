@@ -59,6 +59,10 @@ func GetPassword(passwordFlag, keyfileFlag string, noPrompt, confirm bool) ([]by
 }
 
 func readKeyfile(path string) ([]byte, error) {
+	if err := ValidateNoSymlinkComponents(path); err != nil {
+		return nil, err
+	}
+
 	info, err := os.Lstat(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to stat keyfile: %w", err)

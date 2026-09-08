@@ -43,11 +43,17 @@ func init() {
 func runProtect(cmd *cobra.Command, args []string) error {
 	inputPath := args[0]
 
-	// Validate input path
-	info, err := os.Stat(inputPath)
+	if err := utils.ValidateNoSymlinkComponents(inputPath); err != nil {
+		return err
+	}
+
+	info, err := os.Lstat(inputPath)
 	if os.IsNotExist(err) {
 		PrintError(fmt.Sprintf("Path does not exist: %s", inputPath))
 		return utils.NewError(utils.ErrInvalidPath.Code, fmt.Sprintf("Path does not exist: %s", inputPath), err)
+	}
+	if err != nil {
+		return err
 	}
 
 	if !info.IsDir() {
@@ -59,6 +65,10 @@ func runProtect(cmd *cobra.Command, args []string) error {
 	outputPath := protectOutput
 	if outputPath == "" {
 		outputPath = inputPath + ".nokvault"
+	}
+
+	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
+		return err
 	}
 
 	if protectDryRun {

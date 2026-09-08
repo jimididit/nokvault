@@ -51,11 +51,17 @@ func init() {
 func runDecrypt(cmd *cobra.Command, args []string) error {
 	inputPath := args[0]
 
-	// Validate input path
-	info, err := os.Stat(inputPath)
+	if err := utils.ValidateNoSymlinkComponents(inputPath); err != nil {
+		return err
+	}
+
+	info, err := os.Lstat(inputPath)
 	if os.IsNotExist(err) {
 		PrintError(fmt.Sprintf("Path does not exist: %s", inputPath))
 		return utils.NewError(utils.ErrFileNotFound.Code, fmt.Sprintf("Path does not exist: %s", inputPath), err)
+	}
+	if err != nil {
+		return err
 	}
 
 	// Determine output path
@@ -66,6 +72,16 @@ func runDecrypt(cmd *cobra.Command, args []string) error {
 			outputPath = inputPath[:len(inputPath)-len(".nokvault")]
 		} else {
 			outputPath = inputPath + ".decrypted"
+		}
+	}
+
+	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
+		return err
+	}
+
+	if info.IsDir() {
+		if err := preflightDirectoryDecryptOutputs(inputPath, outputPath); err != nil {
+			return err
 		}
 	}
 
@@ -203,6 +219,9 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		return nil
 	})
 	if err != nil {
+		if isPathPolicyError(err) {
+			return err
+		}
 		return fmt.Errorf("failed to count files: %w", err)
 	}
 
@@ -234,6 +253,9 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 
 	walkErr := fileHandler.WalkDirectory(inputPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
+			if isPathPolicyError(err) {
+				return err
+			}
 			PrintError(fmt.Sprintf("Error accessing %s: %v", path, err))
 			if decryptStrict {
 				return fmt.Errorf("strict mode: aborted after access error on %s: %w", path, err)
@@ -254,7 +276,13 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 
 		// Remove .nokvault extension
 		outputRelPath := relPath[:len(relPath)-len(".nokvault")]
-		outputFilePath := filepath.Join(outputPath, outputRelPath)
+		outputFilePath, joinErr := utils.SafeJoin(outputPath, outputRelPath)
+		if joinErr != nil {
+			if isPathPolicyError(joinErr) {
+				return joinErr
+			}
+			return recordFailure(relPath, joinErr)
+		}
 
 		// Ensure output directory exists
 		outputFileDir := filepath.Dir(outputFilePath)

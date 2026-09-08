@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `secure-delete --dry-run` to list paths without deleting
 - `encrypt` / `decrypt --force` to overwrite existing outputs (refused by default)
 - `decrypt --strict` to abort directory decrypt on the first failure
+- Default-deny symlink / Windows junction / reparse-point policy on file-touching commands (encrypt, decrypt, rotate-key, secure-delete, watch, schedule, keyfiles, and `protect` path checks) (NV-017)
+- Lexical directory output containment (`SafeJoin` + `filepath.Rel`) that rejects `..`, non-local, reserved-device, rooted-backslash, and volume-qualified relatives as `PATH_ESCAPE` (NV-030)
+
+### Changed
+
+- Path-policy checks run before `--dry-run`, password prompts, reads, writes, overwrite checks, or deletes
+- Watch and schedule always report `SYMLINK_DISALLOWED` / `PATH_ESCAPE`; ordinary watch I/O errors still require `--verbose`
+- There is no `--follow-symlinks` opt-in and no silent skip of links
 
 ## [0.2.0] - 2026-09-07
 
