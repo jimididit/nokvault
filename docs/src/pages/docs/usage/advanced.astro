@@ -48,7 +48,7 @@ nokvault watch ./sensitive --auto-encrypt \\
   --delay 5s \\
   --exclude "*.tmp"`} lang="bash" />
       <p class="text-dark-text-muted mt-4">
-        The <code>--delay</code> option prevents encrypting files that are still being written. The watcher runs until you stop it with Ctrl+C.
+        The <code>--delay</code> option prevents encrypting files that are still being written. The watcher runs until you stop it with Ctrl+C. A symlink watch root is refused at startup; symlink events are rejected and never encrypted. Policy errors print without <code>--verbose</code>.
       </p>
     </section>
 
@@ -63,7 +63,7 @@ nokvault schedule encrypt ./backups --interval 1h --keyfile ~/.keys/backup.key
 # Encrypt daily at midnight (using cron on Linux/macOS)
 # Add to crontab: 0 0 * * * nokvault encrypt /path/to/docs --keyfile ~/.keys/master.key`} lang="bash" />
       <p class="text-dark-text-muted mt-4">
-        Scheduled encryption is useful for maintaining encrypted backups of important directories.
+        Scheduled encryption is useful for maintaining encrypted backups of important directories. Each run re-validates the configured path and generated outputs before writing; a symlink or escaping output aborts that tick.
       </p>
     </section>
 

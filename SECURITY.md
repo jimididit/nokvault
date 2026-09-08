@@ -53,6 +53,7 @@ We will coordinate with you on the disclosure timeline. Once a fix is available:
 5. **Secure Deletion**: Use `secure-delete` for sensitive files
 6. **Rotate Keys**: Periodically rotate encryption keys using `rotate-key`
 7. **Verify Downloads**: Always verify checksums when downloading binaries
+8. **Regular Paths**: Point commands at regular files and directories; Nokvault does not follow symlinks or junctions
 
 ### For Developers
 
@@ -71,6 +72,7 @@ Nokvault implements several security measures:
 - **Timing Attack Protection**: Constant-time operations for key comparisons
 - **File Integrity**: Built-in authentication tags detect tampering
 - **Secure Deletion**: Multiple overwrite passes make file recovery difficult
+- **Path policy**: Default-deny for symlinks, Windows junctions, and other reparse points; lexical output containment. Not a claim of race-proof concurrent replacement protection.
 
 ## Known Security Considerations
 
@@ -78,6 +80,8 @@ Nokvault implements several security measures:
 2. **Memory**: While we zeroize sensitive data, operating system memory management may retain data in swap files or memory dumps.
 3. **Secure Deletion**: Secure deletion effectiveness depends on storage media (SSD vs HDD) and file system.
 4. **Key Derivation**: Default Argon2id parameters provide good security but may be slow on low-resource devices.
+5. **Symlinks and reparse points**: File-touching commands refuse symbolic links, Windows junctions, and other reparse points (`SYMLINK_DISALLOWED`) and keep directory outputs inside the selected root (`PATH_ESCAPE`). There is no `--follow-symlinks` opt-in. Cloud placeholders or volume mount points may also fail closed. This is not a claim of race-proof protection against privileged concurrent path replacement between validation and open.
+6. **Path policy timing**: Checks run before dry-run, password prompts, and mutation. Watch and schedule always report path-policy errors; ordinary watch I/O errors still require `--verbose`.
 
 ## Security Audit
 
