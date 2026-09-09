@@ -1,0 +1,28 @@
+{
+  "version": "0.3.0",
+  "description": "Local file and directory encryption CLI",
+  "homepage": "https://github.com/jimididit/nokvault",
+  "license": "MIT",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/jimididit/nokvault/releases/download/v0.3.0/nokvault-windows-amd64.exe",
+      "hash": "cb6e26363fc5e86e6518c3f3dc8afd6dd214cf106c8b6f26d2c8c4319392dd4d"
+    }
+  },
+  "bin": [
+    [
+      "nokvault-windows-amd64.exe",
+      "nokvault"
+    ]
+  ],
+  "checkver": {
+    "github": "https://github.com/jimididit/nokvault"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/jimididit/nokvault/releases/download/v$version/nokvault-windows-amd64.exe"
+      }
+    }
+  }
+}

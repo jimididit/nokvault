@@ -118,3 +118,51 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  package-homebrew:
+    name: Homebrew package
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install formula
+        run: |
+          brew tap jimididit/nokvault "file://$GITHUB_WORKSPACE"
+          brew install jimididit/nokvault/nokvault
+
+      - name: Verify package
+        run: |
+          nokvault --version | grep 'v0.3.0'
+          brew test jimididit/nokvault/nokvault
+
+  package-scoop:
+    name: Scoop package
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Checkout pinned Scoop runtime
+        uses: actions/checkout@v5
+        with:
+          repository: ScoopInstaller/Scoop
+          ref: b588a06e41d920d2123ec70aee682bae14935939
+          path: .scoop-root/apps/scoop/current
+
+      - name: Install and verify manifest
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
+          $env:SCOOP = "$PWD\.scoop-root"
+          New-Item -ItemType Directory -Path "$env:SCOOP\shims", "$env:SCOOP\buckets" -Force | Out-Null
+          & .\.scoop-root\apps\scoop\current\bin\scoop.ps1 install --no-update-scoop "$PWD\scoop\nokvault.json"
+          if ($LASTEXITCODE -ne 0) {
+            throw "NokVault Scoop installation failed with exit code $LASTEXITCODE"
+          }
+
+          $env:PATH = "$env:SCOOP\shims;$env:PATH"
+          $version = nokvault --version
+          if ($LASTEXITCODE -ne 0 -or $version -notmatch 'v0\.3\.0') {
+            throw "Unexpected version output: $version"
+          }

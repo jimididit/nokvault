@@ -85,16 +85,17 @@ GOOS=darwin GOARCH=arm64 go build -o nokvault-darwin-arm64 ./cmd/nokvault`} lang
     <section class="mb-8">
       <h2>Package Managers</h2>
       <p class="text-dark-text-muted mb-4">
-        Package manager support is coming soon! For now, download binaries from <a href="https://github.com/jimididit/nokvault/releases" class="text-blue-400 hover:underline" target="_blank">GitHub Releases</a>.
+        Install the hash-pinned manifest directly from the Nokvault repository:
       </p>
-      <CodeBlock code={`# Homebrew (macOS) - Coming soon
-# brew install nokvault
+      <CodeBlock code={`# Homebrew (macOS)
+brew tap jimididit/nokvault https://github.com/jimididit/nokvault.git
+brew install jimididit/nokvault/nokvault
 
-# Scoop (Windows) - Coming soon  
-# scoop install nokvault
-
-# APT (Debian/Ubuntu) - Coming soon
-# sudo apt install nokvault`} lang="bash" />
+# Scoop (Windows)
+scoop install https://raw.githubusercontent.com/jimididit/nokvault/main/scoop/nokvault.json`} lang="bash" />
+      <p class="text-dark-text-muted mt-4">
+        An APT repository is not currently published. Linux users should download the attested binary for their architecture from <a href="https://github.com/jimididit/nokvault/releases" class="text-blue-400 hover:underline" target="_blank">GitHub Releases</a>.
+      </p>
     </section>
 
     <section class="mb-8">
