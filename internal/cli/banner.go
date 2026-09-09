@@ -37,9 +37,11 @@ type fdWriter interface {
 	Fd() uintptr
 }
 
-var bannerStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("#7DD3FC")).
-	Bold(true)
+func bannerStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#7DD3FC")).
+		Bold(true)
+}
 
 func bannerText(caps bannerCapabilities) string {
 	if !caps.interactive {
@@ -55,7 +57,8 @@ func bannerText(caps bannerCapabilities) string {
 }
 
 func renderBanner(caps bannerCapabilities) string {
-	return renderBannerWithStyle(caps, func(s string) string { return bannerStyle.Render(s) })
+	style := bannerStyle()
+	return renderBannerWithStyle(caps, func(s string) string { return style.Render(s) })
 }
 
 func renderBannerWithStyle(caps bannerCapabilities, style func(string) string) string {
@@ -108,11 +111,15 @@ func wrapRootHelp(
 }
 
 func installRootHelpBanner(root *cobra.Command) {
+	installRootHelpBannerWith(root, systemBannerCapabilities)
+}
+
+func installRootHelpBannerWith(root *cobra.Command, detect bannerCapabilityDetector) {
 	next := root.HelpFunc()
 	wrapped := wrapRootHelp(root, func(cmd *cobra.Command, args []string) error {
 		next(cmd, args)
 		return nil
-	}, systemBannerCapabilities)
+	}, detect)
 	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		if err := wrapped(cmd, args); err != nil {
 			cmd.PrintErrln(err)

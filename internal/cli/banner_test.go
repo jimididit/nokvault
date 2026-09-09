@@ -69,10 +69,12 @@ func TestRenderBannerColorPolicy(t *testing.T) {
 		styler,
 	)
 
-	assert.Contains(t, styled, "<cyan>")
+	wide := bannerGolden(t, "banner_wide.golden")
+	assert.Equal(t, "<cyan>"+wide+"</cyan>\n\n", styled)
 	assert.NotContains(t, plain, "<cyan>")
 	assert.NotContains(t, dumb, "<cyan>")
-	assert.Equal(t, bannerGolden(t, "banner_wide.golden")+"\n\n", plain)
+	assert.Equal(t, wide+"\n\n", plain)
+	assert.Equal(t, bannerGolden(t, "banner_minimal.golden")+"\n\n", dumb)
 }
 
 func TestSystemBannerCapabilitiesTreatsBufferAsNonInteractive(t *testing.T) {
@@ -80,6 +82,31 @@ func TestSystemBannerCapabilitiesTreatsBufferAsNonInteractive(t *testing.T) {
 	caps := systemBannerCapabilities(&bytes.Buffer{})
 	assert.False(t, caps.interactive)
 	assert.False(t, caps.color)
+}
+
+func TestSystemBannerCapabilitiesHonorsDumbTERMWithoutPTY(t *testing.T) {
+	t.Setenv("TERM", "dumb")
+	original, hadNOColor := os.LookupEnv("NO_COLOR")
+	require.NoError(t, os.Unsetenv("NO_COLOR"))
+	t.Cleanup(func() {
+		if hadNOColor {
+			require.NoError(t, os.Setenv("NO_COLOR", original))
+		}
+	})
+
+	caps := systemBannerCapabilities(&bytes.Buffer{})
+	assert.False(t, caps.interactive)
+	assert.Zero(t, caps.width)
+	assert.True(t, caps.minimal)
+	assert.True(t, caps.color)
+}
+
+func TestBannerGoldensUseLF(t *testing.T) {
+	for _, name := range []string{"banner_wide.golden", "banner_compact.golden", "banner_minimal.golden"} {
+		content, err := os.ReadFile(filepath.Join("testdata", name))
+		require.NoError(t, err, name)
+		assert.NotContains(t, string(content), "\r", name)
+	}
 }
 
 func TestWrapRootHelpTargetsOnlyRoot(t *testing.T) {
@@ -118,8 +145,9 @@ func TestWrapRootHelpSuppressesBannerForJSONFlag(t *testing.T) {
 	detect := func(io.Writer) bannerCapabilities {
 		return bannerCapabilities{interactive: true, width: 72}
 	}
+	previous := jsonOutput
+	t.Cleanup(func() { jsonOutput = previous })
 	jsonOutput = true
-	t.Cleanup(func() { jsonOutput = false })
 
 	require.NoError(t, wrapRootHelp(root, next, detect)(root, nil))
 	assert.Equal(t, "Usage: delegated\n", output.String())
@@ -146,4 +174,24 @@ func TestWrapRootHelpReturnsBannerWriteError(t *testing.T) {
 	err := wrapRootHelp(root, next, detect)(root, nil)
 	require.ErrorIs(t, err, io.ErrClosedPipe)
 	assert.False(t, delegated)
+}
+
+func TestInstallRootHelpBannerWritesHelpFuncErrorsToStderr(t *testing.T) {
+	root := &cobra.Command{Use: "nokvault"}
+	root.SetOut(rejectedWriter{})
+	var stderr bytes.Buffer
+	root.SetErr(&stderr)
+	delegated := false
+	root.SetHelpFunc(func(*cobra.Command, []string) {
+		delegated = true
+	})
+	installRootHelpBannerWith(root, func(io.Writer) bannerCapabilities {
+		return bannerCapabilities{interactive: true, width: 72}
+	})
+
+	root.HelpFunc()(root, nil)
+
+	assert.False(t, delegated)
+	assert.Contains(t, stderr.String(), io.ErrClosedPipe.Error())
+	assert.NotContains(t, stderr.String(), "███╗")
 }
