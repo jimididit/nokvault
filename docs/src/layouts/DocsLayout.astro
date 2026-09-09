@@ -125,6 +125,47 @@ const resolvedToc =
     overflow-x: auto;
   }
 
+  .docs-article__body :global(h1) {
+    font-size: clamp(2rem, 4vw, 2.75rem);
+  }
+
+  .docs-article__body :global(h2) {
+    margin-top: 2rem;
+    font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+  }
+
+  .docs-article__body :global(h3) {
+    margin-top: 1.5rem;
+    font-size: clamp(1.1rem, 2vw, 1.25rem);
+  }
+
+  .docs-article__body :global(.lede) {
+    color: var(--text-muted);
+    font-size: 1.125rem;
+  }
+
+  .docs-article__body :global(.docs-path-list) {
+    list-style: none;
+    margin: 0 0 32px;
+    padding: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .docs-article__body :global(.docs-path-list li) {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 0;
+  }
+
+  .docs-article__body :global(.docs-path-list a) {
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .docs-article__body :global(.docs-path-list p) {
+    margin: 8px 0 0;
+    color: var(--text-muted);
+  }
+
   .docs-article__body :global(table),
   .docs-article__body :global(pre) {
     max-width: 100%;

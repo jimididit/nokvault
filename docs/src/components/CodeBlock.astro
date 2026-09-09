@@ -3,60 +3,174 @@ export interface Props {
   code: string;
   lang?: string;
   filename?: string;
+  copy?: boolean;
 }
 
-const { code, lang = 'text', filename } = Astro.props;
+const { code, lang = 'text', filename, copy = true } = Astro.props;
 
-// Import Shiki
 const { codeToHtml } = await import('shiki');
 
-// Get the highlighted HTML
 const html = await codeToHtml(code, {
   lang,
   theme: 'github-dark',
 });
+
+const metaLabel = filename || lang;
 ---
 
-<div class="code-block-wrapper">
-  {filename && (
-    <div class="code-filename">
-      {filename}
-    </div>
-  )}
-  <div class="code-container" set:html={html} />
-</div>
+<figure class="code-block" data-code-block>
+  <figcaption class="code-block__header">
+    <span class="code-block__meta">
+      {filename ? <span class="code-block__filename">{filename}</span> : null}
+      <span class="code-block__lang">{lang}</span>
+      {!filename ? <span class="sr-only">{metaLabel}</span> : null}
+    </span>
+    {
+      copy ? (
+        <button type="button" class="code-block__copy" data-code-copy>
+          Copy
+        </button>
+      ) : null
+    }
+  </figcaption>
+  <div class="code-block__body" set:html={html} />
+  <textarea class="sr-only" data-code-source readonly tabindex="-1" aria-hidden="true">{code}</textarea>
+  {
+    copy ? (
+      <p class="sr-only" data-code-status role="status" aria-live="polite"></p>
+    ) : null
+  }
+</figure>
+
+<script>
+  document.addEventListener('click', async (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const button = target.closest('[data-code-copy]');
+    if (!(button instanceof HTMLButtonElement)) return;
+
+    const block = button.closest('[data-code-block]');
+    if (!(block instanceof HTMLElement)) return;
+
+    const source = block.querySelector('[data-code-source]');
+    const status = block.querySelector('[data-code-status]');
+    const text = source instanceof HTMLTextAreaElement || source instanceof HTMLInputElement
+      ? source.value
+      : source?.textContent ?? '';
+
+    const setLabel = (label: string) => {
+      button.textContent = label;
+    };
+
+    const announce = (message: string) => {
+      if (status instanceof HTMLElement) status.textContent = message;
+    };
+
+    const previous = button.dataset.resetTimer;
+    if (previous) window.clearTimeout(Number(previous));
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setLabel('Copied');
+      announce('Copied');
+      const timer = window.setTimeout(() => {
+        setLabel('Copy');
+        if (status instanceof HTMLElement) status.textContent = '';
+        delete button.dataset.resetTimer;
+      }, 2000);
+      button.dataset.resetTimer = String(timer);
+    } catch {
+      setLabel('Select and copy manually');
+      announce('Select and copy manually');
+      const timer = window.setTimeout(() => {
+        setLabel('Copy');
+        if (status instanceof HTMLElement) status.textContent = '';
+        delete button.dataset.resetTimer;
+      }, 2000);
+      button.dataset.resetTimer = String(timer);
+    }
+  });
+</script>
 
 <style>
-  .code-block-wrapper {
-    margin: 1rem 0;
-    border-radius: 0.5rem;
+  .code-block {
+    margin: 0 0 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--code-canvas);
     overflow: hidden;
-    border: 1px solid #1f1f1f;
   }
 
-  .code-filename {
-    background-color: #1a1a1a;
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    color: #a3a3a3;
-    border-bottom: 1px solid #1f1f1f;
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  .code-block__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 12px;
+    color: var(--text-muted);
+    font: 600 0.75rem/1.2 var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
-  .code-container {
+  .code-block__meta {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .code-block__filename {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .code-block__lang {
+    color: var(--text-muted);
+  }
+
+  .code-block__copy {
+    flex-shrink: 0;
+    min-height: 44px;
+    min-width: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text);
+    padding: 8px 12px;
+    font: 600 0.75rem/1.2 var(--font-mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .code-block__copy:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .code-block__body {
     overflow-x: auto;
   }
 
-  .code-container :global(pre) {
+  .code-block__body :global(pre) {
     margin: 0;
-    padding: 1rem;
-    background-color: #0d1117 !important;
+    border: 0;
+    border-radius: 0;
+    background: transparent !important;
+    padding: 16px;
     overflow-x: auto;
   }
 
-  .code-container :global(code) {
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  .code-block__body :global(code) {
+    font-family: var(--font-mono);
     font-size: 0.875rem;
-    line-height: 1.6;
+    line-height: 1.7;
   }
 </style>

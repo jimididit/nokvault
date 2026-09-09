@@ -1,263 +1,274 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import CodeBlock from '../../components/CodeBlock.astro';
+import { SITE } from '../../data/site';
+
 const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
-<DocsLayout 
-  title="Command Reference - Nokvault CLI Commands"
-  description="Complete reference guide for all Nokvault CLI commands including encrypt, decrypt, watch, schedule, rotate-key, secure-delete, and config. Learn command syntax, options, and examples."
+<DocsLayout
+  title="Command Reference - NokVault CLI Commands"
+  description="Complete reference for NokVault commands including encrypt, decrypt, watch, schedule, rotate-key, secure-delete, and config."
   canonical={`${base}docs/commands`}
   keywords={['nokvault commands', 'CLI commands', 'encryption commands', 'nokvault encrypt', 'nokvault decrypt', 'command reference']}
 >
-  <div class="prose prose-invert max-w-none">
-    <h1>Commands</h1>
-    <p class="text-xl text-dark-text-muted mb-8">
-      Complete reference for all Nokvault commands and their options.
+  <h1>Commands</h1>
+  <p class="lede">Complete reference for all {SITE.name} commands and their options.</p>
+
+  <section aria-labelledby="path-and-symlink-policy">
+    <h2 id="path-and-symlink-policy">Path and symlink policy</h2>
+    <p>
+      File-touching commands share a default-deny policy. There is no <code>--follow-symlinks</code> flag and links are never skipped silently.
     </p>
+    <ul>
+      <li>
+        Any symlink, Windows junction, or other detected reparse point in a supplied input, output leaf, or existing parent component aborts
+        the operation and names the rejected path.
+      </li>
+      <li>
+        Nested links inside a tree are rejected only by commands that recurse (directory encrypt/decrypt, tree <code>secure-delete</code>,
+        schedule directory runs, and watch events).
+      </li>
+      <li>Checks run before <code>--dry-run</code>, password prompts, reads, writes, overwrite checks, or deletes.</li>
+      <li>
+        Directory outputs are joined with lexical containment (<code>filepath.Clean</code> + <code>filepath.Rel</code>, never string-prefix
+        matching). Absolute, <code>..</code>, non-local, reserved-device (<code>NUL</code>/<code>CON</code>/<code>COM1</code>),
+        rooted-backslash, and volume-qualified relatives are rejected.
+      </li>
+      <li><code>SYMLINK_DISALLOWED</code>: use a regular file or directory path. Symlinks are not followed.</li>
+      <li><code>PATH_ESCAPE</code>: use a relative path that stays inside the selected output directory.</li>
+      <li>
+        Watch and schedule always print those two policy errors. Ordinary watch permission/I/O errors still require <code>--verbose</code>.
+      </li>
+      <li>
+        This is not race-proof against a privileged local attacker replacing a path component between validation and open. Descriptor-relative
+        OS APIs are out of scope.
+      </li>
+    </ul>
+  </section>
 
-    <section class="mb-8">
-      <h2>Path and symlink policy</h2>
-      <p class="text-dark-text-muted mb-4">
-        File-touching commands share a default-deny policy. There is no <code>--follow-symlinks</code> flag and links are never skipped silently.
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Any symlink, Windows junction, or other detected reparse point in a supplied input, output leaf, or existing parent component aborts the operation and names the rejected path.</li>
-        <li>Nested links inside a tree are rejected only by commands that recurse (directory encrypt/decrypt, tree <code>secure-delete</code>, schedule directory runs, and watch events).</li>
-        <li>Checks run before <code>--dry-run</code>, password prompts, reads, writes, overwrite checks, or deletes.</li>
-        <li>Directory outputs are joined with lexical containment (<code>filepath.Clean</code> + <code>filepath.Rel</code>, never string-prefix matching). Absolute, <code>..</code>, non-local, reserved-device (<code>NUL</code>/<code>CON</code>/<code>COM1</code>), rooted-backslash, and volume-qualified relatives are rejected.</li>
-        <li><code>SYMLINK_DISALLOWED</code>: use a regular file or directory path. Symlinks are not followed.</li>
-        <li><code>PATH_ESCAPE</code>: use a relative path that stays inside the selected output directory.</li>
-        <li>Watch and schedule always print those two policy errors. Ordinary watch permission/I/O errors still require <code>--verbose</code>.</li>
-        <li>This is not race-proof against a privileged local attacker replacing a path component between validation and open. Descriptor-relative OS APIs are out of scope.</li>
-      </ul>
-    </section>
-
-    <section class="mb-8">
-      <h2>Machine-readable output</h2>
-      <p class="text-dark-text-muted mb-4">
-        Operational commands inherit <code>--json</code>, which emits stable schema-version-1 records for scripts and SOAR workflows. In this mode stdout contains JSON only, stderr stays empty, prompts and progress bars are disabled, and failures use a nonzero exit code with a structured error.
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li><code>encrypt</code>, <code>decrypt</code>, <code>secure-delete</code>, and <code>rotate-key</code> emit exactly one result or error object.</li>
-        <li><code>watch</code> and <code>schedule encrypt</code> emit newline-delimited JSON lifecycle, file, completion, and failure events.</li>
-        <li>Consumers should ignore unknown fields. A breaking field or meaning change requires a new schema version.</li>
-        <li>Help, version, completion, and <code>config</code> are not part of the version-1 operational schema.</li>
-      </ul>
-      <CodeBlock code={`# One bounded result
+  <section aria-labelledby="machine-readable-output">
+    <h2 id="machine-readable-output">Machine-readable output</h2>
+    <p>
+      Operational commands inherit <code>--json</code>, which emits stable schema-version-1 records for scripts and SOAR workflows. In this
+      mode stdout contains JSON only, stderr stays empty, prompts and progress bars are disabled, and failures use a nonzero exit code with a
+      structured error.
+    </p>
+    <ul>
+      <li><code>encrypt</code>, <code>decrypt</code>, <code>secure-delete</code>, and <code>rotate-key</code> emit exactly one result or error object.</li>
+      <li><code>watch</code> and <code>schedule encrypt</code> emit newline-delimited JSON (NDJSON) lifecycle, file, completion, and failure events.</li>
+      <li>Consumers should ignore unknown fields. A breaking field or meaning change requires a new schema version.</li>
+      <li>Help, version, completion, and <code>config</code> are not part of the version-1 operational schema.</li>
+    </ul>
+    <CodeBlock
+      code={`# One bounded result
 nokvault encrypt evidence.img --keyfile ./key --no-prompt --json
 
 # Filter a long-running NDJSON stream
 nokvault watch ./incoming --auto-encrypt --keyfile ./key --no-prompt --json \\
-  | jq -c 'select(.event == "encryption.completed")'`} lang="bash" />
-    </section>
+  | jq -c 'select(.event == "encryption.completed")'`}
+      lang="bash"
+    />
+  </section>
 
-    <div class="space-y-8">
-      <section>
-        <h2><code>encrypt &lt;path&gt;</code></h2>
-        <p class="text-dark-text-muted mb-4">
-          Encrypt a file or directory using AES-256-GCM encryption. Supports both files and recursive directory encryption. Nested input or output links abort the whole tree; no ciphertext is written for the rejected path.
-        </p>
-        <h3>Options</h3>
-        <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-          <li><code>--output, -o</code>: Specify output file path (default: &lt;path&gt;.nokvault)</li>
-          <li><code>--keyfile, -k</code>: Path to keyfile for encryption (mode 0600 required on Unix; symlinks refused)</li>
-          <li><code>--password, -p</code>: Removed — refused at runtime (use keyfile, <code>NOKVAULT_PASSWORD</code>, or prompt)</li>
-          <li><code>--no-prompt</code>: Don't prompt for password</li>
-          <li><code>--compress</code>: Compress before encryption</li>
-          <li><code>--dry-run</code>: Show what would be encrypted without actually encrypting</li>
-          <li><code>--force, -f</code>: Overwrite existing output path</li>
-          <li><code>--verbose, -v</code>: Verbose output</li>
-        </ul>
-        <p class="text-dark-text-muted mb-4">
-          Race-safe writes without <code>--force</code> require hard-link support on the destination filesystem. FAT/exFAT and some network filesystems may reject the operation.
-        </p>
-        <h3>Examples</h3>
-        <CodeBlock code={`# Encrypt a file
+  <section aria-labelledby="encrypt">
+    <h2 id="encrypt"><code>encrypt &lt;path&gt;</code></h2>
+    <p>
+      Encrypt a file or directory using AES-256-GCM. Supports files and recursive directory encryption. Nested input or output links abort the
+      whole tree; no ciphertext is written for the rejected path.
+    </p>
+    <h3>Options</h3>
+    <ul>
+      <li><code>--output, -o</code>: Specify output file path (default: &lt;path&gt;.nokvault)</li>
+      <li><code>--keyfile, -k</code>: Path to keyfile for encryption (mode 0600 required on Unix; symlinks refused)</li>
+      <li><code>--password, -p</code>: Removed — refused at runtime (use keyfile, <code>NOKVAULT_PASSWORD</code>, or prompt)</li>
+      <li><code>--no-prompt</code>: Don't prompt for password</li>
+      <li><code>--compress</code>: Compress before encryption</li>
+      <li><code>--dry-run</code>: Show what would be encrypted without actually encrypting</li>
+      <li><code>--force, -f</code>: Overwrite existing output path</li>
+      <li><code>--verbose, -v</code>: Verbose output</li>
+    </ul>
+    <p>
+      Race-safe writes without <code>--force</code> require hard-link support on the destination filesystem. FAT/exFAT and some network
+      filesystems may reject the operation.
+    </p>
+    <h3>Examples</h3>
+    <CodeBlock
+      code={`# Encrypt a file
 nokvault encrypt document.txt
 
 # Encrypt with compression
 nokvault encrypt large-file.bin --compress
 
 # Use keyfile
-nokvault encrypt file.txt --keyfile ~/.keys/master.key`} lang="bash" />
-      </section>
+nokvault encrypt file.txt --keyfile ~/.keys/master.key`}
+      lang="bash"
+    />
+  </section>
 
-      <section>
-        <h2><code>decrypt &lt;path&gt;</code></h2>
-        <p class="text-dark-text-muted mb-4">
-          Decrypt a nokvault encrypted file or directory. Automatically detects encrypted files and restores original structure. A symlink or reparse output parent is rejected before credentials are read. Policy errors stay typed even without <code>--strict</code>.
-        </p>
-        <h3>Options</h3>
-        <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-          <li><code>--output, -o</code>: Specify output file path</li>
-          <li><code>--keyfile, -k</code>: Path to keyfile for decryption (mode 0600 required on Unix; symlinks refused)</li>
-          <li><code>--password, -p</code>: Removed — refused at runtime (use keyfile, <code>NOKVAULT_PASSWORD</code>, or prompt)</li>
-          <li><code>--no-prompt</code>: Don't prompt for password</li>
-          <li><code>--preserve-mode</code>: Restore original file modes (default clamps to ≤0600 files / ≤0700 dirs)</li>
-          <li><code>--force, -f</code>: Overwrite existing output path</li>
-          <li><code>--strict</code>: Abort directory decrypt on the first failure (leave already-written files)</li>
-          <li><code>--dry-run</code>: Show what would be decrypted</li>
-          <li><code>--verbose, -v</code>: Verbose output</li>
-        </ul>
-        <p class="text-dark-text-muted mb-4">
-          Race-safe writes without <code>--force</code> require hard-link support on the destination filesystem. FAT/exFAT and some network filesystems may reject the operation.
-        </p>
-        <h3>Examples</h3>
-        <CodeBlock code={`# Decrypt a file
+  <section aria-labelledby="decrypt">
+    <h2 id="decrypt"><code>decrypt &lt;path&gt;</code></h2>
+    <p>
+      Decrypt a nokvault encrypted file or directory. Automatically detects encrypted files and restores original structure. A symlink or
+      reparse output parent is rejected before credentials are read. Policy errors stay typed even without <code>--strict</code>.
+    </p>
+    <h3>Options</h3>
+    <ul>
+      <li><code>--output, -o</code>: Specify output file path</li>
+      <li><code>--keyfile, -k</code>: Path to keyfile for decryption (mode 0600 required on Unix; symlinks refused)</li>
+      <li><code>--password, -p</code>: Removed — refused at runtime (use keyfile, <code>NOKVAULT_PASSWORD</code>, or prompt)</li>
+      <li><code>--no-prompt</code>: Don't prompt for password</li>
+      <li><code>--preserve-mode</code>: Restore original file modes (default clamps to ≤0600 files / ≤0700 dirs)</li>
+      <li><code>--force, -f</code>: Overwrite existing output path</li>
+      <li><code>--strict</code>: Abort directory decrypt on the first failure (leave already-written files; default continues and reports partial results)</li>
+      <li><code>--dry-run</code>: Show what would be decrypted</li>
+      <li><code>--verbose, -v</code>: Verbose output</li>
+    </ul>
+    <p>
+      Race-safe writes without <code>--force</code> require hard-link support on the destination filesystem. FAT/exFAT and some network
+      filesystems may reject the operation.
+    </p>
+    <h3>Examples</h3>
+    <CodeBlock
+      code={`# Decrypt a file
 nokvault decrypt document.txt.nokvault
 
 # Decrypt with keyfile
 nokvault decrypt file.nokvault --keyfile ~/.keys/master.key
 
 # Decrypt directory
-nokvault decrypt ./encrypted-documents`} lang="bash" />
-      </section>
+nokvault decrypt ./encrypted-documents`}
+      lang="bash"
+    />
+  </section>
 
-      <section>
-        <h2><code>watch &lt;path&gt;</code></h2>
-        <p class="text-dark-text-muted mb-4">
-          Watch a directory for file changes and optionally auto-encrypt files when they're created or modified. A symlink watch root is refused at startup. Symlink events are rejected and never encrypted; delayed encrypt re-checks the path before writing.
-        </p>
-        <h3>Options</h3>
-        <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-          <li><code>--auto-encrypt</code>: Automatically encrypt files on change</li>
-          <li><code>--keyfile, -k</code>: Path to keyfile</li>
-          <li><code>--delay</code>: Delay before processing changes (default: 1s)</li>
-          <li><code>--exclude</code>: Exclude patterns</li>
-          <li><code>--recursive</code>: Watch subdirectories recursively</li>
-          <li><code>--verbose, -v</code>: Verbose output</li>
-        </ul>
-        <h3>Examples</h3>
-        <CodeBlock code={`# Watch directory with auto-encryption
+  <section aria-labelledby="watch">
+    <h2 id="watch"><code>watch &lt;path&gt;</code></h2>
+    <p>
+      Watch a directory for file changes and optionally auto-encrypt files when they are created or modified. A symlink watch root is refused
+      at startup. Symlink events are rejected and never encrypted; delayed encrypt re-checks the path before writing.
+    </p>
+    <h3>Options</h3>
+    <ul>
+      <li><code>--auto-encrypt</code>: Automatically encrypt files on change</li>
+      <li><code>--keyfile, -k</code>: Path to keyfile</li>
+      <li><code>--delay</code>: Delay before processing changes (default: 1s)</li>
+      <li><code>--exclude</code>: Exclude patterns</li>
+      <li><code>--recursive</code>: Watch subdirectories recursively</li>
+      <li><code>--verbose, -v</code>: Verbose output</li>
+    </ul>
+    <h3>Examples</h3>
+    <CodeBlock
+      code={`# Watch directory with auto-encryption
 nokvault watch ./documents --auto-encrypt --keyfile ~/.keys/master.key
 
 # Watch with delay and exclusions
 nokvault watch ./sensitive --auto-encrypt \\
   --keyfile ~/.keys/master.key \\
   --delay 5s \\
-  --exclude "*.tmp"`} lang="bash" />
-      </section>
+  --exclude "*.tmp"`}
+      lang="bash"
+    />
+  </section>
 
-      <section>
-        <h2><code>schedule encrypt &lt;path&gt;</code></h2>
-        <p class="text-dark-text-muted mb-4">
-          Schedule periodic encryption operations. Useful for automated backups and regular encryption tasks. The configured path and generated outputs are validated at startup and again on every tick before mutation.
-        </p>
-        <h3>Options</h3>
-        <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-          <li><code>--interval</code>: Time interval between operations (e.g., 1h, 30m, 1d)</li>
-          <li><code>--keyfile, -k</code>: Path to keyfile</li>
-          <li><code>--compress</code>: Compress before encryption</li>
-          <li><code>--verbose, -v</code>: Verbose output</li>
-        </ul>
-        <h3>Examples</h3>
-        <CodeBlock code={`# Encrypt every hour
+  <section aria-labelledby="schedule-encrypt">
+    <h2 id="schedule-encrypt"><code>schedule encrypt &lt;path&gt;</code></h2>
+    <p>
+      Schedule periodic encryption operations. Useful for automated backups and regular encryption tasks. The configured path and generated
+      outputs are validated at startup and again on every tick before mutation.
+    </p>
+    <h3>Options</h3>
+    <ul>
+      <li><code>--interval</code>: Time interval between operations (e.g., 1h, 30m, 1d)</li>
+      <li><code>--keyfile, -k</code>: Path to keyfile</li>
+      <li><code>--compress</code>: Compress before encryption</li>
+      <li><code>--verbose, -v</code>: Verbose output</li>
+    </ul>
+    <h3>Examples</h3>
+    <CodeBlock
+      code={`# Encrypt every hour
 nokvault schedule encrypt ./backups --interval 1h --keyfile ~/.keys/backup.key
 
 # Encrypt daily
-nokvault schedule encrypt ./documents --interval 24h`} lang="bash" />
-      </section>
+nokvault schedule encrypt ./documents --interval 24h`}
+      lang="bash"
+    />
+  </section>
 
-      <section>
-        <h2><code>rotate-key &lt;path&gt;</code></h2>
-        <p class="text-dark-text-muted mb-4">
-          Re-key an encrypted file by decrypting with the old credential and re-encrypting with a new one (new salt and ciphertext). Prefer keyfiles over prompts for automation. Symlink or reparse inputs are rejected before passwords are requested.
-        </p>
-        <h3>Options</h3>
-        <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-          <li><code>--old-keyfile</code>: Path to old keyfile</li>
-          <li><code>--new-keyfile</code>: Path to new keyfile</li>
-          <li><code>--old-password</code> / <code>--new-password</code>: Removed — refused at runtime</li>
-          <li><code>--no-prompt</code>: Don't prompt for passwords</li>
-          <li><code>--verbose, -v</code>: Verbose output</li>
-        </ul>
-        <h3>Examples</h3>
-        <CodeBlock code={`# Rotate key for a file
+  <section aria-labelledby="rotate-key">
+    <h2 id="rotate-key"><code>rotate-key &lt;path&gt;</code></h2>
+    <p>
+      Re-key an encrypted file by decrypting with the old credential and re-encrypting with a new one (new salt and ciphertext). Prefer
+      keyfiles over prompts for automation. Symlink or reparse inputs are rejected before passwords are requested.
+    </p>
+    <h3>Options</h3>
+    <ul>
+      <li><code>--old-keyfile</code>: Path to old keyfile</li>
+      <li><code>--new-keyfile</code>: Path to new keyfile</li>
+      <li><code>--old-password</code> / <code>--new-password</code>: Removed — refused at runtime</li>
+      <li><code>--no-prompt</code>: Don't prompt for passwords</li>
+      <li><code>--verbose, -v</code>: Verbose output</li>
+    </ul>
+    <h3>Examples</h3>
+    <CodeBlock
+      code={`# Rotate key for a file
 nokvault rotate-key file.nokvault
 
 # Rotate with specific keyfiles
 nokvault rotate-key file.nokvault \\
   --old-keyfile ~/.keys/old.key \\
-  --new-keyfile ~/.keys/new.key`} lang="bash" />
-      </section>
+  --new-keyfile ~/.keys/new.key`}
+      lang="bash"
+    />
+  </section>
 
-      <section>
-        <h2><code>secure-delete &lt;path&gt;</code></h2>
-        <p class="text-dark-text-muted mb-4">
-          Best-effort overwrite and deletion for traditional spinning disks. SSD wear leveling, snapshots, and copy-on-write filesystems may retain prior data; this is not a guaranteed forensic wipe. Symlink or reparse paths are refused; the link and its target are left untouched.
-        </p>
-        <h3>Options</h3>
-        <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-          <li><code>--passes, -p</code>: Number of overwrite passes (default: 3)</li>
-          <li><code>--yes, -y</code>: Confirm deletion without prompting (required when stdin is not a TTY)</li>
-          <li><code>--dry-run</code>: List paths that would be deleted without deleting</li>
-          <li><code>--verbose, -v</code>: Verbose output</li>
-        </ul>
-        <h3>Examples</h3>
-        <CodeBlock code={`# Preview what would be deleted
+  <section aria-labelledby="secure-delete">
+    <h2 id="secure-delete"><code>secure-delete &lt;path&gt;</code></h2>
+    <p>
+      Best-effort overwrite and deletion for traditional spinning disks. SSD wear leveling, snapshots, and copy-on-write filesystems may retain
+      prior data; this is not a guaranteed forensic wipe. Symlink or reparse paths are refused; the link and its target are left untouched.
+    </p>
+    <h3>Options</h3>
+    <ul>
+      <li><code>--passes, -p</code>: Number of overwrite passes (default: 3)</li>
+      <li><code>--yes, -y</code>: Confirm deletion without prompting (required when stdin is not a TTY)</li>
+      <li><code>--dry-run</code>: List paths that would be deleted without deleting</li>
+      <li><code>--verbose, -v</code>: Verbose output</li>
+    </ul>
+    <h3>Examples</h3>
+    <CodeBlock
+      code={`# Preview what would be deleted
 nokvault secure-delete sensitive-file.txt --dry-run
 
 # Secure delete (scripts / CI)
 nokvault secure-delete sensitive-file.txt --yes
 
 # Secure delete with custom passes
-nokvault secure-delete sensitive-file.txt --yes --passes 7`} lang="bash" />
-      </section>
+nokvault secure-delete sensitive-file.txt --yes --passes 7`}
+      lang="bash"
+    />
+  </section>
 
-      <section>
-        <h2><code>config</code></h2>
-        <p class="text-dark-text-muted mb-4">
-          Initialize or inspect the Argon2id settings used for new encryptions.
-        </p>
-        <h3>Subcommands</h3>
-        <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-          <li><code>--init</code>: Initialize default configuration</li>
-          <li><code>--show</code>: Show current configuration</li>
-          <li><code>--get &lt;key&gt;</code>: Read <code>memory_cost</code>, <code>time_cost</code>, or <code>parallelism</code></li>
-        </ul>
-        <h3>Examples</h3>
-        <CodeBlock code={`# Initialize configuration
+  <section aria-labelledby="config">
+    <h2 id="config"><code>config</code></h2>
+    <p>Initialize or inspect the Argon2id settings used for new encryptions.</p>
+    <h3>Subcommands</h3>
+    <ul>
+      <li><code>--init</code>: Initialize default configuration</li>
+      <li><code>--show</code>: Show current configuration</li>
+      <li><code>--get &lt;key&gt;</code>: Read <code>memory_cost</code>, <code>time_cost</code>, or <code>parallelism</code></li>
+    </ul>
+    <h3>Examples</h3>
+    <CodeBlock
+      code={`# Initialize configuration
 nokvault config --init
 
 # View current configuration
 nokvault config --show
 
 # Get a specific value
-nokvault config --get memory_cost`} lang="bash" />
-      </section>
-    </div>
-  </div>
+nokvault config --get memory_cost`}
+      lang="bash"
+    />
+  </section>
 </DocsLayout>
-
-<style>
-  .prose {
-    color: #e5e5e5;
-  }
-  .prose h1 {
-    color: #fff;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-  .prose h2 {
-    color: #fff;
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin-top: 2rem;
-    margin-bottom: 1rem;
-  }
-  .prose h3 {
-    color: #fff;
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-top: 1.5rem;
-    margin-bottom: 0.75rem;
-  }
-  .prose code {
-    background-color: #1f1f1f;
-    padding: 0.2em 0.4em;
-    border-radius: 0.25rem;
-    font-size: 0.9em;
-  }
-</style>

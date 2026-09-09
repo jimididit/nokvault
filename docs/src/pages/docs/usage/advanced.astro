@@ -1,83 +1,96 @@
 ---
 import DocsLayout from '../../../layouts/DocsLayout.astro';
 import CodeBlock from '../../../components/CodeBlock.astro';
+import { SITE } from '../../../data/site';
+
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
-<DocsLayout title="Advanced Usage - Nokvault">
-  <div class="prose prose-invert max-w-none">
-    <h1>Advanced Usage</h1>
-    <p class="text-xl text-dark-text-muted mb-8">
-      Explore advanced features like compression, auto-encryption, scheduling, and key rotation.
-    </p>
+<DocsLayout
+  title="Advanced Usage - NokVault"
+  description="Compression, automation, rotation, deletion, and batch workflows with NokVault."
+  canonical={`${base}docs/usage/advanced`}
+  keywords={['nokvault advanced', 'file watching', 'scheduled encryption', 'key rotation', 'secure delete']}
+>
+  <h1>Advanced Usage</h1>
+  <p class="lede">
+    Explore compression, auto-encryption, scheduling, key rotation, secure deletion, and batch workflows in {SITE.name}.
+  </p>
 
-    <section class="mb-8">
-      <h2>Compression</h2>
-      <p class="text-dark-text-muted mb-4">
-        Compress files before encryption to save space, especially useful for text files and archives:
-      </p>
-      <CodeBlock code={`# Encrypt with compression
+  <section aria-labelledby="compression">
+    <h2 id="compression">Compression</h2>
+    <p>Compress files before encryption to save space, especially for text files and archives:</p>
+    <CodeBlock
+      code={`# Encrypt with compression
 nokvault encrypt large-file.txt --compress
 
 # Compression is automatically detected during decryption
-nokvault decrypt large-file.txt.nokvault`} lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        Compression is particularly effective for text files, JSON, XML, and other compressible formats. Binary files may not compress much.
-      </p>
-    </section>
+nokvault decrypt large-file.txt.nokvault`}
+      lang="bash"
+    />
+    <p>
+      Compression is particularly effective for text files, JSON, XML, and other compressible formats. Binary files may not compress much.
+    </p>
+  </section>
 
-    <section class="mb-8">
-      <h2>Auto-Encryption with File Watching</h2>
-      <p class="text-dark-text-muted mb-4">
-        Automatically encrypt files when they're created or modified in a directory:
-      </p>
-      <CodeBlock code={`# Watch directory and auto-encrypt
+  <section aria-labelledby="auto-encryption-with-file-watching">
+    <h2 id="auto-encryption-with-file-watching">Auto-Encryption with File Watching</h2>
+    <p>Automatically encrypt files when they are created or modified in a directory:</p>
+    <CodeBlock
+      code={`# Watch directory and auto-encrypt
 nokvault watch ./sensitive --auto-encrypt \\
   --keyfile ~/.keys/master.key \\
   --delay 5s \\
-  --exclude "*.tmp"`} lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        The <code>--delay</code> option prevents encrypting files that are still being written. The watcher runs until you stop it with Ctrl+C. A symlink watch root is refused at startup; symlink events are rejected and never encrypted. Policy errors print without <code>--verbose</code>.
-      </p>
-    </section>
+  --exclude "*.tmp"`}
+      lang="bash"
+    />
+    <p>
+      The <code>--delay</code> option prevents encrypting files that are still being written. The watcher runs until you stop it with Ctrl+C.
+      A symlink watch root is refused at startup; symlink events are rejected and never encrypted. Policy errors print without
+      <code>--verbose</code>.
+    </p>
+  </section>
 
-    <section class="mb-8">
-      <h2>Scheduled Encryption</h2>
-      <p class="text-dark-text-muted mb-4">
-        Set up periodic encryption for automated backups and regular encryption tasks:
-      </p>
-      <CodeBlock code={`# Encrypt backups every hour
+  <section aria-labelledby="scheduled-encryption">
+    <h2 id="scheduled-encryption">Scheduled Encryption</h2>
+    <p>Set up periodic encryption for automated backups and regular encryption tasks:</p>
+    <CodeBlock
+      code={`# Encrypt backups every hour
 nokvault schedule encrypt ./backups --interval 1h --keyfile ~/.keys/backup.key
 
 # Encrypt daily at midnight (using cron on Linux/macOS)
-# Add to crontab: 0 0 * * * nokvault encrypt /path/to/docs --keyfile ~/.keys/master.key`} lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        Scheduled encryption is useful for maintaining encrypted backups of important directories. Each run re-validates the configured path and generated outputs before writing; a symlink or escaping output aborts that tick.
-      </p>
-    </section>
+# Add to crontab: 0 0 * * * nokvault encrypt /path/to/docs --keyfile ~/.keys/master.key`}
+      lang="bash"
+    />
+    <p>
+      Scheduled encryption is useful for maintaining encrypted backups of important directories. Each run re-validates the configured path and
+      generated outputs before writing; a symlink or escaping output aborts that tick.
+    </p>
+  </section>
 
-    <section class="mb-8">
-      <h2>Key Rotation</h2>
-      <p class="text-dark-text-muted mb-4">
-        Re-key an encrypted file by decrypting with the old credential and re-encrypting with a new one (new salt and ciphertext):
-      </p>
-      <CodeBlock code={`# Rotate key for a file
+  <section aria-labelledby="key-rotation">
+    <h2 id="key-rotation">Key Rotation</h2>
+    <p>
+      Re-key an encrypted file by decrypting with the old credential and re-encrypting with a new one (new salt and ciphertext):
+    </p>
+    <CodeBlock
+      code={`# Rotate key for a file
 nokvault rotate-key file.nokvault
 
 # Rotate with specific keyfiles
 nokvault rotate-key file.nokvault \\
   --old-keyfile ~/.keys/old.key \\
-  --new-keyfile ~/.keys/new.key`} lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        Key rotation is recommended periodically for enhanced security, especially if a key might have been compromised.
-      </p>
-    </section>
+  --new-keyfile ~/.keys/new.key`}
+      lang="bash"
+    />
+    <p>Key rotation is recommended periodically, especially if a key might have been compromised.</p>
+  </section>
 
-    <section class="mb-8">
-      <h2>Secure Deletion</h2>
-      <p class="text-dark-text-muted mb-4">
-        Best-effort overwrite and delete sensitive files:
-      </p>
-      <CodeBlock code={`# Secure delete with default passes (interactive: type yes)
+  <section aria-labelledby="secure-deletion">
+    <h2 id="secure-deletion">Secure Deletion</h2>
+    <p>Best-effort overwrite and delete sensitive files:</p>
+    <CodeBlock
+      code={`# Secure delete with default passes (interactive: type yes)
 nokvault secure-delete sensitive-file.txt
 
 # Non-interactive / CI
@@ -87,18 +100,20 @@ nokvault secure-delete sensitive-file.txt --yes
 nokvault secure-delete sensitive-file.txt --dry-run
 
 # Secure delete with more passes
-nokvault secure-delete sensitive-file.txt --yes --passes 7`} lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        This is best-effort on traditional spinning disks. SSD wear leveling, snapshots, and copy-on-write filesystems may retain prior data; it is not a guaranteed forensic wipe.
-      </p>
-    </section>
+nokvault secure-delete sensitive-file.txt --yes --passes 7`}
+      lang="bash"
+    />
+    <p>
+      This is best-effort on traditional spinning disks. SSD wear leveling, snapshots, and copy-on-write filesystems may retain prior data; it
+      is not a guaranteed forensic wipe.
+    </p>
+  </section>
 
-    <section class="mb-8">
-      <h2>Batch Operations</h2>
-      <p class="text-dark-text-muted mb-4">
-        Encrypt or decrypt multiple files using shell loops:
-      </p>
-      <CodeBlock code={`# Encrypt all .txt files in current directory
+  <section aria-labelledby="batch-operations">
+    <h2 id="batch-operations">Batch Operations</h2>
+    <p>Encrypt or decrypt multiple files using shell loops:</p>
+    <CodeBlock
+      code={`# Encrypt all .txt files in current directory
 for file in *.txt; do
   nokvault encrypt "$file" --keyfile ~/.keys/master.key --no-prompt
 done
@@ -106,43 +121,20 @@ done
 # Decrypt all .nokvault files
 for file in *.nokvault; do
   nokvault decrypt "$file" --keyfile ~/.keys/master.key --no-prompt
-done`} lang="bash" />
-    </section>
+done`}
+      lang="bash"
+    />
+  </section>
 
-    <section class="mb-8">
-      <h2>Verbose Output</h2>
-      <p class="text-dark-text-muted mb-4">
-        Get detailed information about operations:
-      </p>
-      <CodeBlock code={`# Verbose encryption
+  <section aria-labelledby="verbose-output">
+    <h2 id="verbose-output">Verbose Output</h2>
+    <p>Get detailed information about operations:</p>
+    <CodeBlock
+      code={`# Verbose encryption
 nokvault encrypt ./documents --verbose
 
-# Shows progress, file counts, and detailed status`} lang="bash" />
-    </section>
-  </div>
+# Shows progress, file counts, and detailed status`}
+      lang="bash"
+    />
+  </section>
 </DocsLayout>
-
-<style>
-  .prose {
-    color: #e5e5e5;
-  }
-  .prose h1 {
-    color: #fff;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-  .prose h2 {
-    color: #fff;
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin-top: 2rem;
-    margin-bottom: 1rem;
-  }
-  .prose code {
-    background-color: #1f1f1f;
-    padding: 0.2em 0.4em;
-    border-radius: 0.25rem;
-    font-size: 0.9em;
-  }
-</style>
