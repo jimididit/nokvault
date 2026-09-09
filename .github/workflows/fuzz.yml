@@ -1,0 +1,55 @@
+name: Fuzz
+
+on:
+  pull_request:
+    paths:
+      - '**/*.go'
+      - go.mod
+      - go.sum
+      - .github/workflows/fuzz.yml
+  push:
+    branches: [main]
+    paths:
+      - '**/*.go'
+      - go.mod
+      - go.sum
+      - .github/workflows/fuzz.yml
+  schedule:
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - FuzzReadHeaderWithMetadata
+          - FuzzEncryptedContainer
+    env:
+      FUZZ_TIME: ${{ github.event_name == 'schedule' && '5m' || '15s' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Fuzz
+        run: go test ./internal/core -run '^$' -fuzz "^${{ matrix.target }}$" -fuzztime "$FUZZ_TIME"
+
+      - name: Upload failing input
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}-failure
+          path: internal/core/testdata/fuzz/${{ matrix.target }}
+          if-no-files-found: ignore

@@ -42,6 +42,10 @@ const (
 	Version2        = uint16(2)
 	CurrentVersion  = Version2
 	maxMetadataSize = 1 << 20
+
+	MaxKDFMemory      uint32 = 256 * 1024
+	MaxKDFTime        uint32 = 10
+	MaxKDFParallelism uint8  = 16
 )
 
 // HeaderWireSize returns on-disk header size for a format version (excluding JSON metadata).
@@ -62,6 +66,15 @@ func ValidateKDFParams(p *crypto.Argon2Params) error {
 	}
 	if p.Memory == 0 || p.Time == 0 || p.Parallelism == 0 {
 		return fmt.Errorf("invalid kdf params: memory, time, and parallelism must be non-zero")
+	}
+	if p.Memory > MaxKDFMemory {
+		return fmt.Errorf("invalid kdf params: memory %d exceeds maximum %d KiB", p.Memory, MaxKDFMemory)
+	}
+	if p.Time > MaxKDFTime {
+		return fmt.Errorf("invalid kdf params: time %d exceeds maximum %d", p.Time, MaxKDFTime)
+	}
+	if p.Parallelism > MaxKDFParallelism {
+		return fmt.Errorf("invalid kdf params: parallelism %d exceeds maximum %d", p.Parallelism, MaxKDFParallelism)
 	}
 	if p.KeyLength != crypto.DefaultKeyLength {
 		return fmt.Errorf("invalid kdf params: key length must be %d", crypto.DefaultKeyLength)
