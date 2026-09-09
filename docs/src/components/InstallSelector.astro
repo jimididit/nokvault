@@ -13,21 +13,14 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
     </p>
   </div>
 
-  <div
-    class="install-selector__tabs"
-    role="tablist"
-    aria-label="Installation methods"
-  >
+  <div class="install-selector__controls" role="group" aria-label="Installation methods">
     {INSTALL_OPTIONS.map((option, index) => (
       <button
         type="button"
-        role="tab"
-        id={`install-tab-${option.id}`}
-        class="install-selector__tab"
-        aria-selected={index === 0 ? 'true' : 'false'}
-        aria-controls={option.id}
-        data-install-tab={option.id}
-        tabindex={index === 0 ? 0 : -1}
+        id={`install-control-${option.id}`}
+        class="install-selector__control"
+        aria-pressed={index === 0 ? 'true' : 'false'}
+        data-install-control={option.id}
       >
         {option.label}
       </button>
@@ -39,8 +32,7 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
       <section
         class:list={['install-selector__panel', { 'is-active': index === 0 }]}
         id={option.id}
-        role="tabpanel"
-        aria-labelledby={`install-tab-${option.id}`}
+        aria-labelledby={`install-control-${option.id}`}
         data-install-panel={option.id}
         data-active={index === 0 ? 'true' : 'false'}
       >
@@ -61,19 +53,18 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
 <script>
   const root = document.querySelector('[data-install-selector]');
   if (root instanceof HTMLElement) {
-    const tabs = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-install-tab]'));
+    const controls = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-install-control]'));
     const panels = Array.from(root.querySelectorAll<HTMLElement>('[data-install-panel]'));
-    const ids = tabs
-      .map((tab) => tab.getAttribute('data-install-tab'))
+    const ids = controls
+      .map((control) => control.getAttribute('data-install-control'))
       .filter((id): id is string => Boolean(id));
 
     const activate = (id: string, { updateHash = true }: { updateHash?: boolean } = {}) => {
       if (!ids.includes(id)) return;
 
-      for (const tab of tabs) {
-        const selected = tab.getAttribute('data-install-tab') === id;
-        tab.setAttribute('aria-selected', selected ? 'true' : 'false');
-        tab.tabIndex = selected ? 0 : -1;
+      for (const control of controls) {
+        const pressed = control.getAttribute('data-install-control') === id;
+        control.setAttribute('aria-pressed', pressed ? 'true' : 'false');
       }
 
       for (const panel of panels) {
@@ -95,30 +86,9 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
       if (ids.includes(id)) activate(id, { updateHash: false });
     };
 
-    for (const tab of tabs) {
-      tab.addEventListener('click', () => {
-        const id = tab.getAttribute('data-install-tab');
-        if (id) activate(id);
-      });
-
-      tab.addEventListener('keydown', (event: KeyboardEvent) => {
-        const currentIndex = tabs.indexOf(tab);
-        let nextIndex = currentIndex;
-        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-          nextIndex = (currentIndex + 1) % tabs.length;
-        } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-          nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-        } else if (event.key === 'Home') {
-          nextIndex = 0;
-        } else if (event.key === 'End') {
-          nextIndex = tabs.length - 1;
-        } else {
-          return;
-        }
-        event.preventDefault();
-        const next = tabs[nextIndex];
-        next?.focus();
-        const id = next?.getAttribute('data-install-tab');
+    for (const control of controls) {
+      control.addEventListener('click', () => {
+        const id = control.getAttribute('data-install-control');
         if (id) activate(id);
       });
     }
@@ -140,13 +110,13 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
     color: var(--text-muted);
   }
 
-  .install-selector__tabs {
+  .install-selector__controls {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
   }
 
-  .install-selector__tab {
+  .install-selector__control {
     min-height: 44px;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -157,7 +127,7 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
     cursor: pointer;
   }
 
-  .install-selector__tab[aria-selected='true'] {
+  .install-selector__control[aria-pressed='true'] {
     border-color: var(--accent);
     background: color-mix(in srgb, var(--accent) 14%, transparent);
     color: var(--text);

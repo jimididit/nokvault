@@ -39,12 +39,12 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
         <p class="landing-hero__lede landing-hero__reveal landing-hero__reveal--delay-2">
           Strong local encryption without surrendering your data, workflow, or judgment to a cloud service.
         </p>
-        <div class="landing-hero__actions landing-hero__reveal landing-hero__reveal--delay-3">
+        <div class="landing-hero__actions">
           <a class="button button--primary" href={`${base}docs/installation`}>Install NokVault</a>
           <a class="button button--secondary" href={`${base}docs/`}>Read the docs</a>
         </div>
       </div>
-      <div class="landing-hero__terminal landing-hero__reveal landing-hero__reveal--delay-4">
+      <div class="landing-hero__terminal landing-hero__reveal landing-hero__reveal--delay-3">
         <TerminalDemo />
       </div>
     </section>
@@ -145,7 +145,7 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
   }
 
   .landing-hero__reveal {
-    animation: landing-hero-in 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: landing-hero-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .landing-hero__reveal--delay-1 {
@@ -158,10 +158,6 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
 
   .landing-hero__reveal--delay-3 {
     animation-delay: 120ms;
-  }
-
-  .landing-hero__reveal--delay-4 {
-    animation-delay: 160ms;
   }
 
   @keyframes landing-hero-in {
@@ -193,8 +189,7 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
     .landing-hero__reveal,
     .landing-hero__reveal--delay-1,
     .landing-hero__reveal--delay-2,
-    .landing-hero__reveal--delay-3,
-    .landing-hero__reveal--delay-4 {
+    .landing-hero__reveal--delay-3 {
       animation: none;
     }
   }
