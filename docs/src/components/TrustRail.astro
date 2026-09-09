@@ -1,0 +1,43 @@
+---
+const labels = ['AES-256-GCM', 'ARGON2ID', 'LOCAL-FIRST', 'OPEN SOURCE'] as const;
+---
+
+<section class="trust-rail" aria-label="Trust anchors">
+  <ul class="trust-rail__list">
+    {labels.map((label) => (
+      <li>
+        <span class="trust-rail__label">{label}</span>
+      </li>
+    ))}
+  </ul>
+</section>
+
+<style>
+  .trust-rail {
+    border-block: 1px solid var(--border);
+    padding-block: 20px;
+  }
+
+  .trust-rail__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 24px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .trust-rail__label {
+    color: var(--text-muted);
+    font: 600 0.75rem/1.3 var(--font-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  @media (min-width: 768px) {
+    .trust-rail__list {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+  }
+</style>

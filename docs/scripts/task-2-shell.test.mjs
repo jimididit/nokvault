@@ -33,5 +33,6 @@ test('landing metadata and heading use the NokVault wordmark casing', async () =
 
   assert.match(html, /<title>NokVault - Encrypt and Protect Your Files \| CLI Encryption Tool<\/title>/);
   assert.match(html, /<meta name="description" content="NokVault is a modern, cross-platform CLI tool/);
-  assert.match(html, /<h1[^>]*>NokVault<\/h1>/);
+  assert.match(html, /aria-label="NokVault home"/);
+  assert.match(html, /Your files\./);
 });

@@ -1,0 +1,98 @@
+---
+const capabilities = [
+  {
+    title: 'Files and directory trees',
+    body: 'Encrypt individual files or recurse through directories while preserving structure for a clean decrypt path.',
+  },
+  {
+    title: 'Trusted local automation',
+    body: 'Watch directories and schedule encrypt jobs on machines you already trust—no cloud sync or remote agent required.',
+  },
+  {
+    title: 'Operator safeguards',
+    body: 'Overwrite refusal, confirmation gates, strict mode, and path-containment checks reduce irreversible mistakes.',
+  },
+  {
+    title: 'JSON and NDJSON integration',
+    body: 'Stable machine-readable output supports scripts, DFIR tooling, and SOAR pipelines without scraping terminals.',
+  },
+] as const;
+---
+
+<section class="workflow-capabilities" aria-labelledby="workflow-heading">
+  <div class="workflow-capabilities__intro">
+    <p class="eyebrow">Workflow capabilities</p>
+    <h2 id="workflow-heading">Built for operators, not dashboards</h2>
+    <p>
+      Capabilities are organized by outcome: protect data, automate locally, reduce operator error, and integrate with tooling you already run.
+    </p>
+  </div>
+  <ul class="workflow-capabilities__list">
+    {capabilities.map((item, index) => (
+      <li class="workflow-capabilities__item">
+        <span class="workflow-capabilities__index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+        <div>
+          <h3>{item.title}</h3>
+          <p>{item.body}</p>
+        </div>
+      </li>
+    ))}
+  </ul>
+</section>
+
+<style>
+  .workflow-capabilities {
+    display: grid;
+    gap: 32px;
+  }
+
+  .workflow-capabilities__intro p:last-child {
+    margin-bottom: 0;
+    max-width: 42rem;
+    color: var(--text-muted);
+  }
+
+  .workflow-capabilities__list {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .workflow-capabilities__item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 16px;
+    border-top: 1px solid var(--border);
+    padding-block: 20px;
+  }
+
+  .workflow-capabilities__item:last-child {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .workflow-capabilities__index {
+    color: var(--accent);
+    font: 600 0.875rem/1.2 var(--font-mono);
+    letter-spacing: 0.08em;
+  }
+
+  .workflow-capabilities__item h3 {
+    margin-bottom: 8px;
+    font-size: clamp(1.125rem, 2vw, 1.375rem);
+  }
+
+  .workflow-capabilities__item p {
+    margin: 0;
+    color: var(--text-muted);
+  }
+
+  @media (min-width: 1024px) {
+    .workflow-capabilities {
+      grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+      gap: 64px;
+      align-items: start;
+    }
+  }
+</style>

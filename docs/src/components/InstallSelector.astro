@@ -1,0 +1,205 @@
+---
+import { INSTALL_OPTIONS, SITE } from '../data/site';
+
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+---
+
+<section class="install-selector" data-install-selector aria-labelledby="install-heading">
+  <div class="install-selector__intro">
+    <p class="eyebrow">Installation</p>
+    <h2 id="install-heading">Install on your platform</h2>
+    <p>
+      Every option stays in the page without JavaScript. With scripting available, the control group emphasizes one panel and keeps the URL hash in sync.
+    </p>
+  </div>
+
+  <div
+    class="install-selector__tabs"
+    role="tablist"
+    aria-label="Installation methods"
+  >
+    {INSTALL_OPTIONS.map((option, index) => (
+      <button
+        type="button"
+        role="tab"
+        id={`install-tab-${option.id}`}
+        class="install-selector__tab"
+        aria-selected={index === 0 ? 'true' : 'false'}
+        aria-controls={option.id}
+        data-install-tab={option.id}
+        tabindex={index === 0 ? 0 : -1}
+      >
+        {option.label}
+      </button>
+    ))}
+  </div>
+
+  <div class="install-selector__panels">
+    {INSTALL_OPTIONS.map((option, index) => (
+      <section
+        class:list={['install-selector__panel', { 'is-active': index === 0 }]}
+        id={option.id}
+        role="tabpanel"
+        aria-labelledby={`install-tab-${option.id}`}
+        data-install-panel={option.id}
+        data-active={index === 0 ? 'true' : 'false'}
+      >
+        <h3>{option.label}</h3>
+        <pre><code>{option.command}</code></pre>
+      </section>
+    ))}
+  </div>
+
+  <div class="install-selector__actions">
+    <a class="button button--primary" href={`${base}docs/installation`}>Start with Installation</a>
+    <a class="button button--secondary" href={SITE.repository} target="_blank" rel="noopener noreferrer">
+      Inspect the source
+    </a>
+  </div>
+</section>
+
+<script>
+  const root = document.querySelector('[data-install-selector]');
+  if (root instanceof HTMLElement) {
+    const tabs = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-install-tab]'));
+    const panels = Array.from(root.querySelectorAll<HTMLElement>('[data-install-panel]'));
+    const ids = tabs
+      .map((tab) => tab.getAttribute('data-install-tab'))
+      .filter((id): id is string => Boolean(id));
+
+    const activate = (id: string, { updateHash = true }: { updateHash?: boolean } = {}) => {
+      if (!ids.includes(id)) return;
+
+      for (const tab of tabs) {
+        const selected = tab.getAttribute('data-install-tab') === id;
+        tab.setAttribute('aria-selected', selected ? 'true' : 'false');
+        tab.tabIndex = selected ? 0 : -1;
+      }
+
+      for (const panel of panels) {
+        const active = panel.getAttribute('data-install-panel') === id;
+        panel.classList.toggle('is-active', active);
+        panel.setAttribute('data-active', active ? 'true' : 'false');
+      }
+
+      if (updateHash) {
+        const next = `#${id}`;
+        if (location.hash !== next) {
+          history.replaceState(null, '', next);
+        }
+      }
+    };
+
+    const fromHash = () => {
+      const id = location.hash.replace(/^#/, '');
+      if (ids.includes(id)) activate(id, { updateHash: false });
+    };
+
+    for (const tab of tabs) {
+      tab.addEventListener('click', () => {
+        const id = tab.getAttribute('data-install-tab');
+        if (id) activate(id);
+      });
+
+      tab.addEventListener('keydown', (event: KeyboardEvent) => {
+        const currentIndex = tabs.indexOf(tab);
+        let nextIndex = currentIndex;
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+          nextIndex = (currentIndex + 1) % tabs.length;
+        } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+          nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        } else if (event.key === 'Home') {
+          nextIndex = 0;
+        } else if (event.key === 'End') {
+          nextIndex = tabs.length - 1;
+        } else {
+          return;
+        }
+        event.preventDefault();
+        const next = tabs[nextIndex];
+        next?.focus();
+        const id = next?.getAttribute('data-install-tab');
+        if (id) activate(id);
+      });
+    }
+
+    window.addEventListener('hashchange', fromHash);
+    fromHash();
+  }
+</script>
+
+<style>
+  .install-selector {
+    display: grid;
+    gap: 24px;
+  }
+
+  .install-selector__intro p:last-child {
+    margin-bottom: 0;
+    max-width: 42rem;
+    color: var(--text-muted);
+  }
+
+  .install-selector__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .install-selector__tab {
+    min-height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    padding-inline: 14px;
+    font: 600 0.875rem/1.2 var(--font-sans);
+    cursor: pointer;
+  }
+
+  .install-selector__tab[aria-selected='true'] {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--text);
+  }
+
+  .install-selector__panels {
+    display: grid;
+    gap: 20px;
+  }
+
+  .install-selector__panel {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    padding: 20px;
+  }
+
+  .install-selector__panel h3 {
+    margin-bottom: 12px;
+    font-size: 1.125rem;
+  }
+
+  .install-selector__panel pre {
+    margin: 0;
+    overflow-x: auto;
+  }
+
+  /* Enhancement: emphasize the selected panel; all panels remain in document flow. */
+  .install-selector__panel.is-active {
+    border-color: var(--accent);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  .install-selector__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  @media (min-width: 1024px) {
+    .install-selector__intro {
+      max-width: 40rem;
+    }
+  }
+</style>
