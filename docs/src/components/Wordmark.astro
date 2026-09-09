@@ -1,0 +1,26 @@
+---
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+---
+
+<a class="wordmark" href={base} aria-label="NokVault home">
+  <span aria-hidden="true" class="wordmark__rule"></span>
+  <span>NokVault</span>
+  <span aria-hidden="true" class="wordmark__rule"></span>
+</a>
+
+<style>
+  .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font: 700 1.125rem/1 var(--font-mono);
+    letter-spacing: -0.04em;
+    text-decoration: none;
+  }
+
+  .wordmark__rule {
+    width: 12px;
+    border-top: 2px solid var(--accent);
+  }
+</style>

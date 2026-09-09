@@ -1,75 +1,103 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import CodeBlock from '../../components/CodeBlock.astro';
+import { SITE } from '../../data/site';
+
 const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
-<DocsLayout 
-  title="Installation Guide - Nokvault"
-  description="Learn how to install Nokvault on Windows, Linux, and macOS. Download pre-built binaries or build from source. Quick start guide for getting Nokvault CLI encryption tool up and running."
+<DocsLayout
+  title="Installation Guide - NokVault"
+  description="Install a verified NokVault binary with Homebrew, Scoop, GitHub Releases, or build from source."
   canonical={`${base}docs/installation`}
   keywords={['nokvault install', 'install nokvault', 'nokvault download', 'CLI encryption install', 'encryption tool setup']}
 >
-  <div class="prose prose-invert max-w-none">
-    <h1>Installation</h1>
-    <p class="text-xl text-dark-text-muted mb-8">
-      Get Nokvault installed on your system. Choose the method that works best for you.
+  <h1>Installation</h1>
+  <p class="lede">
+    Install {SITE.name} with a package manager, an attested release binary, or a local Go build. Prefer verified releases for production use.
+  </p>
+
+  <section aria-labelledby="homebrew">
+    <h2 id="homebrew">Homebrew</h2>
+    <p>On macOS, install the hash-pinned formula from the {SITE.name} tap:</p>
+    <CodeBlock
+      code={`brew tap jimididit/nokvault https://github.com/jimididit/nokvault.git
+brew install jimididit/nokvault/nokvault`}
+      lang="bash"
+      filename="homebrew"
+    />
+  </section>
+
+  <section aria-labelledby="scoop">
+    <h2 id="scoop">Scoop</h2>
+    <p>On Windows, install the hash-pinned Scoop manifest directly from the repository:</p>
+    <CodeBlock
+      code={`scoop install https://raw.githubusercontent.com/jimididit/nokvault/main/scoop/nokvault.json`}
+      lang="bash"
+      filename="scoop"
+    />
+  </section>
+
+  <section aria-labelledby="release-binaries">
+    <h2 id="release-binaries">Release binaries</h2>
+    <p>
+      Download a pre-built binary for Windows, Linux, or macOS from
+      <a href={SITE.releases} target="_blank" rel="noopener noreferrer">GitHub Releases</a>.
     </p>
+    <ol>
+      <li>Choose the artifact for your platform and architecture.</li>
+      <li>On Linux and macOS, make it executable: <code>chmod +x nokvault</code>.</li>
+      <li>Move it into a directory on your <code>PATH</code>, or run it from the download location.</li>
+    </ol>
 
-    <section class="mb-8">
-      <h2>Download Pre-built Binaries</h2>
-      <p class="text-dark-text-muted mb-4">
-        The easiest way to get started is to download a pre-built binary for your platform from GitHub Releases.
-      </p>
-      <ol class="list-decimal list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Visit <a href="https://github.com/jimididit/nokvault/releases" class="text-blue-400 hover:underline" target="_blank">GitHub Releases</a></li>
-        <li>Download the appropriate binary for your platform (Windows, Linux, or macOS)</li>
-        <li>Make it executable (Linux/macOS): <code>chmod +x nokvault</code></li>
-        <li>Move it to a directory in your PATH, or use it directly</li>
-      </ol>
-    </section>
+    <h3>Verify release provenance</h3>
+    <p>
+      Releases published after provenance support was enabled include SHA-256 checksums and a GitHub build attestation.
+      Compare the downloaded binary with <code>checksums.txt</code>, then verify that GitHub Actions built it from this repository:
+    </p>
+    <CodeBlock
+      code="gh attestation verify ./nokvault-linux-amd64 --repo jimididit/nokvault"
+      lang="bash"
+      filename="attestation"
+    />
+    <p>
+      Replace the filename with the artifact for your platform. The command requires the GitHub CLI and an internet connection.
+    </p>
+    <p>
+      An APT repository is not currently published. Linux users should download the attested binary for their architecture from
+      <a href={SITE.releases} target="_blank" rel="noopener noreferrer">GitHub Releases</a>.
+    </p>
+  </section>
 
-    <section class="mb-8">
-      <h2>Verify Release Provenance</h2>
-      <p class="text-dark-text-muted mb-4">
-        Releases published after provenance support was enabled include SHA-256 checksums and a GitHub build attestation. Compare the downloaded binary with <code>checksums.txt</code>, then verify that GitHub Actions built it from this repository:
-      </p>
-      <CodeBlock code="gh attestation verify ./nokvault-linux-amd64 --repo jimididit/nokvault" lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        Replace the filename with the artifact for your platform. The command requires the GitHub CLI and an internet connection.
-      </p>
-    </section>
+  <section aria-labelledby="build-from-source">
+    <h2 id="build-from-source">Build from source</h2>
+    <p>Build {SITE.name} from source when you need the latest tip or a customized build.</p>
 
-    <section class="mb-8">
-      <h2>Build from Source</h2>
-      <p class="text-dark-text-muted mb-4">
-        Build Nokvault from source if you want the latest features or need to customize the build.
-      </p>
-      <h3>Prerequisites</h3>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Go 1.25.11 or later</li>
-        <li>Git</li>
-      </ul>
-      <h3>Build Steps</h3>
-      <CodeBlock code={`git clone https://github.com/jimididit/nokvault.git
+    <h3>Prerequisites</h3>
+    <ul>
+      <li>Go 1.25.11 or later</li>
+      <li>Git</li>
+    </ul>
+
+    <h3>Build steps</h3>
+    <CodeBlock
+      code={`git clone https://github.com/jimididit/nokvault.git
 cd nokvault
 
 # Windows
 go build -o nokvault.exe ./cmd/nokvault
 
 # Linux/macOS
-go build -o nokvault ./cmd/nokvault`} lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        The binary will be created in the current directory. Move it to a location in your PATH to use it system-wide.
-      </p>
-    </section>
+go build -o nokvault ./cmd/nokvault`}
+      lang="bash"
+      filename="build"
+    />
+    <p>The binary is created in the current directory. Move it onto your <code>PATH</code> for system-wide use.</p>
 
-    <section class="mb-8">
-      <h2>Cross-Compilation</h2>
-      <p class="text-dark-text-muted mb-4">
-        Build binaries for different platforms from your current machine.
-      </p>
-      <CodeBlock code={`# Windows (64-bit)
+    <h3>Cross-compilation</h3>
+    <p>Build binaries for other platforms from your current machine:</p>
+    <CodeBlock
+      code={`# Windows (64-bit)
 GOOS=windows GOARCH=amd64 go build -o nokvault-windows-amd64.exe ./cmd/nokvault
 
 # Linux (64-bit)
@@ -79,66 +107,18 @@ GOOS=linux GOARCH=amd64 go build -o nokvault-linux-amd64 ./cmd/nokvault
 GOOS=darwin GOARCH=amd64 go build -o nokvault-darwin-amd64 ./cmd/nokvault
 
 # macOS (Apple Silicon)
-GOOS=darwin GOARCH=arm64 go build -o nokvault-darwin-arm64 ./cmd/nokvault`} lang="bash" />
-    </section>
+GOOS=darwin GOARCH=arm64 go build -o nokvault-darwin-arm64 ./cmd/nokvault`}
+      lang="bash"
+      filename="cross-compile"
+    />
+  </section>
 
-    <section class="mb-8">
-      <h2>Package Managers</h2>
-      <p class="text-dark-text-muted mb-4">
-        Install the hash-pinned manifest directly from the Nokvault repository:
-      </p>
-      <CodeBlock code={`# Homebrew (macOS)
-brew tap jimididit/nokvault https://github.com/jimididit/nokvault.git
-brew install jimididit/nokvault/nokvault
-
-# Scoop (Windows)
-scoop install https://raw.githubusercontent.com/jimididit/nokvault/main/scoop/nokvault.json`} lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        An APT repository is not currently published. Linux users should download the attested binary for their architecture from <a href="https://github.com/jimididit/nokvault/releases" class="text-blue-400 hover:underline" target="_blank">GitHub Releases</a>.
-      </p>
-    </section>
-
-    <section class="mb-8">
-      <h2>Verify Installation</h2>
-      <p class="text-dark-text-muted mb-4">
-        After installation, verify that Nokvault is working correctly:
-      </p>
-      <CodeBlock code="nokvault --version" lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        You should see the version number. If you get a "command not found" error, make sure the binary is in your PATH.
-      </p>
-    </section>
-  </div>
+  <section aria-labelledby="verify-installation">
+    <h2 id="verify-installation">Verify installation</h2>
+    <p>Confirm the binary runs:</p>
+    <CodeBlock code="nokvault --version" lang="bash" />
+    <p>
+      You should see the version number. If the shell reports “command not found,” ensure the binary is on your <code>PATH</code>.
+    </p>
+  </section>
 </DocsLayout>
-
-<style>
-  .prose {
-    color: #e5e5e5;
-  }
-  .prose h1 {
-    color: #fff;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-  .prose h2 {
-    color: #fff;
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin-top: 2rem;
-    margin-bottom: 1rem;
-  }
-  .prose h3 {
-    color: #fff;
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-top: 1.5rem;
-    margin-bottom: 0.75rem;
-  }
-  .prose code {
-    background-color: #1f1f1f;
-    padding: 0.2em 0.4em;
-    border-radius: 0.25rem;
-    font-size: 0.9em;
-  }
-</style>

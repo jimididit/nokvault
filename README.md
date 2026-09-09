@@ -201,19 +201,18 @@ nokvault encrypt ./files -v
 - **Decrypt modes**: Clamped to ≤0600 / ≤0700 unless `--preserve-mode`
 - **Path policy**: Default-deny for detected symlinks, Windows junctions, and other reparse points on encrypt, decrypt, rotate-key, secure-delete, watch, schedule, and keyfiles. Nested-link rejection applies only to commands that recurse. Directory outputs are contained with lexical `SafeJoin` (`filepath.Rel`, not string-prefix matching).
 - **Policy errors**: `SYMLINK_DISALLOWED` (use a regular path; links are not followed) and `PATH_ESCAPE` (stay inside the selected output directory). Checks run before `--dry-run`, password prompts, reads, writes, or deletes.
-- **Timing Attack Protection**: Constant-time operations
-- **File Integrity**: Built-in authentication tags
+- **File Integrity**: Built-in AES-GCM authentication tags (decrypt fails closed on tamper)
 
 ### Security Best Practices
 
 1. **Use keyfiles** instead of passwords when possible (`chmod 0600`; symlinks are rejected)
-2. **Never pass passwords on argv** — `--password` / `-p` are refused
+2. **Never pass passwords on argv** - `--password` / `-p` are refused
 3. **Rotate keys** periodically using `rotate-key`
 4. **Use secure deletion** for sensitive files: `secure-delete --yes` (or confirm interactively); preview with `--dry-run`
 5. **Never commit** passwords or keyfiles to version control
 6. **Prefer keyfiles over** `NOKVAULT_PASSWORD` for automation (env vars remain visible to local processes)
 7. **Pass `--force`** when intentionally overwriting encrypt/decrypt outputs
-8. **Use regular paths** — replace any symlink or junction with the real file or directory; Nokvault will not follow it
+8. **Use regular paths** - replace any symlink or junction with the real file or directory; Nokvault will not follow it
 
 ## Contributing
 
@@ -235,7 +234,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Documentation
 
-📚 **[Full Documentation Website](https://jimididit.github.io/nokvault/)** - Complete documentation with examples, guides, and API reference.
+📚 **[Full Documentation Website](https://jimididit.github.io/nokvault/)** - Cipher Editorial landing page and docs shell with dual themes, local search, self-hosted typography, and no third-party analytics or GitHub widget runtime. Source lives under `docs/`.
+
+For local preview:
+
+```bash
+cd docs
+npm ci
+npm run build
+npm run preview
+```
 
 ## Support
 

@@ -1,0 +1,320 @@
+---
+import { DOCS_PAGES } from '../data/site';
+
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+const docsHref = `${base}docs/`;
+const searchPages = DOCS_PAGES.map((page) => ({
+  group: page.group,
+  title: page.title,
+  href: page.href,
+  description: page.description,
+  headings: [...page.headings],
+}));
+---
+
+<div class="docs-search" data-docs-search data-docs-base={base}>
+  <a class="docs-search__trigger button button--secondary" href={docsHref} data-docs-search-trigger>
+    <span class="docs-search__trigger-label">Search documentation</span>
+    <svg class="docs-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7"></circle>
+      <path d="m20 20-3.5-3.5"></path>
+    </svg>
+  </a>
+
+  <dialog class="docs-search__dialog" data-docs-search-dialog aria-labelledby="docs-search-title">
+    <form method="dialog" class="docs-search__close-row">
+      <button type="submit" class="button button--secondary" value="close">Close</button>
+    </form>
+    <h2 id="docs-search-title" class="docs-search__title">Search documentation</h2>
+    <label for="docs-search-input">Search documentation</label>
+    <div class="docs-search__field">
+      <input
+        id="docs-search-input"
+        type="search"
+        autocomplete="off"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-controls="docs-search-results"
+        aria-expanded="false"
+        aria-haspopup="listbox"
+        data-docs-search-input
+      />
+      <svg class="docs-search__icon docs-search__field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="m20 20-3.5-3.5"></path>
+      </svg>
+    </div>
+    <p id="docs-search-status" role="status" aria-live="polite" data-docs-search-status></p>
+    <ul id="docs-search-results" role="listbox" aria-label="Search results" data-docs-search-results></ul>
+  </dialog>
+
+  <script is:inline type="application/json" id="docs-search-data" set:html={JSON.stringify(searchPages)} />
+</div>
+
+<style>
+  .docs-search {
+    margin-bottom: 24px;
+  }
+
+  .docs-search__trigger {
+    width: 100%;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .docs-search__trigger-label {
+    min-width: 0;
+    text-align: start;
+  }
+
+  .docs-search__icon {
+    flex: 0 0 auto;
+    width: 1.125rem;
+    height: 1.125rem;
+    color: var(--text-muted);
+  }
+
+  .docs-search__dialog {
+    width: min(100% - 32px, 560px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--text);
+    padding: 24px;
+  }
+
+  .docs-search__dialog::backdrop {
+    background: color-mix(in srgb, var(--canvas) 40%, #000 35%);
+  }
+
+  .docs-search__close-row {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 12px;
+  }
+
+  .docs-search__title {
+    margin: 0 0 16px;
+    font-size: 1.25rem;
+  }
+
+  .docs-search label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .docs-search__field {
+    position: relative;
+    margin-bottom: 12px;
+  }
+
+  .docs-search input[type='search'] {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--canvas);
+    color: var(--text);
+    padding: 8px 44px 8px 12px;
+    font: inherit;
+  }
+
+  .docs-search__field-icon {
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  #docs-search-status {
+    min-height: 1.5em;
+    margin: 0 0 12px;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+
+  #docs-search-results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: min(50vh, 360px);
+    overflow: auto;
+  }
+
+  #docs-search-results a {
+    display: block;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  #docs-search-results [role='option'][aria-selected='true'],
+  #docs-search-results [role='option']:hover {
+    background: var(--surface-raised);
+  }
+
+  #docs-search-results .docs-search__meta {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+  }
+</style>
+
+<script>
+  import { rankDocsSearch } from '../lib/docs-search.mjs';
+
+  type SearchPage = {
+    group: string;
+    title: string;
+    href: string;
+    description: string;
+    headings: string[];
+  };
+
+  const root = document.querySelector('[data-docs-search]');
+  if (root instanceof HTMLElement) {
+    const trigger = root.querySelector('[data-docs-search-trigger]');
+    const dialog = root.querySelector('[data-docs-search-dialog]');
+    const input = root.querySelector('[data-docs-search-input]');
+    const status = root.querySelector('[data-docs-search-status]');
+    const results = root.querySelector('[data-docs-search-results]');
+    const dataNode = root.querySelector('#docs-search-data');
+    const siteBase = root.getAttribute('data-docs-base') || '/';
+
+    let pages: SearchPage[] = [];
+    try {
+      pages = dataNode ? (JSON.parse(dataNode.textContent || '[]') as SearchPage[]) : [];
+    } catch {
+      pages = [];
+    }
+
+    if (
+      trigger instanceof HTMLAnchorElement &&
+      dialog instanceof HTMLDialogElement &&
+      input instanceof HTMLInputElement &&
+      status instanceof HTMLElement &&
+      results instanceof HTMLElement
+    ) {
+      let activeIndex = -1;
+
+      const withBase = (href: string) => {
+        if (/^https?:\/\//i.test(href)) return href;
+        return `${siteBase}${href.replace(/^\//, '')}`;
+      };
+
+      const setActive = (index: number) => {
+        const options = Array.from(results.querySelectorAll<HTMLElement>('[role="option"]'));
+        activeIndex = index;
+        options.forEach((option, i) => {
+          const selected = i === activeIndex;
+          option.setAttribute('aria-selected', selected ? 'true' : 'false');
+          if (selected) {
+            input.setAttribute('aria-activedescendant', option.id);
+            option.scrollIntoView({ block: 'nearest' });
+          }
+        });
+        if (activeIndex < 0) input.removeAttribute('aria-activedescendant');
+      };
+
+      const render = (query: string) => {
+        const ranked = rankDocsSearch(pages, query);
+        results.replaceChildren();
+        activeIndex = ranked.length > 0 ? 0 : -1;
+        input.setAttribute('aria-expanded', ranked.length > 0 ? 'true' : 'false');
+        input.removeAttribute('aria-activedescendant');
+
+        if (!query.trim()) {
+          status.textContent = '';
+          input.setAttribute('aria-expanded', 'false');
+          return;
+        }
+
+        status.textContent =
+          ranked.length === 0
+            ? 'No matching documentation pages.'
+            : `${ranked.length} result${ranked.length === 1 ? '' : 's'}`;
+
+        for (const [index, page] of ranked.entries()) {
+          const item = document.createElement('li');
+          const link = document.createElement('a');
+          const title = document.createElement('strong');
+          const meta = document.createElement('span');
+          const optionId = `docs-search-option-${index}`;
+          title.textContent = page.title;
+          meta.className = 'docs-search__meta';
+          meta.textContent = `${page.group} · ${page.description}`;
+          link.id = optionId;
+          link.href = withBase(page.href);
+          link.setAttribute('role', 'option');
+          link.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
+          link.append(title, meta);
+          item.setAttribute('role', 'presentation');
+          item.append(link);
+          results.append(item);
+        }
+
+        if (activeIndex >= 0) {
+          input.setAttribute('aria-activedescendant', `docs-search-option-${activeIndex}`);
+        }
+      };
+
+      const open = (query = '') => {
+        if (!dialog.open) dialog.showModal();
+        input.value = query;
+        render(query);
+        queueMicrotask(() => {
+          input.focus();
+          input.select();
+        });
+      };
+
+      trigger.addEventListener('click', (event) => {
+        event.preventDefault();
+        open();
+      });
+
+      input.addEventListener('input', () => {
+        render(input.value);
+      });
+
+      input.addEventListener('keydown', (event) => {
+        const options = Array.from(results.querySelectorAll<HTMLAnchorElement>('[role="option"]'));
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          if (options.length === 0) return;
+          setActive((activeIndex + 1) % options.length);
+        } else if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          if (options.length === 0) return;
+          setActive((activeIndex - 1 + options.length) % options.length);
+        } else if (event.key === 'Enter') {
+          if (activeIndex >= 0 && options[activeIndex]) {
+            event.preventDefault();
+            options[activeIndex].click();
+          }
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          dialog.close();
+        }
+      });
+
+      dialog.addEventListener('close', () => {
+        status.textContent = '';
+        results.replaceChildren();
+        activeIndex = -1;
+        input.setAttribute('aria-expanded', 'false');
+        input.removeAttribute('aria-activedescendant');
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      const initialQuery = params.get('q');
+      if (initialQuery) {
+        open(initialQuery);
+      }
+    }
+  }
+</script>

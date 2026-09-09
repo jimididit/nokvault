@@ -36,9 +36,13 @@ jobs:
         working-directory: docs
         run: npm ci
 
-      - name: Build
+      - name: Type check
         working-directory: docs
-        run: npm run build
+        run: npm run check
+
+      - name: Build and validate
+        working-directory: docs
+        run: npm run test:build
 
       - name: Add .nojekyll file
         run: touch docs/dist/.nojekyll

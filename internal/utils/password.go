@@ -19,7 +19,7 @@ var ErrPasswordFlagRefused = fmt.Errorf(
 // GetPassword retrieves password from keyfile, environment, or interactive prompt.
 // passwordFlag must be empty; non-empty values are refused (NV-004).
 func GetPassword(passwordFlag, keyfileFlag string, noPrompt, confirm bool) ([]byte, error) {
-	// Refuse argv secrets even if a keyfile is also provided — the flag still
+	// Refuse argv secrets even if a keyfile is also provided - the flag still
 	// appears in process lists / shell history (NV-004).
 	if passwordFlag != "" {
 		return nil, ErrPasswordFlagRefused

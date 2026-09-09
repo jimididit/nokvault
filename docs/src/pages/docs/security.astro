@@ -1,173 +1,112 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
+import { SITE } from '../../data/site';
+
 const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
-<DocsLayout 
-  title="Security Features - Nokvault Encryption Security"
-  description="Learn about Nokvault's security features including AES-256-GCM encryption, Argon2id key derivation, secure memory handling, authenticated encryption, and best practices for secure file encryption."
+<DocsLayout
+  title="Security Overview - NokVault"
+  description="NokVault security mechanisms, safeguards, and explicit boundaries for AES-256-GCM, Argon2id, path policy, and memory handling."
   canonical={`${base}docs/security`}
-  keywords={['encryption security', 'AES-256 security', 'secure encryption', 'cryptographic security', 'file encryption security', 'data protection']}
+  keywords={['encryption security', 'AES-256-GCM', 'Argon2id', 'path containment', 'NokVault security']}
 >
-  <div class="prose prose-invert max-w-none">
-    <h1>Security</h1>
-    <p class="text-xl text-dark-text-muted mb-8">
-      Understand Nokvault's security features and how they protect your data.
+  <h1>Security</h1>
+  <p class="lede">
+    Understand {SITE.name}'s cryptographic mechanisms, operational safeguards, and the limits of what the implementation claims.
+  </p>
+
+  <section aria-labelledby="authenticated-encryption">
+    <h2 id="authenticated-encryption">Authenticated encryption</h2>
+    <p>
+      {SITE.name} encrypts file contents with <strong>AES-256-GCM</strong>. AES-256-GCM provides confidentiality and integrity
+      to holders of the correct secret; it does not establish author identity.
     </p>
+    <ul>
+      <li><strong>Confidentiality:</strong> ciphertext cannot be read without the derived encryption key</li>
+      <li><strong>Integrity:</strong> tampering with ciphertext or the authentication tag causes decryption to fail</li>
+      <li><strong>Not identity:</strong> successful decryption proves possession of the secret, not who authored the file</li>
+    </ul>
+    <p>
+      Cryptographic randomness from the platform CSPRNG is used for the per-file salts and nonces that current encryption code
+      generates. Identical plaintexts therefore produce different ciphertexts under normal operation.
+    </p>
+  </section>
 
-    <section class="mb-8">
-      <h2>Encryption</h2>
-      <p class="text-dark-text-muted mb-4">
-        Nokvault uses <strong>AES-256-GCM</strong> (Advanced Encryption Standard with Galois/Counter Mode) for authenticated encryption. This provides:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li><strong>Confidentiality:</strong> Data is encrypted and cannot be read without the key</li>
-        <li><strong>Integrity:</strong> Any tampering with encrypted files is detected</li>
-        <li><strong>Authentication:</strong> Ensures data came from the original source</li>
-      </ul>
-      <p class="text-dark-text-muted">
-        AES-256 is considered secure against current and foreseeable threats, including quantum computing attacks (with appropriate key sizes).
-      </p>
-    </section>
+  <section aria-labelledby="key-derivation">
+    <h2 id="key-derivation">Key derivation</h2>
+    <p>
+      Passwords are never used directly as encryption keys. {SITE.name} derives keys with <strong>Argon2id</strong>. Argon2id
+      parameters and salts follow the format-v2 behavior documented by the CLI:
+    </p>
+    <ul>
+      <li>New encrypted files (format v2) store Argon2id memory, time, and parallelism in the file header</li>
+      <li>Decryption uses the parameters that were active at encryption time</li>
+      <li>Older v1 files rely on built-in defaults (64&nbsp;MiB memory, time&nbsp;3, parallelism&nbsp;4)</li>
+      <li>Config changes affect new encryptions only - they never alter how existing files are decrypted</li>
+      <li>Each file uses a unique salt</li>
+    </ul>
+  </section>
 
-    <section class="mb-8">
-      <h2>Key Derivation</h2>
-      <p class="text-dark-text-muted mb-4">
-        Passwords are never used directly as encryption keys. Instead, Nokvault uses <strong>Argon2id</strong> for key derivation:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Resistant to GPU-based attacks</li>
-        <li>Configurable memory and time costs</li>
-        <li>Winner of the Password Hashing Competition</li>
-        <li>Protects against rainbow table attacks</li>
-      </ul>
-      <p class="text-dark-text-muted mb-4">
-        Each file uses a unique salt, ensuring that even identical files produce different ciphertexts.
-      </p>
-      <p class="text-dark-text-muted">
-        New encrypted files (format v2) store Argon2id memory, time, and parallelism in the file header so decryption uses the same parameters that were active at encryption time. Older v1 files rely on built-in defaults (64&nbsp;MiB memory, time&nbsp;3, parallelism&nbsp;4). Config changes affect new encryptions only — they never alter how existing files are decrypted.
-      </p>
-    </section>
+  <section aria-labelledby="path-containment-and-symlinks">
+    <h2 id="path-containment-and-symlinks">Path containment and symlinks</h2>
+    <p>
+      {SITE.name} does not follow symbolic links, Windows junctions, or other detected reparse points. Encrypt, decrypt,
+      rotate-key, secure-delete, watch, schedule, and keyfiles share that default-deny policy. There is no follow opt-in.
+      Nested-link rejection applies to commands that recurse.
+    </p>
+    <ul>
+      <li>Validation walks existing path components with <code>Lstat</code>. Missing output leaves are allowed; an existing redirected parent is not.</li>
+      <li>On Windows, <code>Lstat</code>-visible symlinks and <code>ModeIrregular</code> entries are rejected, as are paths whose reparse attributes can be read. If <code>GetFileAttributes</code> fails on an ordinary-looking path, that component cannot be conclusively classified and is not treated as a redirect.</li>
+      <li>Directory outputs must remain under the selected root. Containment uses cleaned absolute paths and <code>filepath.Rel</code>, not a string-prefix check.</li>
+      <li>Rejected paths return <code>SYMLINK_DISALLOWED</code> or <code>PATH_ESCAPE</code> with a hint.</li>
+      <li>These checks run before dry-run previews and before any password prompt.</li>
+    </ul>
+    <p>
+      Path containment blocks links visible at validation time but is not descriptor-relative race protection. A privileged
+      local attacker who replaces a path component between validation and open is out of scope. X1 atomic no-replace writes
+      still cover output-file replacement races on supported filesystems.
+    </p>
+  </section>
 
-    <section class="mb-8">
-      <h2>Memory Safety</h2>
-      <p class="text-dark-text-muted mb-4">
-        Sensitive data is handled securely in memory:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Passwords and keys are zeroized from memory after use</li>
-        <li>Memory is cleared before being freed</li>
-        <li>Prevents sensitive data from remaining in RAM</li>
-      </ul>
-    </section>
+  <section aria-labelledby="limitations">
+    <h2 id="limitations">Limitations</h2>
+    <ul>
+      <li>
+        Go memory zeroization is best-effort; swap, crash dumps, copies, and runtime behavior remain limitations. Passwords
+        and keys are cleared when the CLI finishes with them, but that does not guarantee erasure from all system media.
+      </li>
+      <li>
+        Do not treat password or key “verification” as a custom constant-time comparison path. Authentication failure on
+        decrypt comes from AES-GCM tag checking in the standard library; there is no separate constant-time password compare
+        step in the CLI decrypt flow.
+      </li>
+      <li>
+        Secure delete is best-effort and cannot guarantee erasure on SSD, snapshots, or copy-on-write storage. Prefer never
+        writing plaintext you cannot afford to leave behind.
+      </li>
+      <li>
+        Release provenance, keyfile permissions, backups, and credential handling remain operator responsibilities - see
+        <a href={`${base}docs/security/best-practices`}>Best Practices</a>.
+      </li>
+    </ul>
+  </section>
 
-    <section class="mb-8">
-      <h2>Timing Attack Protection</h2>
-      <p class="text-dark-text-muted mb-4">
-        Nokvault uses constant-time operations for:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Password comparison</li>
-        <li>Key verification</li>
-        <li>Authentication tag checking</li>
-      </ul>
-      <p class="text-dark-text-muted">
-        This prevents attackers from learning information through timing analysis.
-      </p>
-    </section>
-
-    <section class="mb-8">
-      <h2>File Integrity</h2>
-      <p class="text-dark-text-muted mb-4">
-        Every encrypted file includes an authentication tag that:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Detects any modification or corruption</li>
-        <li>Prevents tampering attacks</li>
-        <li>Ensures data hasn't been altered</li>
-      </ul>
-      <p class="text-dark-text-muted">
-        If a file is tampered with, decryption will fail with an authentication error.
-      </p>
-    </section>
-
-    <section class="mb-8">
-      <h2>Random Number Generation</h2>
-      <p class="text-dark-text-muted mb-4">
-        Nokvault uses cryptographically secure random number generation for:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Initialization vectors (IVs) for each file</li>
-        <li>Salt generation for key derivation</li>
-        <li>Key generation</li>
-      </ul>
-      <p class="text-dark-text-muted">
-        Each encrypted file uses a unique, randomly generated IV, ensuring that identical plaintexts produce different ciphertexts.
-      </p>
-    </section>
-
-    <section class="mb-8">
-      <h2>Path containment and symlinks</h2>
-      <p class="text-dark-text-muted mb-4">
-        Nokvault does not follow symbolic links, Windows junctions, or other detected reparse points. Encrypt, decrypt, rotate-key, secure-delete, watch, schedule, and keyfiles share that default-deny policy. There is no follow opt-in. Nested-link rejection applies to commands that recurse.
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Validation walks existing path components with <code>Lstat</code>. Missing output leaves are allowed; an existing redirected parent is not.</li>
-        <li>On Windows, <code>Lstat</code>-visible symlinks and <code>ModeIrregular</code> entries are rejected, as are paths whose reparse attributes can be read. If <code>GetFileAttributes</code> fails on an ordinary-looking path, that component cannot be conclusively classified and is not treated as a redirect.</li>
-        <li>Directory outputs must remain under the selected root. Containment uses cleaned absolute paths and <code>filepath.Rel</code>, not a string-prefix check.</li>
-        <li>Rejected paths return <code>SYMLINK_DISALLOWED</code> or <code>PATH_ESCAPE</code> with a hint. Replace the link with a regular path, or keep the relative output inside the chosen directory.</li>
-        <li>These checks run before dry-run previews and before any password prompt.</li>
-      </ul>
-      <p class="text-dark-text-muted">
-        This policy stops Nokvault from following links that exist at validation time. It does not claim protection against a privileged local attacker who replaces a path component between validation and open; that would require descriptor-relative OS APIs, which are explicitly out of scope. X1 atomic no-replace writes still cover output-file replacement races on supported filesystems.
-      </p>
-    </section>
-
-    <section class="mb-8">
-      <h2>Best Practices</h2>
-      <p class="text-dark-text-muted mb-4">
-        For additional security, follow these recommendations:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Use keyfiles instead of passwords when possible (chmod 0600; no symlinks)</li>
-        <li>Store keyfiles securely and back them up</li>
-        <li>Never pass passwords on the command line — <code>--password</code> is refused</li>
-        <li>After decrypt, file modes are clamped to owner-only by default; use <code>--preserve-mode</code> only when you intentionally need the original (often world-readable) mode</li>
-        <li>Rotate keys periodically</li>
-        <li>Use secure deletion for sensitive files</li>
-        <li>Never commit passwords or keyfiles to version control</li>
-        <li>Prefer keyfiles over <code>NOKVAULT_PASSWORD</code> for automation (env vars are still visible to local processes)</li>
-        <li>Keep Nokvault updated to the latest version</li>
-        <li>Point commands at regular files and directories, not symlinks or junctions</li>
-      </ul>
-      <p class="text-dark-text-muted">
-        See the <a href={`${base}docs/security/best-practices`} class="text-blue-400 hover:underline">Best Practices</a> page for detailed guidance.
-      </p>
-    </section>
-  </div>
+  <section aria-labelledby="operational-guidance">
+    <h2 id="operational-guidance">Operational guidance</h2>
+    <ul>
+      <li>Use keyfiles instead of passwords when possible (<code>chmod 0600</code>; no symlinks)</li>
+      <li>Store keyfiles securely and back them up</li>
+      <li>Never pass passwords on the command line - <code>--password</code> is refused</li>
+      <li>After decrypt, file modes are clamped to owner-only by default; use <code>--preserve-mode</code> only when you intentionally need the original (often world-readable) mode</li>
+      <li>Rotate keys periodically</li>
+      <li>Never commit passwords or keyfiles to version control</li>
+      <li>Prefer keyfiles over <code>NOKVAULT_PASSWORD</code> for automation (env vars are still visible to local processes)</li>
+      <li>Keep {SITE.name} updated to the latest verified release</li>
+      <li>Point commands at regular files and directories, not symlinks or junctions</li>
+    </ul>
+    <p>
+      See the <a href={`${base}docs/security/best-practices`}>Best Practices</a> page for detailed guidance.
+    </p>
+  </section>
 </DocsLayout>
-
-<style>
-  .prose {
-    color: #e5e5e5;
-  }
-  .prose h1 {
-    color: #fff;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-  .prose h2 {
-    color: #fff;
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin-top: 2rem;
-    margin-bottom: 1rem;
-  }
-  .prose code {
-    background-color: #1f1f1f;
-    padding: 0.2em 0.4em;
-    border-radius: 0.25rem;
-    font-size: 0.9em;
-  }
-</style>

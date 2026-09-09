@@ -1,123 +1,102 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import CodeBlock from '../../components/CodeBlock.astro';
+import { SITE } from '../../data/site';
+
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
-<DocsLayout title="Configuration - Nokvault">
-  <div class="prose prose-invert max-w-none">
-    <h1>Configuration</h1>
-    <p class="text-xl text-dark-text-muted mb-8">
-      Configure Argon2id parameters used when creating new encrypted files.
-    </p>
+<DocsLayout
+  title="Configuration - NokVault"
+  description="Configure Argon2id parameters for new NokVault encryptions with global and project-local files."
+  canonical={`${base}docs/configuration`}
+  keywords={['nokvault configuration', 'argon2id', 'nokvault config', 'key derivation']}
+>
+  <h1>Configuration</h1>
+  <p class="lede">Configure Argon2id parameters used when creating new encrypted files with {SITE.name}.</p>
 
-    <section class="mb-8">
-      <h2>Configuration Files</h2>
-      <p class="text-dark-text-muted mb-4">
-        Nokvault supports two levels of configuration:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li><strong>Global config:</strong> <code>~/.config/nokvault/config.toml</code> - Applies to all projects</li>
-        <li><strong>Local config:</strong> <code>.nokvault.toml</code> - Applies to the current directory and overrides global settings</li>
-      </ul>
-      <p class="text-dark-text-muted">
-        Local configuration takes precedence over global configuration, allowing project-specific settings.
-      </p>
-    </section>
+  <section aria-labelledby="configuration-files">
+    <h2 id="configuration-files">Configuration files</h2>
+    <p>{SITE.name} supports two levels of configuration:</p>
+    <ul>
+      <li><strong>Global config:</strong> <code>~/.config/nokvault/config.toml</code> - applies to all projects</li>
+      <li><strong>Local config:</strong> <code>.nokvault.toml</code> - applies to the current directory and overrides global settings</li>
+    </ul>
+    <p>Local configuration takes precedence over global configuration, allowing project-specific settings.</p>
 
-    <section class="mb-8">
-      <h2>Initializing Configuration</h2>
-      <p class="text-dark-text-muted mb-4">
-        Create a default configuration file:
-      </p>
-      <CodeBlock code={`# Initialize global configuration
+    <h3>Initializing configuration</h3>
+    <p>Create a default configuration file:</p>
+    <CodeBlock
+      code={`# Initialize global configuration
 nokvault config --init
 
-# This creates ~/.config/nokvault/config.toml with default values`} lang="bash" />
-    </section>
+# This creates ~/.config/nokvault/config.toml with default values`}
+      lang="bash"
+    />
 
-    <section class="mb-8">
-      <h2>Viewing Configuration</h2>
-      <p class="text-dark-text-muted mb-4">
-        View your current configuration settings:
-      </p>
-      <CodeBlock code={`# Show all configuration (global + local merged)
+    <h3>Viewing configuration</h3>
+    <p>Inspect the merged settings:</p>
+    <CodeBlock
+      code={`# Show all configuration (global + local merged)
 nokvault config --show
 
 # Get a specific value
 nokvault config --get memory_cost
 nokvault config --get time_cost
-nokvault config --get parallelism`} lang="bash" />
-    </section>
+nokvault config --get parallelism`}
+      lang="bash"
+    />
 
-    <section class="mb-8">
-      <h2>Changing Configuration</h2>
-      <p class="text-dark-text-muted mb-4">
-        Edit <code>~/.config/nokvault/config.toml</code> or a project-local <code>.nokvault.toml</code> directly, or run <code>nokvault config --init</code> to create a default global file. The supported keys are <code>memory_cost</code>, <code>time_cost</code>, and <code>parallelism</code>. The CLI intentionally has no <code>config --set</code> command.
-      </p>
-      <p class="text-dark-text-muted mb-4">
-        <strong>Key derivation settings apply when creating encrypted files only</strong> (encrypt, rotate-key re-encryption, watch, schedule). Decryption always uses the Argon2 parameters stored in each file's header (format v2) or built-in defaults for older v1 files — changing config does not affect existing ciphertext.
-      </p>
-      <p class="text-dark-text-muted mb-4">
-        Older config files may contain previously generated encryption, security, or path keys. Those keys never affected runtime behavior; they are now ignored and are not written by <code>config --init</code>.
-      </p>
-    </section>
+    <h3>Changing configuration</h3>
+    <p>
+      Edit <code>~/.config/nokvault/config.toml</code> or a project-local <code>.nokvault.toml</code> directly, or run
+      <code>nokvault config --init</code> to create a default global file. The supported keys are <code>memory_cost</code>,
+      <code>time_cost</code>, and <code>parallelism</code>. The CLI intentionally has no <code>config --set</code> command.
+    </p>
 
-    <section class="mb-8">
-      <h2>Configuration File Format</h2>
-      <p class="text-dark-text-muted mb-4">
-        Configuration files use TOML format. Example <code>config.toml</code>:
-      </p>
-      <CodeBlock code={`[key_derivation]
+    <h3>Configuration file format</h3>
+    <p>Configuration files use TOML. Example <code>config.toml</code>:</p>
+    <CodeBlock
+      code={`[key_derivation]
 memory_cost = 65536  # KiB (64 MiB)
 time_cost = 3
-parallelism = 4`} lang="toml" />
-    </section>
+parallelism = 4`}
+      lang="toml"
+      filename="config.toml"
+    />
 
-    <section class="mb-8">
-      <h2>Environment Variables</h2>
-      <p class="text-dark-text-muted mb-4">
-        Password input can be supplied non-interactively via the environment. Argon2id settings are read only from configuration files:
-      </p>
-      <CodeBlock code={`# Password for non-interactive use
-export NOKVAULT_PASSWORD="your-password"`} lang="bash" />
-    </section>
+    <h3>Environment variables</h3>
+    <p>
+      Password input can be supplied non-interactively via the environment. Argon2id settings are read only from configuration files:
+    </p>
+    <CodeBlock
+      code={`# Password for non-interactive use
+export NOKVAULT_PASSWORD="your-password"`}
+      lang="bash"
+    />
 
-    <section class="mb-8">
-      <h2>Project-Specific Configuration</h2>
-      <p class="text-dark-text-muted mb-4">
-        Create a <code>.nokvault.toml</code> file in your project directory for project-specific settings:
-      </p>
-      <CodeBlock code={`# .nokvault.toml
+    <h3>Project-specific configuration</h3>
+    <p>Create a <code>.nokvault.toml</code> file in your project directory for project-specific settings:</p>
+    <CodeBlock
+      code={`# .nokvault.toml
 [key_derivation]
-memory_cost = 131072  # stronger KDF for new encryptions in this project`} lang="toml" />
-      <p class="text-dark-text-muted mt-4">
-        Local settings override global ones. KDF overrides here affect only new encryptions under this project.
-      </p>
-    </section>
-  </div>
-</DocsLayout>
+memory_cost = 131072  # stronger KDF for new encryptions in this project`}
+      lang="toml"
+      filename=".nokvault.toml"
+    />
+    <p>Local settings override global ones. KDF overrides here affect only new encryptions under this project.</p>
+  </section>
 
-<style>
-  .prose {
-    color: #e5e5e5;
-  }
-  .prose h1 {
-    color: #fff;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-  .prose h2 {
-    color: #fff;
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin-top: 2rem;
-    margin-bottom: 1rem;
-  }
-  .prose code {
-    background-color: #1f1f1f;
-    padding: 0.2em 0.4em;
-    border-radius: 0.25rem;
-    font-size: 0.9em;
-  }
-</style>
+  <section aria-labelledby="key-derivation">
+    <h2 id="key-derivation">Key derivation</h2>
+    <p>
+      <strong>Key derivation settings apply when creating encrypted files only</strong> (encrypt, rotate-key re-encryption, watch, schedule).
+      Decryption always uses the Argon2 parameters stored in each file's header (format v2) or built-in defaults for older v1 files - changing
+      config does not affect existing ciphertext.
+    </p>
+    <p>
+      Older config files may contain previously generated encryption, security, or path keys. Those keys never affected runtime behavior; they
+      are now ignored and are not written by <code>config --init</code>.
+    </p>
+  </section>
+</DocsLayout>

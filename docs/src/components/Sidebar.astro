@@ -1,303 +1,498 @@
 ---
+import { DOCS_NAV, SITE, normalizePath, withBase } from '../data/site';
+
 const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+const currentPath = normalizePath(Astro.url.pathname);
+const currentHash = Astro.url.hash.replace(/^#/, '');
 
-const navItems = [
-  {
-    title: 'Getting Started',
-    items: [
-      { title: 'Overview', href: `${base}docs/` },
-      { title: 'Installation', href: `${base}docs/installation` },
-    ]
-  },
-  {
-    title: 'Usage',
-    items: [
-      { title: 'Commands', href: `${base}docs/commands` },
-      { title: 'Basic Usage', href: `${base}docs/usage/basic` },
-      { title: 'Advanced Usage', href: `${base}docs/usage/advanced` },
-      { title: 'Configuration', href: `${base}docs/configuration` },
-    ]
-  },
-  {
-    title: 'Security',
-    items: [
-      { title: 'Security Overview', href: `${base}docs/security` },
-      { title: 'Best Practices', href: `${base}docs/security/best-practices` },
-    ]
-  },
-  {
-    title: 'Contributing',
-    items: [
-      { title: 'Contributing Guide', href: `${base}docs/contributing` },
-    ]
-  },
-  {
-    title: 'Resources',
-    items: [
-      { title: 'FAQ', href: `${base}docs/faq` },
-      { title: 'Changelog', href: `${base}docs/changelog` },
-      { title: 'License', href: `${base}docs/license` },
-    ]
-  },
-];
+type NavItem = { title: string; href: string };
 
-const currentPath = Astro.url.pathname;
+function itemParts(href: string) {
+  const [pathPart = '', hashPart = ''] = href.split('#');
+  return {
+    path: normalizePath(pathPart),
+    hash: hashPart,
+    href: withBase(href, base),
+  };
+}
+
+function isCurrent(item: NavItem, siblings: NavItem[]) {
+  const { path, hash } = itemParts(item.href);
+  if (currentPath !== path) return false;
+
+  if (hash) {
+    return currentHash === hash;
+  }
+
+  const moreSpecificHashMatch = siblings.some((sibling) => {
+    if (sibling.href === item.href) return false;
+    const parts = itemParts(sibling.href);
+    return parts.path === currentPath && parts.hash && parts.hash === currentHash;
+  });
+
+  return !moreSpecificHashMatch;
+}
+
+function renderGroups() {
+  return DOCS_NAV.map((section) => ({
+    group: section.group,
+    items: section.items.map((item) => {
+      const parts = itemParts(item.href);
+      return {
+        title: item.title,
+        href: parts.href,
+        current: isCurrent(item, section.items as NavItem[]),
+      };
+    }),
+  }));
+}
+
+const desktopGroups = renderGroups();
+const mobileGroups = renderGroups();
 ---
 
-<aside id="sidebar" class="sidebar">
-  <nav class="sidebar-nav">
-    {navItems.map((section) => (
-      <div class="nav-section">
-        <h3 class="nav-section-title">{section.title}</h3>
-        <ul class="nav-section-items">
-          {section.items.map((item) => {
-            // Normalize paths for comparison (remove trailing slashes and base path)
-            const normalizePath = (path: string) => {
-              // Remove base path if present
-              let normalized = path.replace(base, '/');
-              // Remove trailing slash
-              normalized = normalized.replace(/\/$/, '');
-              // Ensure it starts with /
-              if (!normalized.startsWith('/')) normalized = '/' + normalized;
-              return normalized;
-            };
-            
-            const normalizedCurrentPath = normalizePath(currentPath);
-            const normalizedItemHref = normalizePath(item.href);
-            
-            // Check for exact match
-            const isExactMatch = normalizedCurrentPath === normalizedItemHref;
-            
-            // Check if current path is a child of this item
-            const isChildPath = normalizedCurrentPath.startsWith(normalizedItemHref + '/');
-            
-            // Check if any other item in the same section is a more specific match
-            const hasMoreSpecificMatch = section.items.some(otherItem => {
-              if (otherItem.href === item.href) return false; // Skip self
-              const normalizedOtherHref = normalizePath(otherItem.href);
-              return normalizedCurrentPath === normalizedOtherHref || 
-                     normalizedCurrentPath.startsWith(normalizedOtherHref + '/');
-            });
-            
-            // Item is active if it's an exact match, or if it's a parent match and no child is more specific
-            const isActive = isExactMatch || (isChildPath && !hasMoreSpecificMatch);
-            
-            return (
-              <li>
-                <a 
-                  href={item.href} 
-                  class={`nav-item ${isActive ? 'active' : ''}`}
-                >
-                  {item.title}
-                </a>
-              </li>
-            );
-          })}
+<aside class="docs-sidebar" aria-label="Documentation">
+  <nav class="docs-sidebar__nav" aria-label="Documentation sections">
+    {desktopGroups.map((section) => (
+      <div class="docs-nav-group">
+        <h2 class="docs-nav-group__title">{section.group}</h2>
+        <ul class="docs-nav-group__list">
+          {section.items.map((item) => (
+            <li>
+              <a href={item.href} aria-current={item.current ? 'page' : undefined}>
+                {item.title}
+              </a>
+            </li>
+          ))}
         </ul>
       </div>
     ))}
   </nav>
-  <div class="sidebar-version ps-4">
-    <div class="version-label">Version</div>
-    <div id="version-number" class="version-number">Loading...</div>
-  </div>
+  <p class="docs-sidebar__version">
+    <span class="docs-sidebar__version-label">Version</span>
+    <span class="docs-sidebar__version-number">{SITE.version}</span>
+  </p>
 </aside>
 
-<button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">
-  <svg class="hamburger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <path d="M3 12h18M3 6h18M3 18h18"/>
-  </svg>
-</button>
+<details class="mobile-docs-nav" data-mobile-docs-nav>
+  <summary class="mobile-docs-nav__summary">
+    <span class="mobile-docs-nav__summary-label">Browse documentation</span>
+    <button
+      type="button"
+      class="mobile-docs-nav__close"
+      data-mobile-docs-close
+      aria-label="Close documentation menu"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true">
+        <path d="M6 6l12 12M18 6 6 18"></path>
+      </svg>
+    </button>
+  </summary>
+  <div class="mobile-docs-nav__panel" data-mobile-docs-panel>
+    <nav class="mobile-docs-nav__nav" aria-label="Documentation sections">
+      {mobileGroups.map((section) => (
+        <div class="docs-nav-group">
+          <h2 class="docs-nav-group__title">{section.group}</h2>
+          <ul class="docs-nav-group__list">
+            {section.items.map((item) => (
+              <li>
+                <a href={item.href} aria-current={item.current ? 'page' : undefined}>
+                  {item.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </nav>
+    <p class="docs-sidebar__version">
+      <span class="docs-sidebar__version-label">Version</span>
+      <span class="docs-sidebar__version-number">{SITE.version}</span>
+    </p>
+  </div>
+</details>
 
 <style>
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    width: 280px;
-    background-color: #121212;
-    border-right: 1px solid #1f1f1f;
-    overflow-y: auto;
-    padding: 1.5rem 0;
-    z-index: 100;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
+  .docs-sidebar {
+    display: none;
   }
 
-  .sidebar.open {
-    transform: translateX(0);
+  .docs-nav-group {
+    margin-block: 0 24px;
   }
 
-  /* Desktop: sidebar always visible */
-  @media (min-width: 1024px) {
-    .sidebar {
-      transform: translateX(0);
-      position: fixed;
-    }
-  }
-
-  .sidebar-nav {
-    padding: 0 1rem;
-  }
-
-  .nav-section {
-    margin-bottom: 2rem;
-  }
-
-  .nav-section-title {
-    font-size: 0.75rem;
-    font-weight: 600;
+  .docs-nav-group__title {
+    margin: 0 0 8px;
+    color: var(--text-muted);
+    font: 600 0.75rem/1.3 var(--font-mono);
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #a3a3a3;
-    margin-bottom: 0.75rem;
-    padding: 0 1rem;
   }
 
-  .nav-section-items {
+  .docs-nav-group__list {
     list-style: none;
-    padding: 0;
     margin: 0;
+    padding: 0;
   }
 
-  .nav-item {
-    display: block;
-    padding: 0.5rem 1rem;
-    color: #e5e5e5;
+  .docs-nav-group__list a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 0.9375rem;
+    font-weight: 500;
     text-decoration: none;
-    border-radius: 0.375rem;
-    transition: background-color 0.2s, color 0.2s;
+  }
+
+  .docs-nav-group__list a:hover {
+    background: var(--surface-raised);
+  }
+
+  .docs-nav-group__list a[aria-current='page'] {
+    background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+    color: var(--text);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  .docs-sidebar__version {
+    margin: 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
     font-size: 0.875rem;
   }
 
-  .nav-item:hover {
-    background-color: #1f1f1f;
-    color: #fff;
+  .docs-sidebar__version-label {
+    display: block;
+    margin-bottom: 4px;
+    font: 600 0.75rem/1.3 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
-  .nav-item.active {
-    background-color: #1e40af;
-    color: #fff;
+  .docs-sidebar__version-number {
+    color: var(--text);
+    font-family: var(--font-mono);
   }
 
-  .sidebar-toggle {
+  .mobile-docs-nav {
+    display: block;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+  }
+
+  .mobile-docs-nav > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-weight: 600;
+    list-style: none;
+  }
+
+  .mobile-docs-nav > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .mobile-docs-nav__summary-label {
+    min-width: 0;
+  }
+
+  .mobile-docs-nav__close {
+    display: none;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    margin: -6px -8px -6px 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    padding: 0;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .mobile-docs-nav[open] .mobile-docs-nav__close {
+    display: inline-grid;
+  }
+
+  .mobile-docs-nav__close:hover {
+    background: var(--surface-raised);
+  }
+
+  .mobile-docs-nav__close:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .mobile-docs-nav__close svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  .mobile-docs-nav__panel {
+    padding: 0 16px 16px;
+  }
+
+  /* Backdrop is created at runtime; keep selectors global so Astro scoping still matches it. */
+  :global(.mobile-docs-nav__backdrop) {
     display: none;
     position: fixed;
-    top: 1rem;
-    left: 1rem;
-    z-index: 101;
-    background-color: #121212;
-    border: 1px solid #1f1f1f;
-    border-radius: 0.375rem;
-    padding: 0.5rem;
-    color: #e5e5e5;
+    inset: 0;
+    z-index: 60;
+    margin: 0;
+    border: 0;
+    padding: 0;
+    background: color-mix(in srgb, var(--canvas) 35%, transparent);
     cursor: pointer;
-    transition: background-color 0.2s;
   }
 
-  .sidebar-toggle:hover {
-    background-color: #1f1f1f;
+  :global(.mobile-docs-nav__backdrop.is-visible) {
+    display: block;
   }
 
-  .hamburger-icon {
-    width: 1.5rem;
-    height: 1.5rem;
+  /*
+    Open enhanced menu becomes a fixed drawer sized to the viewport.
+    Avoid flex layout on <details> - browsers do not size its children
+    reliably, which previously either clipped Project or collapsed the panel.
+    Panel max-height is assigned in script from the drawer’s client box.
+  */
+  .mobile-docs-nav[data-enhanced='true'][open] {
+    position: fixed;
+    z-index: 61;
+    top: max(12px, env(safe-area-inset-top, 0px));
+    right: 16px;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    left: 16px;
+    display: block;
+    margin: 0;
+    overflow: hidden;
   }
 
-  /* Desktop: sidebar always visible */
+  .mobile-docs-nav[data-enhanced='true'][open] > summary,
+  .mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__panel {
+    position: relative;
+    z-index: 61;
+    background: var(--surface);
+  }
+
+  .mobile-docs-nav[data-enhanced='true'][open] > summary {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__panel {
+    overflow-x: hidden;
+    overflow-y: scroll;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+    padding-bottom: 28px;
+    /* Always show a readable scrollbar so overflow is obvious on overlay-scrollbar OSes. */
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--accent) 70%, var(--border)) var(--surface-raised);
+  }
+
+  .mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__panel::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__panel::-webkit-scrollbar-track {
+    background: var(--surface-raised);
+  }
+
+  .mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__panel::-webkit-scrollbar-thumb {
+    border: 2px solid var(--surface-raised);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 70%, var(--border));
+  }
+
+  /*
+    Bottom fade while more nav remains below the fold.
+    Makes the hard clip read as “scroll for more” instead of a truncated menu.
+  */
+  .mobile-docs-nav[data-enhanced='true'][open][data-more-below='true']::after {
+    content: '';
+    position: absolute;
+    z-index: 62;
+    right: 12px;
+    bottom: 0;
+    left: 0;
+    height: 56px;
+    pointer-events: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    background: linear-gradient(to bottom, transparent, var(--surface) 72%);
+  }
+
   @media (min-width: 1024px) {
-    .sidebar {
-      transform: translateX(0);
-      position: fixed;
-      height: 100vh;
-    }
-
-    .sidebar-toggle {
-      display: none;
-    }
-  }
-
-  /* Tablet and mobile: sidebar hidden by default */
-  @media (max-width: 1023px) {
-    .sidebar-toggle {
+    .docs-sidebar {
       display: block;
     }
 
-    .sidebar-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      z-index: 99;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
-
-    .sidebar-overlay.open {
-      opacity: 1;
-      pointer-events: all;
+    .mobile-docs-nav {
+      display: none;
     }
   }
 </style>
 
 <script>
-  // Toggle sidebar on mobile
-  const sidebar = document.getElementById('sidebar');
-  const sidebarToggle = document.getElementById('sidebar-toggle');
-  const overlay = document.createElement('div');
-  overlay.className = 'sidebar-overlay';
-  document.body.appendChild(overlay);
+  const root = document.querySelector('[data-mobile-docs-nav]');
+  if (root instanceof HTMLDetailsElement) {
+    const summary = root.querySelector('summary');
+    const panel = root.querySelector('[data-mobile-docs-panel]');
+    const closeButton = root.querySelector('[data-mobile-docs-close]');
+    root.dataset.enhanced = 'true';
 
-  function toggleSidebar() {
-    sidebar?.classList.toggle('open');
-    overlay.classList.toggle('open');
-  }
+    const backdrop = document.createElement('button');
+    backdrop.type = 'button';
+    backdrop.className = 'mobile-docs-nav__backdrop';
+    backdrop.setAttribute('data-mobile-docs-backdrop', '');
+    backdrop.setAttribute('aria-label', 'Close documentation menu');
+    backdrop.tabIndex = -1;
+    // Keep the backdrop outside <details> so it does not participate in the flex drawer layout.
+    document.body.appendChild(backdrop);
 
-  sidebarToggle?.addEventListener('click', toggleSidebar);
-  overlay.addEventListener('click', toggleSidebar);
+    const syncBackdrop = () => {
+      backdrop.classList.toggle('is-visible', root.open);
+    };
 
-  // Close sidebar when clicking a link on mobile
-  const navLinks = document.querySelectorAll('.nav-item');
-  navLinks.forEach(link => {
-    link.addEventListener('click', () => {
-      if (window.innerWidth < 1024) {
-        sidebar?.classList.remove('open');
-        overlay.classList.remove('open');
+    const syncMoreBelow = () => {
+      if (!(panel instanceof HTMLElement) || !root.open) {
+        root.removeAttribute('data-more-below');
+        return;
+      }
+      const remaining = panel.scrollHeight - panel.clientHeight - panel.scrollTop;
+      root.dataset.moreBelow = remaining > 8 ? 'true' : 'false';
+    };
+
+    const layoutOpenPanel = () => {
+      if (!(panel instanceof HTMLElement) || !(summary instanceof HTMLElement)) return;
+      if (!root.open) {
+        panel.style.removeProperty('max-height');
+        syncMoreBelow();
+        return;
+      }
+      // Client height is definite once the drawer is fixed with top/bottom insets.
+      const available = root.clientHeight - summary.offsetHeight;
+      panel.style.maxHeight = `${Math.max(160, available)}px`;
+      // Force layout so scroll metrics reflect the new max-height before the fade sync.
+      void panel.offsetHeight;
+      syncMoreBelow();
+    };
+
+    const getFocusable = () => {
+      if (!(panel instanceof HTMLElement) || !summary) return [];
+      const nodes: HTMLElement[] = [];
+      if (closeButton instanceof HTMLElement) nodes.push(closeButton);
+      nodes.push(
+        ...panel.querySelectorAll<HTMLElement>('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])'),
+      );
+      return nodes.filter(
+        (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true' && el !== backdrop,
+      );
+    };
+
+    const unlock = () => {
+      document.body.style.removeProperty('overflow');
+    };
+
+    const lock = () => {
+      document.body.style.overflow = 'hidden';
+    };
+
+    const close = ({ restoreFocus = true }: { restoreFocus?: boolean } = {}) => {
+      if (!root.open) return;
+      root.open = false;
+      syncBackdrop();
+      layoutOpenPanel();
+      unlock();
+      if (restoreFocus && summary instanceof HTMLElement) summary.focus();
+    };
+
+    syncBackdrop();
+
+    root.addEventListener('toggle', () => {
+      syncBackdrop();
+      layoutOpenPanel();
+      if (root.open) {
+        lock();
+        queueMicrotask(() => {
+          layoutOpenPanel();
+          requestAnimationFrame(() => {
+            layoutOpenPanel();
+            const focusable = getFocusable();
+            focusable[1]?.focus();
+          });
+        });
+      } else {
+        unlock();
       }
     });
-  });
 
-  // Fetch latest version from GitHub API
-  async function fetchLatestVersion() {
-    try {
-      const response = await fetch('https://api.github.com/repos/jimididit/nokvault/releases/latest');
-      if (response.ok) {
-        const data = await response.json();
-        const version = data.tag_name.replace(/^v/, ''); // Remove 'v' prefix if present
-        const versionElement = document.getElementById('version-number');
-        if (versionElement) {
-          versionElement.textContent = version;
-        }
-      } else {
-        // Fallback if API fails
-        const versionElement = document.getElementById('version-number');
-        if (versionElement) {
-          versionElement.textContent = 'Latest';
-        }
-      }
-    } catch (error) {
-      // Fallback on error
-      const versionElement = document.getElementById('version-number');
-      if (versionElement) {
-        versionElement.textContent = 'Latest';
-      }
+    window.addEventListener('resize', () => {
+      if (root.open) layoutOpenPanel();
+    });
+
+    if (panel instanceof HTMLElement) {
+      panel.addEventListener('scroll', syncMoreBelow, { passive: true });
     }
-  }
 
-  // Fetch version on page load
-  fetchLatestVersion();
+    root.addEventListener('keydown', (event) => {
+      if (!root.open) return;
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        close();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+      const focusable = getFocusable();
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
+
+    backdrop.addEventListener('click', () => {
+      close();
+    });
+
+    if (closeButton instanceof HTMLButtonElement) {
+      closeButton.addEventListener('click', (event) => {
+        // Keep summary from toggling open again while we close explicitly.
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+      });
+    }
+
+    root.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest('a')) close({ restoreFocus: false });
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!root.open || !(event.target instanceof Node)) return;
+      if (!root.contains(event.target)) close();
+    });
+  }
 </script>

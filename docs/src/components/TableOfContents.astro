@@ -1,0 +1,57 @@
+---
+export interface Props {
+  entries?: Array<{ label: string; href: string; depth?: 2 | 3 }>;
+}
+
+const { entries = [] } = Astro.props;
+---
+
+{entries.length > 0 && (
+  <nav class="toc" aria-label="On this page">
+    <h2 class="toc__title">On this page</h2>
+    <ol class="toc__list">
+      {entries.map((entry) => (
+        <li class:list={['toc__item', { 'toc__item--depth-3': entry.depth === 3 }]}>
+          <a href={entry.href}>{entry.label}</a>
+        </li>
+      ))}
+    </ol>
+  </nav>
+)}
+
+<style>
+  .toc {
+    position: sticky;
+    top: calc(var(--header-height) + 24px);
+  }
+
+  .toc__title {
+    margin: 0 0 12px;
+    color: var(--text-muted);
+    font: 600 0.75rem/1.3 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .toc__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .toc__item a {
+    display: block;
+    padding: 6px 0;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    text-decoration: none;
+  }
+
+  .toc__item a:hover {
+    color: var(--text);
+  }
+
+  .toc__item--depth-3 {
+    padding-inline-start: 12px;
+  }
+</style>

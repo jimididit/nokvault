@@ -1,8 +1,15 @@
 ---
-import Sidebar from '../components/Sidebar.astro';
-import GitHubButtons from '../components/GitHubButtons.astro';
+import ArticleNavigation from '../components/ArticleNavigation.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import DocsSearch from '../components/DocsSearch.astro';
 import SEO from '../components/SEO.astro';
+import Sidebar from '../components/Sidebar.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
 import StructuredData from '../components/StructuredData.astro';
+import TableOfContents from '../components/TableOfContents.astro';
+import { getDocPage, headingId, SITE } from '../data/site';
+import '../styles/global.css';
 
 export interface Props {
   title: string;
@@ -10,161 +17,187 @@ export interface Props {
   canonical?: string;
   keywords?: string[];
   breadcrumbs?: Array<{ name: string; url: string }>;
+  toc?: Array<{ label: string; href: string; depth?: 2 | 3 }>;
 }
 
-const { title, description = "Nokvault Documentation", canonical, keywords, breadcrumbs } = Astro.props;
-const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+const {
+  title,
+  description = `${SITE.name} Documentation`,
+  canonical,
+  keywords,
+  breadcrumbs,
+  toc,
+} = Astro.props;
 
-// Generate breadcrumbs if not provided
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+const page = getDocPage(Astro.url.pathname);
+const crumbTitle = page?.title ?? title.replace(/\s*-\s*Nokvault$/i, '').replace(/\s*-\s*NokVault$/i, '');
+const docsIndexPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const isDocsIndex = docsIndexPath === '/docs' || docsIndexPath.endsWith('/docs');
+
 const defaultBreadcrumbs = breadcrumbs || [
   { name: 'Home', url: base },
   { name: 'Documentation', url: `${base}docs/` },
-  ...(Astro.url.pathname !== '/docs/' ? [{ name: title.replace(' - Nokvault', ''), url: Astro.url.pathname }] : [])
+  ...(isDocsIndex ? [] : [{ name: crumbTitle, url: Astro.url.pathname }]),
 ];
+
+const resolvedToc =
+  toc ??
+  (page?.headings || []).map((heading) => ({
+    label: heading,
+    href: `#${headingId(heading)}`,
+    depth: 2 as const,
+  }));
 ---
 
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script is:inline>
+      (() => {
+        const key = 'nokvault-theme';
+        let preference = 'system';
+        try {
+          const saved = localStorage.getItem(key);
+          if (saved === 'light' || saved === 'dark' || saved === 'system') preference = saved;
+        } catch {}
+        const resolved = preference === 'system'
+          ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : preference;
+        document.documentElement.dataset.themePreference = preference;
+        document.documentElement.dataset.theme = resolved;
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
     <SEO title={title} description={description} canonical={canonical} keywords={keywords} />
     <StructuredData type="BreadcrumbList" breadcrumbs={defaultBreadcrumbs} />
+    <StructuredData type="WebSite" />
   </head>
-  <body class="bg-dark-bg text-dark-text min-h-screen">
-    <Sidebar />
-    <div class="docs-container">
-      <header class="docs-header">
-        <nav class="docs-header-nav">
-          <a href={`${base}`} class="text-xl font-bold text-white hover:text-blue-400 transition">
-            Nokvault
-          </a>
-          <div class="header-right">
-            <div class="header-links">
-              <a href={`${base}`} class="hover:text-blue-400 transition">Home</a>
-              <a href={`${base}docs/`} class="hover:text-blue-400 transition">Documentation</a>
-            </div>
-            <GitHubButtons />
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <SiteHeader />
+    <div class="docs-shell">
+      <div class="docs-shell__sidebar">
+        <Sidebar />
+      </div>
+      <div class="docs-shell__content">
+        <DocsSearch />
+        <main id="main-content" class="docs-article" tabindex="-1">
+          <Breadcrumbs items={defaultBreadcrumbs} />
+          <div class="docs-article__body">
+            <slot />
           </div>
-        </nav>
-      </header>
-      <main class="docs-main">
-        <slot />
-      </main>
-      <footer class="docs-footer">
-        <p>&copy; {new Date().getFullYear()} Nokvault. MIT License.</p>
-      </footer>
+          <ArticleNavigation />
+        </main>
+      </div>
+      <aside class="docs-shell__toc" aria-label="Page outline">
+        <TableOfContents entries={resolvedToc} />
+      </aside>
     </div>
+    <SiteFooter />
   </body>
 </html>
 
-<style is:global>
-  html {
-    font-family: system-ui, -apple-system, sans-serif;
+<style>
+  .docs-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    width: min(calc(100% - 32px), var(--content-wide));
+    margin-inline: auto;
+    padding-block: 24px 64px;
   }
-  body {
-    margin: 0;
+
+  .docs-shell__toc {
+    display: none;
   }
-  code {
-    background-color: #1f1f1f;
-    padding: 0.2em 0.4em;
-    border-radius: 0.25rem;
-    font-size: 0.9em;
+
+  .docs-article {
+    width: 100%;
+    max-width: var(--content-prose);
   }
-  pre {
-    background-color: #1f1f1f;
-    padding: 1rem;
-    border-radius: 0.5rem;
+
+  .docs-article__body {
     overflow-x: auto;
   }
-  pre code {
-    background-color: transparent;
+
+  .docs-article__body :global(h1) {
+    font-size: clamp(2rem, 4vw, 2.75rem);
+  }
+
+  .docs-article__body :global(h2) {
+    margin-top: 2rem;
+    font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+  }
+
+  .docs-article__body :global(h3) {
+    margin-top: 1.5rem;
+    font-size: clamp(1.1rem, 2vw, 1.25rem);
+  }
+
+  .docs-article__body :global(.lede) {
+    color: var(--text-muted);
+    font-size: 1.125rem;
+  }
+
+  .docs-article__body :global(.docs-path-list) {
+    list-style: none;
+    margin: 0 0 32px;
     padding: 0;
-  }
-</style>
-
-<style>
-  .docs-container {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+    border-top: 1px solid var(--border);
   }
 
-  .docs-header {
-    border-bottom: 1px solid #1f1f1f;
-    background-color: #121212;
-    padding: 1rem 2rem;
-    position: sticky;
-    top: 0;
-    z-index: 50;
+  .docs-article__body :global(.docs-path-list li) {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 0;
   }
 
-  .docs-header-nav {
-    max-width: 1400px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
+  .docs-article__body :global(.docs-path-list a) {
+    font-weight: 600;
+    text-decoration: none;
   }
 
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
+  .docs-article__body :global(.docs-path-list p) {
+    margin: 8px 0 0;
+    color: var(--text-muted);
   }
 
-  .header-links {
-    display: flex;
-    gap: 1.5rem;
-    align-items: center;
+  .docs-article__body :global(table),
+  .docs-article__body :global(pre) {
+    max-width: 100%;
+    overflow-x: auto;
   }
 
-  .docs-main {
-    flex: 1;
-    max-width: 1200px;
-    width: 100%;
-    margin: 0 auto;
-    padding: 2rem;
-    background-color: #0a0a0a;
+  @media (min-width: 768px) {
+    .docs-shell {
+      width: min(calc(100% - 64px), var(--content-wide));
+      padding-block: 40px 80px;
+    }
   }
 
-  .docs-footer {
-    border-top: 1px solid #1f1f1f;
-    padding: 2rem;
-    text-align: center;
-    color: #a3a3a3;
-    margin-top: auto;
-  }
-
-  /* Desktop: add left margin for sidebar */
   @media (min-width: 1024px) {
-    .docs-container {
-      margin-left: 280px;
+    .docs-shell {
+      grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+      gap: 48px;
+      align-items: start;
     }
 
-    .docs-main {
-      padding: 3rem 4rem;
+    .docs-shell__sidebar :global(.mobile-docs-nav) {
+      display: none;
     }
   }
 
-  /* Mobile adjustments */
-  @media (max-width: 1023px) {
-    .docs-header {
-      padding: 1rem;
+  @media (min-width: 1200px) {
+    .docs-shell {
+      grid-template-columns: minmax(200px, 240px) minmax(0, 1fr) minmax(160px, 220px);
     }
 
-    .docs-header-nav {
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-
-    .docs-main {
-      padding: 1.5rem;
+    .docs-shell__toc {
+      display: block;
     }
   }
 </style>

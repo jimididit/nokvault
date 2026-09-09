@@ -1,0 +1,107 @@
+---
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+
+const steps = [
+  {
+    title: 'Install',
+    body: 'Choose the package manager or release binary that matches your platform.',
+    href: `${base}docs/installation`,
+    linkLabel: 'Installation',
+  },
+  {
+    title: 'Encrypt',
+    body: 'Encrypt a file or directory with an interactive password or a protected keyfile.',
+    href: `${base}docs/usage/basic`,
+    linkLabel: 'Basic Usage',
+  },
+  {
+    title: 'Verify recovery',
+    body: 'Decrypt the result before you discard the original. Credential recovery is not possible without your password or keyfile.',
+    href: `${base}docs/security/best-practices`,
+    linkLabel: 'Credential guidance',
+  },
+] as const;
+---
+
+<section class="beginner-path" aria-labelledby="beginner-path-heading">
+  <div class="beginner-path__intro">
+    <p class="eyebrow">First successful workflow</p>
+    <h2 id="beginner-path-heading">Install, encrypt, and prove recovery</h2>
+    <p>
+      Three deliberate steps get a first-time operator from zero to a verified ciphertext without guessing at security decisions.
+    </p>
+  </div>
+  <ol class="beginner-path__steps">
+    {steps.map((step, index) => (
+      <li class="beginner-path__step">
+        <span class="beginner-path__index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+        <div>
+          <h3>{step.title}</h3>
+          <p>{step.body}</p>
+          <a href={step.href}>{step.linkLabel}</a>
+        </div>
+      </li>
+    ))}
+  </ol>
+</section>
+
+<style>
+  .beginner-path {
+    display: grid;
+    gap: 32px;
+  }
+
+  .beginner-path__intro p:last-child {
+    margin-bottom: 0;
+    max-width: 42rem;
+    color: var(--text-muted);
+  }
+
+  .beginner-path__steps {
+    display: grid;
+    gap: 24px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: none;
+  }
+
+  .beginner-path__step {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 16px;
+    padding-block: 8px;
+  }
+
+  .beginner-path__index {
+    color: var(--accent);
+    font: 600 0.875rem/1 var(--font-mono);
+    letter-spacing: 0.08em;
+  }
+
+  .beginner-path__step h3 {
+    margin-bottom: 8px;
+  }
+
+  .beginner-path__step p {
+    margin-bottom: 12px;
+    color: var(--text-muted);
+  }
+
+  .beginner-path__step a {
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .beginner-path__step a:hover {
+    text-decoration: underline;
+  }
+
+  @media (min-width: 1024px) {
+    .beginner-path {
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      gap: 64px;
+      align-items: start;
+    }
+  }
+</style>

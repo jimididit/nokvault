@@ -1,16 +1,10 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
----
+import { SITE } from '../../data/site';
 
-<DocsLayout title="License - Nokvault">
-  <div class="prose prose-invert max-w-none">
-    <h1>License</h1>
-    <p class="text-xl text-dark-text-muted mb-8">
-      Nokvault is licensed under the MIT License.
-    </p>
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 
-    <div class="bg-dark-surface p-8 rounded-lg border border-dark-border">
-      <pre class="whitespace-pre-wrap font-mono text-sm"><code>MIT License
+const mitLicense = `MIT License
 
 Copyright (c) 2024 Nokvault Contributors
 
@@ -30,71 +24,65 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.</code></pre>
-    </div>
+SOFTWARE.`;
+---
 
-    <section class="mt-8">
-      <h2>What This Means</h2>
-      <p class="text-dark-text-muted mb-4">
-        The MIT License is a permissive open source license that allows you to:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Use Nokvault commercially</li>
-        <li>Modify the source code</li>
-        <li>Distribute the software</li>
-        <li>Sublicense the software</li>
-        <li>Use it privately</li>
-      </ul>
-      <p class="text-dark-text-muted mb-4">
-        The only requirement is that you include the original copyright notice and license text when distributing the software.
-      </p>
-    </section>
+<DocsLayout
+  title="License - NokVault"
+  description="MIT license terms for NokVault."
+  canonical={`${base}docs/license`}
+>
+  <h1>License</h1>
+  <p class="lede">{SITE.name} is licensed under the MIT License.</p>
 
-    <section class="mt-8">
-      <h2>Third-Party Licenses</h2>
-      <p class="text-dark-text-muted mb-4">
-        Nokvault uses the following open source dependencies:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted">
-        <li><strong>Cobra</strong> - Apache License 2.0</li>
-        <li><strong>Viper</strong> - MIT License</li>
-        <li><strong>fsnotify</strong> - BSD 3-Clause License</li>
-        <li><strong>mpb</strong> - MIT License</li>
-        <li><strong>promptui</strong> - MIT License</li>
-        <li><strong>lipgloss</strong> - MIT License</li>
-      </ul>
-      <p class="text-dark-text-muted mt-4">
-        See <code>go.mod</code> and individual package licenses for complete details.
-      </p>
-    </section>
-  </div>
+  <pre class="license-text"><code set:text={mitLicense} /></pre>
+
+  <section aria-labelledby="what-this-means">
+    <h2 id="what-this-means">What this means</h2>
+    <p>The MIT License is a permissive open source license that allows you to:</p>
+    <ul>
+      <li>Use {SITE.name} commercially</li>
+      <li>Modify the source code</li>
+      <li>Distribute the software</li>
+      <li>Sublicense the software</li>
+      <li>Use it privately</li>
+    </ul>
+    <p>
+      The only requirement is that you include the original copyright notice and license text when distributing the
+      software.
+    </p>
+  </section>
+
+  <section aria-labelledby="third-party-licenses">
+    <h2 id="third-party-licenses">Third-party licenses</h2>
+    <p>{SITE.name} uses the following open source dependencies:</p>
+    <ul>
+      <li><strong>Cobra</strong> - Apache License 2.0</li>
+      <li><strong>Viper</strong> - MIT License</li>
+      <li><strong>fsnotify</strong> - BSD 3-Clause License</li>
+      <li><strong>mpb</strong> - MIT License</li>
+      <li><strong>promptui</strong> - MIT License</li>
+      <li><strong>lipgloss</strong> - MIT License</li>
+    </ul>
+    <p>See <code>go.mod</code> and individual package licenses for complete details.</p>
+  </section>
 </DocsLayout>
 
 <style>
-  .prose {
-    color: #e5e5e5;
+  .license-text {
+    margin: 0 0 2rem;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    font: 0.875rem/1.6 var(--font-mono);
   }
-  .prose h1 {
-    color: #fff;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-  .prose h2 {
-    color: #fff;
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin-top: 2rem;
-    margin-bottom: 1rem;
-  }
-  .prose code {
-    background-color: #1f1f1f;
-    padding: 0.2em 0.4em;
-    border-radius: 0.25rem;
-    font-size: 0.9em;
-  }
-  pre code {
-    background-color: transparent;
+
+  .license-text code {
+    background: transparent;
     padding: 0;
+    font: inherit;
   }
 </style>

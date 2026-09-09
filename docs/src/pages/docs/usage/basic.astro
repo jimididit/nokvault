@@ -1,139 +1,132 @@
 ---
 import DocsLayout from '../../../layouts/DocsLayout.astro';
 import CodeBlock from '../../../components/CodeBlock.astro';
+import { SITE } from '../../../data/site';
+
 const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
-<DocsLayout 
-  title="Basic Usage Guide - How to Use Nokvault"
-  description="Learn how to encrypt and decrypt files with Nokvault. Step-by-step tutorial with examples for encrypting single files, directories, using passwords, keyfiles, and more."
+<DocsLayout
+  title="Basic Usage Guide - How to Use NokVault"
+  description="Encrypt, verify, and decrypt your first files and directories with NokVault."
   canonical={`${base}docs/usage/basic`}
   keywords={['nokvault tutorial', 'how to encrypt files', 'CLI encryption guide', 'file encryption examples', 'encrypt directory']}
 >
-  <div class="prose prose-invert max-w-none">
-    <h1>Basic Usage</h1>
-    <p class="text-xl text-dark-text-muted mb-8">
-      Learn the fundamentals of using Nokvault to encrypt and decrypt your files.
+  <h1>Basic Usage</h1>
+  <p class="lede">
+    Learn the fundamentals of encrypting and decrypting files with {SITE.name}. Always verify recovery before you delete plaintext.
+  </p>
+
+  <section aria-labelledby="encrypt-a-file">
+    <h2 id="encrypt-a-file">Encrypt a file</h2>
+    <p>The simplest way to encrypt a file is the <code>encrypt</code> command:</p>
+    <CodeBlock code="nokvault encrypt document.txt" lang="bash" />
+    <p>
+      This creates <code>document.txt.nokvault</code> and prompts for a password. The original file remains unchanged unless you pass
+      <code>--delete-original</code>.
     </p>
+    <div class="callout">
+      <p>
+        <strong>Verify recovery before deleting plaintext.</strong> Decrypt the new <code>.nokvault</code> file and confirm the restored
+        content before you remove or securely delete the original. Without a working credential (password or keyfile), encrypted data cannot
+        be recovered.
+      </p>
+    </div>
+  </section>
 
-    <section class="mb-8">
-      <h2>Encrypting a File</h2>
-      <p class="text-dark-text-muted mb-4">
-        The simplest way to encrypt a file is to use the <code>encrypt</code> command:
-      </p>
-      <CodeBlock code="nokvault encrypt document.txt" lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        This will create <code>document.txt.nokvault</code> and prompt you for a password. The original file remains unchanged unless you use the <code>--delete-original</code> flag.
-      </p>
-    </section>
+  <section aria-labelledby="decrypt-a-file">
+    <h2 id="decrypt-a-file">Decrypt a file</h2>
+    <p>Decrypt with the <code>decrypt</code> command:</p>
+    <CodeBlock code="nokvault decrypt document.txt.nokvault" lang="bash" />
+    <p>
+      {SITE.name} detects the original filename and restores it. You are prompted for the password used during encryption.
+    </p>
+  </section>
 
-    <section class="mb-8">
-      <h2>Decrypting a File</h2>
-      <p class="text-dark-text-muted mb-4">
-        To decrypt a file, use the <code>decrypt</code> command:
-      </p>
-      <CodeBlock code="nokvault decrypt document.txt.nokvault" lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        Nokvault will automatically detect the original filename and restore it. You'll be prompted for the password used during encryption.
-      </p>
-    </section>
-
-    <section class="mb-8">
-      <h2>Using Keyfiles</h2>
-      <p class="text-dark-text-muted mb-4">
-        Keyfiles are more secure than passwords and don't require typing. Create a keyfile and use it for encryption:
-      </p>
-      <CodeBlock code={`# Generate a random keyfile (using openssl or similar)
+  <section aria-labelledby="use-a-keyfile">
+    <h2 id="use-a-keyfile">Use a keyfile</h2>
+    <p>Keyfiles avoid typing a password for each operation. Create a keyfile and pass it to encrypt and decrypt:</p>
+    <CodeBlock
+      code={`# Generate a random keyfile (using openssl or similar)
 openssl rand -out ~/.keys/master.key 32
 
 # Encrypt with keyfile
 nokvault encrypt document.txt --keyfile ~/.keys/master.key
 
 # Decrypt with keyfile
-nokvault decrypt document.txt.nokvault --keyfile ~/.keys/master.key`} lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        <strong>Important:</strong> Keep keyfiles mode <code>0600</code> (Nokvault refuses group/world-readable keyfiles on Unix and rejects symlink keyfiles). Back them up securely — without the keyfile, encrypted data cannot be recovered.
-      </p>
-    </section>
+nokvault decrypt document.txt.nokvault --keyfile ~/.keys/master.key`}
+      lang="bash"
+    />
+    <p>
+      <strong>Important:</strong> Keep keyfiles mode <code>0600</code>. {SITE.name} refuses group/world-readable keyfiles on Unix and rejects
+      symlink keyfiles. Back them up securely - without the keyfile, encrypted data cannot be recovered.
+    </p>
+  </section>
 
-    <section class="mb-8">
-      <h2>Using Environment Variables</h2>
-      <p class="text-dark-text-muted mb-4">
-        For automation and scripts, you can use environment variables instead of interactive prompts.
-        Prefer keyfiles when possible: <code>NOKVAULT_PASSWORD</code> is still visible to other processes on the same machine.
-        Passwords on the command line (<code>--password</code> / <code>-p</code>) are refused.
-      </p>
-      <CodeBlock code={`# Set password as environment variable
+  <section aria-labelledby="environment-variables">
+    <h2 id="environment-variables">Using environment variables</h2>
+    <p>
+      For automation, you can supply a password through the environment instead of an interactive prompt. Prefer keyfiles when possible:
+      <code>NOKVAULT_PASSWORD</code> is still visible to other processes on the same machine. Passwords on the command line
+      (<code>--password</code> / <code>-p</code>) are refused.
+    </p>
+    <CodeBlock
+      code={`# Set password as environment variable
 export NOKVAULT_PASSWORD="your-secure-password"
 
 # Encrypt without prompt
 nokvault encrypt document.txt --no-prompt
 
 # Unset after use
-unset NOKVAULT_PASSWORD`} lang="bash" />
-    </section>
+unset NOKVAULT_PASSWORD`}
+      lang="bash"
+    />
+  </section>
 
-    <section class="mb-8">
-      <h2>Encrypting Directories</h2>
-      <p class="text-dark-text-muted mb-4">
-        Nokvault can encrypt entire directories recursively:
-      </p>
-      <CodeBlock code={`# Encrypt a directory
+  <section aria-labelledby="encrypting-directories">
+    <h2 id="encrypting-directories">Encrypting directories</h2>
+    <p>{SITE.name} can encrypt entire directories recursively:</p>
+    <CodeBlock
+      code={`# Encrypt a directory
 nokvault encrypt ./documents
 
 # The directory structure is preserved
-# Each file is encrypted individually`} lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        When encrypting directories, each file is encrypted separately, allowing you to decrypt individual files if needed. A nested symlink, junction, or other reparse point aborts the whole operation; no ciphertext is written for that link.
-      </p>
-    </section>
+# Each file is encrypted individually`}
+      lang="bash"
+    />
+    <p>
+      Each file is encrypted separately, so you can decrypt individual files later. A nested symlink, junction, or other reparse point aborts
+      the whole operation; no ciphertext is written for that link.
+    </p>
+  </section>
 
-    <section class="mb-8">
-      <h2>Specifying Output Location</h2>
-      <p class="text-dark-text-muted mb-4">
-        By default, encrypted files are created in the same location with a <code>.nokvault</code> extension. You can specify a custom output:
-      </p>
-      <CodeBlock code={`# Encrypt to specific location
+  <section aria-labelledby="specifying-output">
+    <h2 id="specifying-output">Specifying output location</h2>
+    <p>
+      By default, encrypted files are created beside the input with a <code>.nokvault</code> extension. You can choose a custom output:
+    </p>
+    <CodeBlock
+      code={`# Encrypt to specific location
 nokvault encrypt document.txt --output ./encrypted/secure.nokvault
 
 # Decrypt to specific location
-nokvault decrypt document.nokvault --output ./decrypted/restored.txt`} lang="bash" />
-    </section>
+nokvault decrypt document.nokvault --output ./decrypted/restored.txt`}
+      lang="bash"
+    />
+  </section>
 
-    <section class="mb-8">
-      <h2>Dry Run</h2>
-      <p class="text-dark-text-muted mb-4">
-        Before encrypting, you can preview what would happen with the <code>--dry-run</code> flag. Path policy still runs first: a symlink or escaping output is rejected before the preview and before any password prompt.
-      </p>
-      <CodeBlock code={`# See what would be encrypted
+  <section aria-labelledby="dry-run">
+    <h2 id="dry-run">Dry run</h2>
+    <p>
+      Preview an encryption with <code>--dry-run</code>. Path policy still runs first: a symlink or escaping output is rejected before the
+      preview and before any password prompt.
+    </p>
+    <CodeBlock
+      code={`# See what would be encrypted
 nokvault encrypt ./documents --dry-run
 
-# This shows which files would be processed without actually encrypting`} lang="bash" />
-    </section>
-  </div>
+# This shows which files would be processed without actually encrypting`}
+      lang="bash"
+    />
+  </section>
 </DocsLayout>
-
-<style>
-  .prose {
-    color: #e5e5e5;
-  }
-  .prose h1 {
-    color: #fff;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-  .prose h2 {
-    color: #fff;
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin-top: 2rem;
-    margin-bottom: 1rem;
-  }
-  .prose code {
-    background-color: #1f1f1f;
-    padding: 0.2em 0.4em;
-    border-radius: 0.25rem;
-    font-size: 0.9em;
-  }
-</style>

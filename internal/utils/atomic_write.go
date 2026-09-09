@@ -68,7 +68,7 @@ func atomicWriteFunc(filePath string, perm os.FileMode, replace bool, write func
 		cleanup()
 		return fmt.Errorf("failed to sync temp file: %w", err)
 	}
-	// Close before rename — required on Windows when replacing.
+	// Close before rename - required on Windows when replacing.
 	if err := tmp.Close(); err != nil {
 		_ = os.Remove(tmpName)
 		return fmt.Errorf("failed to close temp file: %w", err)

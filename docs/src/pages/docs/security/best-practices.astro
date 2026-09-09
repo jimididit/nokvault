@@ -1,194 +1,110 @@
 ---
 import DocsLayout from '../../../layouts/DocsLayout.astro';
 import CodeBlock from '../../../components/CodeBlock.astro';
+import { SITE } from '../../../data/site';
+
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
-<DocsLayout title="Security Best Practices - Nokvault">
-  <div class="prose prose-invert max-w-none">
-    <h1>Security Best Practices</h1>
-    <p class="text-xl text-dark-text-muted mb-8">
-      Follow these guidelines to maximize the security of your encrypted data.
-    </p>
+<DocsLayout
+  title="Security Best Practices - NokVault"
+  description="Credential, keyfile, backup, and secure-deletion guidance for operating NokVault safely."
+  canonical={`${base}docs/security/best-practices`}
+  keywords={['security best practices', 'keyfiles', 'secure delete', 'NokVault']}
+>
+  <h1>Security Best Practices</h1>
+  <p class="lede">
+    Follow these guidelines when choosing credentials, storing secrets, backing up recovery material, and deleting plaintext.
+  </p>
 
-    <section class="mb-8">
-      <h2>Use Keyfiles Instead of Passwords</h2>
-      <p class="text-dark-text-muted mb-4">
-        Keyfiles are more secure than passwords because they:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Are longer and more random than typical passwords</li>
-        <li>Don't require typing (reducing risk of keyloggers)</li>
-        <li>Can be stored securely using your OS keychain</li>
-      </ul>
-      <CodeBlock code={`# Generate a secure keyfile
-openssl rand -out ~/.keys/master.key 32
+  <section aria-labelledby="passwords">
+    <h2 id="passwords">Passwords</h2>
+    <ul>
+      <li>Never pass passwords on the command line - <code>--password</code> is refused</li>
+      <li>Prefer interactive prompts or a keyfile over <code>NOKVAULT_PASSWORD</code></li>
+      <li>If you must automate with <code>NOKVAULT_PASSWORD</code>, restrict who can read the process environment and unset the variable after use</li>
+      <li>Choose long, unique passwords; passwords are stretched with Argon2id but weak secrets remain weak</li>
+      <li>There is no password recovery - losing the password loses access to the ciphertext</li>
+    </ul>
+    <CodeBlock
+      code={`# Prefer interactive prompt or a keyfile
+nokvault encrypt file.txt
 
-# Store it securely (use OS keychain or encrypted storage)
-# Then use it for encryption
-nokvault encrypt file.txt --keyfile ~/.keys/master.key`} lang="bash" />
-    </section>
-
-    <section class="mb-8">
-      <h2>Secure Keyfile Storage</h2>
-      <p class="text-dark-text-muted mb-4">
-        Protect your keyfiles:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Store keyfiles in a secure location (not in the same directory as encrypted files)</li>
-        <li>Use file system permissions: <code>chmod 600 ~/.keys/master.key</code></li>
-        <li>Consider encrypting keyfiles themselves</li>
-        <li>Back up keyfiles securely (encrypted backup, separate location)</li>
-        <li>Never commit keyfiles to version control</li>
-      </ul>
-    </section>
-
-    <section class="mb-8">
-      <h2>Rotate Keys Periodically</h2>
-      <p class="text-dark-text-muted mb-4">
-        Regularly rotate encryption keys, especially if:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>A key might have been compromised</li>
-        <li>Someone with access to the key no longer needs it</li>
-        <li>Following a security incident</li>
-        <li>As part of regular security maintenance</li>
-      </ul>
-      <CodeBlock code={`# Re-key (decrypt + re-encrypt) with new credentials
-nokvault rotate-key file.nokvault \\
-  --old-keyfile ~/.keys/old.key \\
-  --new-keyfile ~/.keys/new.key`} lang="bash" />
-    </section>
-
-    <section class="mb-8">
-      <h2>Use Regular Paths, Not Symlinks</h2>
-      <p class="text-dark-text-muted mb-4">
-        Nokvault refuses symbolic links, Windows junctions, and other detected reparse points. There is no <code>--follow-symlinks</code> flag. If you see <code>SYMLINK_DISALLOWED</code>, replace the link with the real file or directory and rerun. If you see <code>PATH_ESCAPE</code>, keep the output relative path inside the selected directory.
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Do not encrypt, decrypt, watch, schedule, rotate, or securely delete through a link. Nested-link checks apply only to commands that recurse.</li>
-        <li>Keyfiles must be regular files (mode <code>0600</code> on Unix), not symlinks.</li>
-        <li>Policy errors are reported before dry-run previews and before password prompts.</li>
-        <li>Do not treat this as protection against a privileged process swapping path components after validation.</li>
-      </ul>
-    </section>
-
-    <section class="mb-8">
-      <h2>Use Secure Deletion</h2>
-      <p class="text-dark-text-muted mb-4">
-        When deleting sensitive unencrypted files, use secure deletion:
-      </p>
-      <CodeBlock code={`# Preview, then securely delete
-nokvault secure-delete sensitive-file.txt --dry-run
-nokvault secure-delete sensitive-file.txt --yes --passes 7
-
-# This overwrites the file multiple times before deletion`} lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        Regular file deletion only removes file system references. Overwriting is best-effort on traditional disks; SSD wear leveling, snapshots, and copy-on-write filesystems may retain prior data.
-      </p>
-    </section>
-
-    <section class="mb-8">
-      <h2>Version Control Best Practices</h2>
-      <p class="text-dark-text-muted mb-4">
-        Never commit sensitive data to version control:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Add <code>*.key</code>, <code>*.pem</code>, and keyfile patterns to <code>.gitignore</code></li>
-        <li>Never commit passwords or keyfiles</li>
-        <li>Use environment variables or secure secret management for CI/CD</li>
-        <li>Consider encrypting entire repositories if they contain sensitive data</li>
-      </ul>
-      <CodeBlock code={`# .gitignore
-*.key
-*.pem
-*.nokvault
-.env
-secrets/`} lang="text" />
-    </section>
-
-    <section class="mb-8">
-      <h2>Automation Security</h2>
-      <p class="text-dark-text-muted mb-4">
-        When automating encryption tasks:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Use environment variables instead of hardcoded passwords</li>
-        <li>Restrict environment variable access</li>
-        <li>Use keyfiles with restricted permissions</li>
-        <li>Log operations without logging sensitive data</li>
-      </ul>
-      <CodeBlock code={`# Use environment variables (not hardcoded passwords)
+# Automation fallback (visible to local processes)
 export NOKVAULT_PASSWORD="secure-password"
 nokvault encrypt file.txt --no-prompt
-unset NOKVAULT_PASSWORD
+unset NOKVAULT_PASSWORD`}
+      lang="bash"
+    />
+  </section>
 
-# Or use keyfiles
-nokvault encrypt file.txt --keyfile ~/.keys/automation.key --no-prompt`} lang="bash" />
-    </section>
+  <section aria-labelledby="keyfiles">
+    <h2 id="keyfiles">Keyfiles</h2>
+    <p>Keyfiles avoid typing secrets and are usually easier to rotate and revoke than shared passwords.</p>
+    <ul>
+      <li>Generate key material with a CSPRNG (for example <code>openssl rand</code>)</li>
+      <li>Store keyfiles as regular files with mode <code>0600</code> on Unix - not symlinks</li>
+      <li>Keep keyfiles out of the same directory as the encrypted data</li>
+      <li>Never commit keyfiles to version control; ignore <code>*.key</code>, <code>*.pem</code>, and secret paths</li>
+      <li>Rotate compromised or shared keys with <code>rotate-key</code></li>
+    </ul>
+    <CodeBlock
+      code={`# Generate a secure keyfile
+openssl rand -out ~/.keys/master.key 32
+chmod 600 ~/.keys/master.key
 
-    <section class="mb-8">
-      <h2>Backup Strategy</h2>
-      <p class="text-dark-text-muted mb-4">
-        Implement a secure backup strategy:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Back up encrypted files regularly</li>
-        <li>Store keyfiles separately from encrypted data</li>
-        <li>Use multiple backup locations</li>
-        <li>Test restoration procedures</li>
-        <li>Consider encrypting backups themselves</li>
-      </ul>
-    </section>
+nokvault encrypt file.txt --keyfile ~/.keys/master.key
 
-    <section class="mb-8">
-      <h2>Keep Software Updated</h2>
-      <p class="text-dark-text-muted mb-4">
-        Security vulnerabilities are discovered and patched regularly:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Update Nokvault to the latest version</li>
-        <li>Subscribe to security advisories</li>
-        <li>Review changelogs for security fixes</li>
-        <li>Update dependencies regularly</li>
-      </ul>
-    </section>
+# Re-key after compromise or access change
+nokvault rotate-key file.nokvault \\
+  --old-keyfile ~/.keys/old.key \\
+  --new-keyfile ~/.keys/new.key`}
+      lang="bash"
+    />
+    <h3>Path policy for keyfiles and targets</h3>
+    <p>
+      {SITE.name} refuses symbolic links, Windows junctions, and other detected reparse points. There is no
+      <code>--follow-symlinks</code> flag. If you see <code>SYMLINK_DISALLOWED</code>, replace the link with the real file or
+      directory. If you see <code>PATH_ESCAPE</code>, keep the output relative path inside the selected directory. Policy
+      errors are reported before dry-run previews and before password prompts. Do not treat this as protection against a
+      privileged process swapping path components after validation.
+    </p>
+  </section>
 
-    <section class="mb-8">
-      <h2>Access Control</h2>
-      <p class="text-dark-text-muted mb-4">
-        Limit access to encrypted files and keyfiles:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Use appropriate file system permissions</li>
-        <li>Limit who has access to keyfiles</li>
-        <li>Use separate keyfiles for different projects or users</li>
-        <li>Audit access logs if available</li>
-      </ul>
-    </section>
-  </div>
+  <section aria-labelledby="backups">
+    <h2 id="backups">Backups</h2>
+    <ul>
+      <li>Back up encrypted files regularly</li>
+      <li>Store keyfiles and credential backups separately from ciphertext (there is no password recovery)</li>
+      <li>Use more than one backup location</li>
+      <li>Test restoration before deleting originals</li>
+      <li>After decrypt, file modes are clamped to owner-only by default; use <code>--preserve-mode</code> only when you intentionally need the original mode</li>
+      <li>Keep {SITE.name} updated; verify release binaries with checksums and attestations where available</li>
+    </ul>
+    <h3>Access control</h3>
+    <ul>
+      <li>Limit who can read keyfiles and automation environments</li>
+      <li>Use separate keyfiles for different projects or trust boundaries</li>
+      <li>Log operations without logging secrets</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="secure-deletion">
+    <h2 id="secure-deletion">Secure deletion</h2>
+    <p>
+      When removing sensitive unencrypted files, use <code>secure-delete</code>. Secure delete is best-effort and cannot
+      guarantee erasure on SSD, snapshots, or copy-on-write storage.
+    </p>
+    <CodeBlock
+      code={`# Preview, then securely delete
+nokvault secure-delete sensitive-file.txt --dry-run
+nokvault secure-delete sensitive-file.txt --yes --passes 7`}
+      lang="bash"
+    />
+    <p>
+      Regular deletion only removes directory entries. Overwriting helps on traditional disks; SSD wear leveling, snapshots,
+      and copy-on-write filesystems may retain prior data. Prefer encrypting before plaintext ever lands on durable storage
+      you cannot scrub.
+    </p>
+  </section>
 </DocsLayout>
-
-<style>
-  .prose {
-    color: #e5e5e5;
-  }
-  .prose h1 {
-    color: #fff;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-  .prose h2 {
-    color: #fff;
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin-top: 2rem;
-    margin-bottom: 1rem;
-  }
-  .prose code {
-    background-color: #1f1f1f;
-    padding: 0.2em 0.4em;
-    border-radius: 0.25rem;
-    font-size: 0.9em;
-  }
-</style>
