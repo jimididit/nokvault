@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const SITE_ORIGIN = 'https://nokvault.xyz';
 const EXTERNAL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:']);
 const TAILWIND_UTILITY =
-  /^(?:(?:sm|md|lg|xl|2xl|hover|focus|active|dark):)*(?:bg|text|border|ring|shadow|rounded|p[trblxy]?|m[trblxy]?|space-[xy]|gap|w|h|min-[wh]|max-[wh]|flex|grid|block|inline|hidden|items|justify|content|self|font|leading|tracking|transition|duration|ease|overflow|object|relative|absolute|fixed|sticky|inset|top|right|bottom|left|z|opacity|cursor|select|whitespace|break|sr)-/;
+  /^(?:(?:sm|md|lg|xl|2xl|hover|focus|active|dark):)*(?:bg|text|border|ring|shadow|rounded|p[trblxy]?|m[trblxy]?|space-[xy]|gap|w|h|min-[wh]|max-[wh]|flex|grid|block|inline|hidden|items|justify|content|self|font|leading|tracking|transition|duration|ease|overflow|object|relative|absolute|fixed|sticky|inset|top|right|bottom|left|z|opacity|cursor|select|whitespace|break)-/;
 
 async function readHTMLTree(distDir) {
   const root = resolve(distDir);
