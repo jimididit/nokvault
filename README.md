@@ -206,13 +206,13 @@ nokvault encrypt ./files -v
 ### Security Best Practices
 
 1. **Use keyfiles** instead of passwords when possible (`chmod 0600`; symlinks are rejected)
-2. **Never pass passwords on argv** — `--password` / `-p` are refused
+2. **Never pass passwords on argv** - `--password` / `-p` are refused
 3. **Rotate keys** periodically using `rotate-key`
 4. **Use secure deletion** for sensitive files: `secure-delete --yes` (or confirm interactively); preview with `--dry-run`
 5. **Never commit** passwords or keyfiles to version control
 6. **Prefer keyfiles over** `NOKVAULT_PASSWORD` for automation (env vars remain visible to local processes)
 7. **Pass `--force`** when intentionally overwriting encrypt/decrypt outputs
-8. **Use regular paths** — replace any symlink or junction with the real file or directory; Nokvault will not follow it
+8. **Use regular paths** - replace any symlink or junction with the real file or directory; Nokvault will not follow it
 
 ## Contributing
 
@@ -234,7 +234,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Documentation
 
-📚 **[Full Documentation Website](https://jimididit.github.io/nokvault/)** — Cipher Editorial landing page and docs shell with dual themes, local search, self-hosted typography, and no third-party analytics or GitHub widget runtime. Source lives under `docs/`.
+📚 **[Full Documentation Website](https://jimididit.github.io/nokvault/)** - Cipher Editorial landing page and docs shell with dual themes, local search, self-hosted typography, and no third-party analytics or GitHub widget runtime. Source lives under `docs/`.
 
 For local preview:
 

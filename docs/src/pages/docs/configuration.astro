@@ -19,8 +19,8 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
     <h2 id="configuration-files">Configuration files</h2>
     <p>{SITE.name} supports two levels of configuration:</p>
     <ul>
-      <li><strong>Global config:</strong> <code>~/.config/nokvault/config.toml</code> — applies to all projects</li>
-      <li><strong>Local config:</strong> <code>.nokvault.toml</code> — applies to the current directory and overrides global settings</li>
+      <li><strong>Global config:</strong> <code>~/.config/nokvault/config.toml</code> - applies to all projects</li>
+      <li><strong>Local config:</strong> <code>.nokvault.toml</code> - applies to the current directory and overrides global settings</li>
     </ul>
     <p>Local configuration takes precedence over global configuration, allowing project-specific settings.</p>
 
@@ -91,7 +91,7 @@ memory_cost = 131072  # stronger KDF for new encryptions in this project`}
     <h2 id="key-derivation">Key derivation</h2>
     <p>
       <strong>Key derivation settings apply when creating encrypted files only</strong> (encrypt, rotate-key re-encryption, watch, schedule).
-      Decryption always uses the Argon2 parameters stored in each file's header (format v2) or built-in defaults for older v1 files — changing
+      Decryption always uses the Argon2 parameters stored in each file's header (format v2) or built-in defaults for older v1 files - changing
       config does not affect existing ciphertext.
     </p>
     <p>

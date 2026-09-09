@@ -14,7 +14,11 @@ const searchPages = DOCS_PAGES.map((page) => ({
 
 <div class="docs-search" data-docs-search data-docs-base={base}>
   <a class="docs-search__trigger button button--secondary" href={docsHref} data-docs-search-trigger>
-    Search documentation
+    <span class="docs-search__trigger-label">Search documentation</span>
+    <svg class="docs-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7"></circle>
+      <path d="m20 20-3.5-3.5"></path>
+    </svg>
   </a>
 
   <dialog class="docs-search__dialog" data-docs-search-dialog aria-labelledby="docs-search-title">
@@ -23,17 +27,23 @@ const searchPages = DOCS_PAGES.map((page) => ({
     </form>
     <h2 id="docs-search-title" class="docs-search__title">Search documentation</h2>
     <label for="docs-search-input">Search documentation</label>
-    <input
-      id="docs-search-input"
-      type="search"
-      autocomplete="off"
-      role="combobox"
-      aria-autocomplete="list"
-      aria-controls="docs-search-results"
-      aria-expanded="false"
-      aria-haspopup="listbox"
-      data-docs-search-input
-    />
+    <div class="docs-search__field">
+      <input
+        id="docs-search-input"
+        type="search"
+        autocomplete="off"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-controls="docs-search-results"
+        aria-expanded="false"
+        aria-haspopup="listbox"
+        data-docs-search-input
+      />
+      <svg class="docs-search__icon docs-search__field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="m20 20-3.5-3.5"></path>
+      </svg>
+    </div>
     <p id="docs-search-status" role="status" aria-live="polite" data-docs-search-status></p>
     <ul id="docs-search-results" role="listbox" aria-label="Search results" data-docs-search-results></ul>
   </dialog>
@@ -48,7 +58,20 @@ const searchPages = DOCS_PAGES.map((page) => ({
 
   .docs-search__trigger {
     width: 100%;
-    justify-content: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .docs-search__trigger-label {
+    min-width: 0;
+    text-align: start;
+  }
+
+  .docs-search__icon {
+    flex: 0 0 auto;
+    width: 1.125rem;
+    height: 1.125rem;
+    color: var(--text-muted);
   }
 
   .docs-search__dialog {
@@ -81,16 +104,28 @@ const searchPages = DOCS_PAGES.map((page) => ({
     font-weight: 600;
   }
 
+  .docs-search__field {
+    position: relative;
+    margin-bottom: 12px;
+  }
+
   .docs-search input[type='search'] {
     width: 100%;
     min-height: 44px;
-    margin-bottom: 12px;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--canvas);
     color: var(--text);
-    padding: 8px 12px;
+    padding: 8px 44px 8px 12px;
     font: inherit;
+  }
+
+  .docs-search__field-icon {
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    transform: translateY(-50%);
+    pointer-events: none;
   }
 
   #docs-search-status {

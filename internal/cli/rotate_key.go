@@ -112,7 +112,7 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to read encrypted data: %w", err)
 	}
-	// Close before replace — Windows cannot rename over a file that is still open.
+	// Close before replace - Windows cannot rename over a file that is still open.
 	if err := inputFile.Close(); err != nil {
 		return fmt.Errorf("failed to close input file: %w", err)
 	}

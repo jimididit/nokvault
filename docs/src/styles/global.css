@@ -191,6 +191,10 @@ kbd {
   background: var(--code-canvas);
   padding: 0 4px;
   font-size: 0.875em;
+  /* Keep short CLI tokens (`--password`) as one chip; hyphenated flags otherwise wrap mid-box. */
+  white-space: nowrap;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 pre {

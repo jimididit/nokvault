@@ -28,7 +28,7 @@ func TestAtomicWrite_ReplacesAtomically(t *testing.T) {
 	}
 	for _, e := range entries {
 		if filepath.Ext(e.Name()) == ".tmp" || len(e.Name()) > 10 && e.Name()[:9] == ".nokvault" {
-			// CreateTemp names are .nokvault-*.tmp — ensure none left
+			// CreateTemp names are .nokvault-*.tmp - ensure none left
 			if filepath.Ext(e.Name()) == ".tmp" {
 				t.Fatalf("leftover temp file: %s", e.Name())
 			}

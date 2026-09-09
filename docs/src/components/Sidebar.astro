@@ -75,7 +75,19 @@ const mobileGroups = renderGroups();
 </aside>
 
 <details class="mobile-docs-nav" data-mobile-docs-nav>
-  <summary>Browse documentation</summary>
+  <summary class="mobile-docs-nav__summary">
+    <span class="mobile-docs-nav__summary-label">Browse documentation</span>
+    <button
+      type="button"
+      class="mobile-docs-nav__close"
+      data-mobile-docs-close
+      aria-label="Close documentation menu"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true">
+        <path d="M6 6l12 12M18 6 6 18"></path>
+      </svg>
+    </button>
+  </summary>
   <div class="mobile-docs-nav__panel" data-mobile-docs-panel>
     <nav class="mobile-docs-nav__nav" aria-label="Documentation sections">
       {mobileGroups.map((section) => (
@@ -177,6 +189,8 @@ const mobileGroups = renderGroups();
   .mobile-docs-nav > summary {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     min-height: 44px;
     padding: 12px 16px;
     cursor: pointer;
@@ -186,6 +200,43 @@ const mobileGroups = renderGroups();
 
   .mobile-docs-nav > summary::-webkit-details-marker {
     display: none;
+  }
+
+  .mobile-docs-nav__summary-label {
+    min-width: 0;
+  }
+
+  .mobile-docs-nav__close {
+    display: none;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    margin: -6px -8px -6px 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    padding: 0;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .mobile-docs-nav[open] .mobile-docs-nav__close {
+    display: inline-grid;
+  }
+
+  .mobile-docs-nav__close:hover {
+    background: var(--surface-raised);
+  }
+
+  .mobile-docs-nav__close:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .mobile-docs-nav__close svg {
+    width: 1.125rem;
+    height: 1.125rem;
   }
 
   .mobile-docs-nav__panel {
@@ -205,17 +256,26 @@ const mobileGroups = renderGroups();
     cursor: pointer;
   }
 
-  :global(.mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__backdrop) {
+  :global(.mobile-docs-nav__backdrop.is-visible) {
     display: block;
   }
 
+  /*
+    Open enhanced menu becomes a fixed drawer sized to the viewport.
+    Avoid flex layout on <details> - browsers do not size its children
+    reliably, which previously either clipped Project or collapsed the panel.
+    Panel max-height is assigned in script from the drawer’s client box.
+  */
   .mobile-docs-nav[data-enhanced='true'][open] {
-    position: relative;
+    position: fixed;
     z-index: 61;
-    max-height: calc(100dvh - var(--header-height) - 24px);
+    top: max(12px, env(safe-area-inset-top, 0px));
+    right: 16px;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    left: 16px;
+    display: block;
+    margin: 0;
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
   }
 
   .mobile-docs-nav[data-enhanced='true'][open] > summary,
@@ -226,15 +286,50 @@ const mobileGroups = renderGroups();
   }
 
   .mobile-docs-nav[data-enhanced='true'][open] > summary {
-    flex: 0 0 auto;
+    border-bottom: 1px solid var(--border);
   }
 
   .mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__panel {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
+    overflow-x: hidden;
+    overflow-y: scroll;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+    padding-bottom: 28px;
+    /* Always show a readable scrollbar so overflow is obvious on overlay-scrollbar OSes. */
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--accent) 70%, var(--border)) var(--surface-raised);
+  }
+
+  .mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__panel::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__panel::-webkit-scrollbar-track {
+    background: var(--surface-raised);
+  }
+
+  .mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__panel::-webkit-scrollbar-thumb {
+    border: 2px solid var(--surface-raised);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 70%, var(--border));
+  }
+
+  /*
+    Bottom fade while more nav remains below the fold.
+    Makes the hard clip read as “scroll for more” instead of a truncated menu.
+  */
+  .mobile-docs-nav[data-enhanced='true'][open][data-more-below='true']::after {
+    content: '';
+    position: absolute;
+    z-index: 62;
+    right: 12px;
+    bottom: 0;
+    left: 0;
+    height: 56px;
+    pointer-events: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    background: linear-gradient(to bottom, transparent, var(--surface) 72%);
   }
 
   @media (min-width: 1024px) {
@@ -253,6 +348,7 @@ const mobileGroups = renderGroups();
   if (root instanceof HTMLDetailsElement) {
     const summary = root.querySelector('summary');
     const panel = root.querySelector('[data-mobile-docs-panel]');
+    const closeButton = root.querySelector('[data-mobile-docs-close]');
     root.dataset.enhanced = 'true';
 
     const backdrop = document.createElement('button');
@@ -261,11 +357,45 @@ const mobileGroups = renderGroups();
     backdrop.setAttribute('data-mobile-docs-backdrop', '');
     backdrop.setAttribute('aria-label', 'Close documentation menu');
     backdrop.tabIndex = -1;
-    root.insertBefore(backdrop, panel);
+    // Keep the backdrop outside <details> so it does not participate in the flex drawer layout.
+    document.body.appendChild(backdrop);
+
+    const syncBackdrop = () => {
+      backdrop.classList.toggle('is-visible', root.open);
+    };
+
+    const syncMoreBelow = () => {
+      if (!(panel instanceof HTMLElement) || !root.open) {
+        root.removeAttribute('data-more-below');
+        return;
+      }
+      const remaining = panel.scrollHeight - panel.clientHeight - panel.scrollTop;
+      root.dataset.moreBelow = remaining > 8 ? 'true' : 'false';
+    };
+
+    const layoutOpenPanel = () => {
+      if (!(panel instanceof HTMLElement) || !(summary instanceof HTMLElement)) return;
+      if (!root.open) {
+        panel.style.removeProperty('max-height');
+        syncMoreBelow();
+        return;
+      }
+      // Client height is definite once the drawer is fixed with top/bottom insets.
+      const available = root.clientHeight - summary.offsetHeight;
+      panel.style.maxHeight = `${Math.max(160, available)}px`;
+      // Force layout so scroll metrics reflect the new max-height before the fade sync.
+      void panel.offsetHeight;
+      syncMoreBelow();
+    };
 
     const getFocusable = () => {
       if (!(panel instanceof HTMLElement) || !summary) return [];
-      return [summary, ...panel.querySelectorAll<HTMLElement>('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter(
+      const nodes: HTMLElement[] = [];
+      if (closeButton instanceof HTMLElement) nodes.push(closeButton);
+      nodes.push(
+        ...panel.querySelectorAll<HTMLElement>('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])'),
+      );
+      return nodes.filter(
         (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true' && el !== backdrop,
       );
     };
@@ -281,21 +411,39 @@ const mobileGroups = renderGroups();
     const close = ({ restoreFocus = true }: { restoreFocus?: boolean } = {}) => {
       if (!root.open) return;
       root.open = false;
+      syncBackdrop();
+      layoutOpenPanel();
       unlock();
       if (restoreFocus && summary instanceof HTMLElement) summary.focus();
     };
 
+    syncBackdrop();
+
     root.addEventListener('toggle', () => {
+      syncBackdrop();
+      layoutOpenPanel();
       if (root.open) {
         lock();
         queueMicrotask(() => {
-          const focusable = getFocusable();
-          focusable[1]?.focus();
+          layoutOpenPanel();
+          requestAnimationFrame(() => {
+            layoutOpenPanel();
+            const focusable = getFocusable();
+            focusable[1]?.focus();
+          });
         });
       } else {
         unlock();
       }
     });
+
+    window.addEventListener('resize', () => {
+      if (root.open) layoutOpenPanel();
+    });
+
+    if (panel instanceof HTMLElement) {
+      panel.addEventListener('scroll', syncMoreBelow, { passive: true });
+    }
 
     root.addEventListener('keydown', (event) => {
       if (!root.open) return;
@@ -326,6 +474,15 @@ const mobileGroups = renderGroups();
     backdrop.addEventListener('click', () => {
       close();
     });
+
+    if (closeButton instanceof HTMLButtonElement) {
+      closeButton.addEventListener('click', (event) => {
+        // Keep summary from toggling open again while we close explicitly.
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+      });
+    }
 
     root.addEventListener('click', (event) => {
       const target = event.target;

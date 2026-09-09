@@ -27,7 +27,9 @@ test('desktop and mobile docs navigation render all six groups with current-page
   }
 
   assert.match(html, /<details[^>]*class="[^"]*mobile-docs-nav[^"]*"/);
-  assert.match(html, /<summary[^>]*>\s*Browse documentation\s*<\/summary>/);
+  assert.match(html, /Browse documentation/);
+  assert.match(html, /data-mobile-docs-close/);
+  assert.match(html, /aria-label="Close documentation menu"/);
   assert.match(
     html,
     /href="[^"]*docs\/installation\/?"[^>]*aria-current="page"/,
@@ -43,7 +45,11 @@ test('enhanced mobile docs nav dismisses via a dedicated backdrop target, not ::
 
   // No-JS foundation stays details/summary.
   assert.match(html, /<details[^>]*data-mobile-docs-nav/);
-  assert.match(html, /<summary[^>]*>\s*Browse documentation\s*<\/summary>/);
+  assert.match(html, /Browse documentation/);
+  assert.match(html, /data-mobile-docs-close/);
+  assert.match(source, /data-mobile-docs-close/);
+  assert.match(source, /mobile-docs-nav__close/);
+  assert.match(source, /closeButton\.addEventListener\(\s*['"]click['"]/);
 
   // Dimmer must be a real backdrop target (element or enhancement-created), not details::before.
   assert.doesNotMatch(source, /mobile-docs-nav\[[^\]]*\]\[open\]::before/);
@@ -52,9 +58,11 @@ test('enhanced mobile docs nav dismisses via a dedicated backdrop target, not ::
 
   // Runtime-created backdrop must use :global styles; Astro scoping would otherwise miss it.
   assert.match(source, /:global\(\.mobile-docs-nav__backdrop\)/);
-  assert.match(source, /:global\(\.mobile-docs-nav\[data-enhanced='true'\]\[open\] \.mobile-docs-nav__backdrop\)/);
+  assert.match(source, /:global\(\.mobile-docs-nav__backdrop\.is-visible\)|:global\(\.mobile-docs-nav__backdrop\.is-visible\)/);
+  assert.match(source, /document\.body\.appendChild\(\s*backdrop\s*\)/);
   assert.match(styles, /\.mobile-docs-nav__backdrop[^{]*\{[^}]*display:\s*none/s);
   assert.match(styles, /\.mobile-docs-nav__backdrop[^{]*\{[^}]*position:\s*fixed/s);
+  assert.doesNotMatch(source, /mobile-docs-nav\[data-enhanced='true'\]\[open\] \.mobile-docs-nav__backdrop/);
 
   // Backdrop click must close; relying only on !root.contains cannot dismiss a ::before painted on root.
   assert.match(source, /data-mobile-docs-backdrop/);
@@ -62,8 +70,12 @@ test('enhanced mobile docs nav dismisses via a dedicated backdrop target, not ::
   assert.match(source, /Escape/);
   assert.match(source, /restoreFocus/);
   assert.match(source, /overflow/);
-  assert.match(source, /overflow-y:\s*auto/);
-  assert.match(source, /max-height:\s*calc\(100dvh/);
+  assert.match(source, /overflow-y:\s*scroll/);
+  assert.match(source, /position:\s*fixed/);
+  assert.match(source, /bottom:\s*max\(12px/);
+  assert.match(source, /layoutOpenPanel/);
+  assert.match(source, /panel\.style\.maxHeight/);
+  assert.match(source, /document\.body\.appendChild\(\s*backdrop\s*\)/);
 });
 
 test('docs search exposes dialog markup, serialized pages, and no-JS docs fallback', async () => {
@@ -80,7 +92,9 @@ test('docs search exposes dialog markup, serialized pages, and no-JS docs fallba
   assert.match(html, /Watch and Schedule/);
   assert.match(html, /data-docs-search-trigger/);
   assert.match(html, /href="[^"]*docs\/"[^>]*data-docs-search-trigger|data-docs-search-trigger[^>]*href="[^"]*docs\//);
-});
+  assert.match(html, /docs-search__icon/);
+  assert.match(html, /docs-search__field/);
+  assert.match(html, /circle[^>]*cx="11"[^>]*cy="11"[^>]*r="7"/);
 
 test('article chrome renders breadcrumbs, TOC, and previous/next links', async () => {
   const installation = await readPage('docs/installation/index.html');

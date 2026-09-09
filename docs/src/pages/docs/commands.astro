@@ -81,7 +81,7 @@ nokvault watch ./incoming --auto-encrypt --keyfile ./key --no-prompt --json \\
     <ul>
       <li><code>--output, -o</code>: Specify output file path (default: &lt;path&gt;.nokvault)</li>
       <li><code>--keyfile, -k</code>: Path to keyfile for encryption (mode 0600 required on Unix; symlinks refused)</li>
-      <li><code>--password, -p</code>: Removed — refused at runtime (use keyfile, <code>NOKVAULT_PASSWORD</code>, or prompt)</li>
+      <li><code>--password, -p</code>: Removed - refused at runtime (use keyfile, <code>NOKVAULT_PASSWORD</code>, or prompt)</li>
       <li><code>--no-prompt</code>: Don't prompt for password</li>
       <li><code>--compress</code>: Compress before encryption</li>
       <li><code>--dry-run</code>: Show what would be encrypted without actually encrypting</li>
@@ -116,7 +116,7 @@ nokvault encrypt file.txt --keyfile ~/.keys/master.key`}
     <ul>
       <li><code>--output, -o</code>: Specify output file path</li>
       <li><code>--keyfile, -k</code>: Path to keyfile for decryption (mode 0600 required on Unix; symlinks refused)</li>
-      <li><code>--password, -p</code>: Removed — refused at runtime (use keyfile, <code>NOKVAULT_PASSWORD</code>, or prompt)</li>
+      <li><code>--password, -p</code>: Removed - refused at runtime (use keyfile, <code>NOKVAULT_PASSWORD</code>, or prompt)</li>
       <li><code>--no-prompt</code>: Don't prompt for password</li>
       <li><code>--preserve-mode</code>: Restore original file modes (default clamps to ≤0600 files / ≤0700 dirs)</li>
       <li><code>--force, -f</code>: Overwrite existing output path</li>
@@ -205,7 +205,7 @@ nokvault schedule encrypt ./documents --interval 24h`}
     <ul>
       <li><code>--old-keyfile</code>: Path to old keyfile</li>
       <li><code>--new-keyfile</code>: Path to new keyfile</li>
-      <li><code>--old-password</code> / <code>--new-password</code>: Removed — refused at runtime</li>
+      <li><code>--old-password</code> / <code>--new-password</code>: Removed - refused at runtime</li>
       <li><code>--no-prompt</code>: Don't prompt for passwords</li>
       <li><code>--verbose, -v</code>: Verbose output</li>
     </ul>
