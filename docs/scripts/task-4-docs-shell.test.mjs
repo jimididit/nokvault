@@ -36,6 +36,28 @@ test('desktop and mobile docs navigation render all six groups with current-page
   assert.match(html, />\s*0\.3\.0\s*</);
 });
 
+test('enhanced mobile docs nav dismisses via a dedicated backdrop target, not ::before inside details', async () => {
+  const source = await readFile(new URL('../src/components/Sidebar.astro', import.meta.url), 'utf8');
+  const html = await readPage('docs/installation/index.html');
+  const styles = await readCombinedStyles();
+
+  // No-JS foundation stays details/summary.
+  assert.match(html, /<details[^>]*data-mobile-docs-nav/);
+  assert.match(html, /<summary[^>]*>\s*Browse documentation\s*<\/summary>/);
+
+  // Dimmer must be a real backdrop target (element or enhancement-created), not details::before.
+  assert.doesNotMatch(source, /mobile-docs-nav\[[^\]]*\]\[open\]::before/);
+  assert.doesNotMatch(styles, /mobile-docs-nav[^{]*\[open\]::before|mobile-docs-nav\[open\]::before/);
+  assert.match(source, /data-mobile-docs-backdrop|mobile-docs-nav__backdrop/);
+
+  // Backdrop click must close; relying only on !root.contains cannot dismiss a ::before painted on root.
+  assert.match(source, /data-mobile-docs-backdrop/);
+  assert.match(source, /backdrop\.addEventListener\(\s*['"]click['"][\s\S]{0,80}close\s*\(/);
+  assert.match(source, /Escape/);
+  assert.match(source, /restoreFocus/);
+  assert.match(source, /overflow/);
+});
+
 test('docs search exposes dialog markup, serialized pages, and no-JS docs fallback', async () => {
   const html = await readPage('docs/index.html');
 

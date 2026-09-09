@@ -33,10 +33,9 @@ function isCurrent(item: NavItem, siblings: NavItem[]) {
   return !moreSpecificHashMatch;
 }
 
-function renderGroups(navClass: string) {
+function renderGroups() {
   return DOCS_NAV.map((section) => ({
     group: section.group,
-    navClass,
     items: section.items.map((item) => {
       const parts = itemParts(item.href);
       return {
@@ -48,8 +47,8 @@ function renderGroups(navClass: string) {
   }));
 }
 
-const desktopGroups = renderGroups('docs-sidebar__nav');
-const mobileGroups = renderGroups('mobile-docs-nav__nav');
+const desktopGroups = renderGroups();
+const mobileGroups = renderGroups();
 ---
 
 <aside class="docs-sidebar" aria-label="Documentation">
@@ -193,12 +192,20 @@ const mobileGroups = renderGroups('mobile-docs-nav__nav');
     padding: 0 16px 16px;
   }
 
-  .mobile-docs-nav[data-enhanced='true'][open]::before {
-    content: '';
+  .mobile-docs-nav__backdrop {
+    display: none;
     position: fixed;
     inset: 0;
     z-index: 60;
+    margin: 0;
+    border: 0;
+    padding: 0;
     background: color-mix(in srgb, var(--canvas) 35%, transparent);
+    cursor: pointer;
+  }
+
+  .mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__backdrop {
+    display: block;
   }
 
   .mobile-docs-nav[data-enhanced='true'][open] > summary,
@@ -206,10 +213,6 @@ const mobileGroups = renderGroups('mobile-docs-nav__nav');
     position: relative;
     z-index: 61;
     background: var(--surface);
-  }
-
-  .mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__panel {
-    position: relative;
   }
 
   @media (min-width: 1024px) {
@@ -230,10 +233,18 @@ const mobileGroups = renderGroups('mobile-docs-nav__nav');
     const panel = root.querySelector('[data-mobile-docs-panel]');
     root.dataset.enhanced = 'true';
 
+    const backdrop = document.createElement('button');
+    backdrop.type = 'button';
+    backdrop.className = 'mobile-docs-nav__backdrop';
+    backdrop.setAttribute('data-mobile-docs-backdrop', '');
+    backdrop.setAttribute('aria-label', 'Close documentation menu');
+    backdrop.tabIndex = -1;
+    root.insertBefore(backdrop, panel);
+
     const getFocusable = () => {
       if (!(panel instanceof HTMLElement) || !summary) return [];
       return [summary, ...panel.querySelectorAll<HTMLElement>('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter(
-        (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true',
+        (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true' && el !== backdrop,
       );
     };
 
@@ -288,6 +299,10 @@ const mobileGroups = renderGroups('mobile-docs-nav__nav');
         event.preventDefault();
         first.focus();
       }
+    });
+
+    backdrop.addEventListener('click', () => {
+      close();
     });
 
     root.addEventListener('click', (event) => {
