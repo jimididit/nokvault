@@ -7,12 +7,17 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "check": "astro check",
+    "test:build": "npm run build && node scripts/validate-build.mjs",
+    "test:validator": "node --test scripts/validate-build.test.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^4.4.2",
     "@astrojs/sitemap": "^3.7.0",
     "@astrojs/tailwind": "^5.1.3",
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
     "@heroicons/react": "^2.2.0",
     "@tailwindcss/typography": "^0.5.19",
     "astro": "^5.16.11",
@@ -22,6 +27,7 @@
     "tailwindcss": "^3.4.1"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0"
   }
