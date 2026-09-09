@@ -56,18 +56,19 @@ go build -o nokvault.exe ./cmd/nokvault
 go build -o nokvault ./cmd/nokvault
 ```
 
-**Package managers** (coming soon):
+**Package managers:**
 
 ```bash
-# Homebrew (macOS) - Coming soon
-# brew install nokvault
+# Homebrew (macOS)
+brew tap jimididit/nokvault https://github.com/jimididit/nokvault.git
+brew install jimididit/nokvault/nokvault
 
-# Scoop (Windows) - Coming soon
-# scoop install nokvault
-
-# APT (Debian/Ubuntu) - Coming soon
-# sudo apt install nokvault
+# Scoop (Windows)
+scoop install https://raw.githubusercontent.com/jimididit/nokvault/main/scoop/nokvault.json
 ```
+
+An APT repository is not currently published. Linux users should download the
+attested binary for their architecture from GitHub Releases.
 
 ### Basic Usage
 
@@ -170,7 +171,7 @@ nokvault encrypt ./files -v
 ## Known Limitations
 
 - **`protect` command**: Hidden because archive mode is not implemented. Direct invocation fails without touching the supplied path. Use `encrypt` for files or directories.
-- **Package managers**: Homebrew, Scoop, and APT support is planned but not yet available. Download binaries from [GitHub Releases](https://github.com/jimididit/nokvault/releases).
+- **Linux packaging**: An APT repository is not currently available. Download attested Linux binaries from [GitHub Releases](https://github.com/jimididit/nokvault/releases).
 - **Edge cases**: Some edge cases may need additional testing. Please report any issues you encounter.
 - **No-replace filesystem support**: Race-safe encrypt/decrypt writes without `--force` require hard-link support on the destination filesystem. FAT/exFAT and some network filesystems may reject the operation; choose a supported destination rather than weakening overwrite protection.
 - **No symlink follow opt-in**: There is no `--follow-symlinks` flag. Use a regular file or directory path instead of a link.

@@ -101,10 +101,6 @@ AUDIT_REPORT.md
 docs/superpowers/
 .worktrees/
 
-# Package manager templates (not ready for distribution yet)
-Formula/
-scoop/
-
 # Config files with sensitive data (if any)
 # config.local.toml
 # .nokvault.local.toml
