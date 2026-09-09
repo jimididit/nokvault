@@ -21,6 +21,7 @@ A modern, feature-rich CLI tool for encrypting local files and folders. Built wi
 - **🛡️ Crash-safe writes**: Encrypt/rotate use temp+fsync+rename; decrypt clamps modes to owner-only unless `--preserve-mode`
 - **🚫 Default-deny paths**: Symlinks, Windows junctions, and other reparse points are rejected on file-touching commands; directory outputs stay inside the selected root
 - **📊 Progress Tracking**: Visual progress bars for operations
+- **⌨️ Responsive CLI identity**: Interactive root help uses a polished terminal-aware wordmark; version, redirected, and JSON output stay automation-safe
 - **🌐 Cross-Platform**: Single binary for Windows, Linux, and macOS
 
 ## Quick Start

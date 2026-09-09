@@ -1,0 +1,2 @@
+# Golden fixtures are compared byte-for-byte; keep LF on every checkout.
+internal/cli/testdata/*.golden text eol=lf

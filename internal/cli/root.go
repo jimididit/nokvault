@@ -42,6 +42,7 @@ func init() {
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		ConfigureOutput(cmd.OutOrStdout(), cmd.ErrOrStderr(), jsonOutput && isOperationalCommand(commandName(cmd)))
 	}
+	installRootHelpBanner(rootCmd)
 }
 
 // Run executes NokVault with injectable streams and returns its process exit code.
