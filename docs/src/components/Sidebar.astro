@@ -192,7 +192,8 @@ const mobileGroups = renderGroups();
     padding: 0 16px 16px;
   }
 
-  .mobile-docs-nav__backdrop {
+  /* Backdrop is created at runtime; keep selectors global so Astro scoping still matches it. */
+  :global(.mobile-docs-nav__backdrop) {
     display: none;
     position: fixed;
     inset: 0;
@@ -204,7 +205,7 @@ const mobileGroups = renderGroups();
     cursor: pointer;
   }
 
-  .mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__backdrop {
+  :global(.mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__backdrop) {
     display: block;
   }
 

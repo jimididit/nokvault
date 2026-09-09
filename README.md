@@ -201,8 +201,7 @@ nokvault encrypt ./files -v
 - **Decrypt modes**: Clamped to ≤0600 / ≤0700 unless `--preserve-mode`
 - **Path policy**: Default-deny for detected symlinks, Windows junctions, and other reparse points on encrypt, decrypt, rotate-key, secure-delete, watch, schedule, and keyfiles. Nested-link rejection applies only to commands that recurse. Directory outputs are contained with lexical `SafeJoin` (`filepath.Rel`, not string-prefix matching).
 - **Policy errors**: `SYMLINK_DISALLOWED` (use a regular path; links are not followed) and `PATH_ESCAPE` (stay inside the selected output directory). Checks run before `--dry-run`, password prompts, reads, writes, or deletes.
-- **Timing Attack Protection**: Constant-time operations
-- **File Integrity**: Built-in authentication tags
+- **File Integrity**: Built-in AES-GCM authentication tags (decrypt fails closed on tamper)
 
 ### Security Best Practices
 
@@ -235,7 +234,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Documentation
 
-📚 **[Full Documentation Website](https://jimididit.github.io/nokvault/)** - Complete documentation with examples, guides, and API reference.
+📚 **[Full Documentation Website](https://jimididit.github.io/nokvault/)** — Cipher Editorial landing page and docs shell with dual themes, local search, self-hosted typography, and no third-party analytics or GitHub widget runtime. Source lives under `docs/`.
+
+For local preview:
+
+```bash
+cd docs
+npm ci
+npm run build
+npm run preview
+```
 
 ## Support
 

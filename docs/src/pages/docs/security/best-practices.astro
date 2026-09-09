@@ -75,7 +75,7 @@ nokvault rotate-key file.nokvault \\
     <h2 id="backups">Backups</h2>
     <ul>
       <li>Back up encrypted files regularly</li>
-      <li>Store keyfiles and password recovery material separately from ciphertext</li>
+      <li>Store keyfiles and credential backups separately from ciphertext (there is no password recovery)</li>
       <li>Use more than one backup location</li>
       <li>Test restoration before deleting originals</li>
       <li>After decrypt, file modes are clamped to owner-only by default; use <code>--preserve-mode</code> only when you intentionally need the original mode</li>

@@ -23,9 +23,19 @@ const searchPages = DOCS_PAGES.map((page) => ({
     </form>
     <h2 id="docs-search-title" class="docs-search__title">Search documentation</h2>
     <label for="docs-search-input">Search documentation</label>
-    <input id="docs-search-input" type="search" autocomplete="off" data-docs-search-input />
+    <input
+      id="docs-search-input"
+      type="search"
+      autocomplete="off"
+      role="combobox"
+      aria-autocomplete="list"
+      aria-controls="docs-search-results"
+      aria-expanded="false"
+      aria-haspopup="listbox"
+      data-docs-search-input
+    />
     <p id="docs-search-status" role="status" aria-live="polite" data-docs-search-status></p>
-    <ul id="docs-search-results" data-docs-search-results></ul>
+    <ul id="docs-search-results" role="listbox" aria-label="Search results" data-docs-search-results></ul>
   </dialog>
 
   <script is:inline type="application/json" id="docs-search-data" set:html={JSON.stringify(searchPages)} />
@@ -107,8 +117,8 @@ const searchPages = DOCS_PAGES.map((page) => ({
     color: var(--text);
   }
 
-  #docs-search-results a[aria-selected='true'],
-  #docs-search-results a:hover {
+  #docs-search-results [role='option'][aria-selected='true'],
+  #docs-search-results [role='option']:hover {
     background: var(--surface-raised);
   }
 
@@ -162,21 +172,29 @@ const searchPages = DOCS_PAGES.map((page) => ({
       };
 
       const setActive = (index: number) => {
-        const links = Array.from(results.querySelectorAll('a'));
+        const options = Array.from(results.querySelectorAll<HTMLElement>('[role="option"]'));
         activeIndex = index;
-        links.forEach((link, i) => {
-          link.setAttribute('aria-selected', i === activeIndex ? 'true' : 'false');
+        options.forEach((option, i) => {
+          const selected = i === activeIndex;
+          option.setAttribute('aria-selected', selected ? 'true' : 'false');
+          if (selected) {
+            input.setAttribute('aria-activedescendant', option.id);
+            option.scrollIntoView({ block: 'nearest' });
+          }
         });
-        links[activeIndex]?.scrollIntoView({ block: 'nearest' });
+        if (activeIndex < 0) input.removeAttribute('aria-activedescendant');
       };
 
       const render = (query: string) => {
         const ranked = rankDocsSearch(pages, query);
         results.replaceChildren();
         activeIndex = ranked.length > 0 ? 0 : -1;
+        input.setAttribute('aria-expanded', ranked.length > 0 ? 'true' : 'false');
+        input.removeAttribute('aria-activedescendant');
 
         if (!query.trim()) {
           status.textContent = '';
+          input.setAttribute('aria-expanded', 'false');
           return;
         }
 
@@ -190,14 +208,22 @@ const searchPages = DOCS_PAGES.map((page) => ({
           const link = document.createElement('a');
           const title = document.createElement('strong');
           const meta = document.createElement('span');
+          const optionId = `docs-search-option-${index}`;
           title.textContent = page.title;
           meta.className = 'docs-search__meta';
           meta.textContent = `${page.group} · ${page.description}`;
+          link.id = optionId;
           link.href = withBase(page.href);
+          link.setAttribute('role', 'option');
           link.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
           link.append(title, meta);
+          item.setAttribute('role', 'presentation');
           item.append(link);
           results.append(item);
+        }
+
+        if (activeIndex >= 0) {
+          input.setAttribute('aria-activedescendant', `docs-search-option-${activeIndex}`);
         }
       };
 
@@ -221,19 +247,19 @@ const searchPages = DOCS_PAGES.map((page) => ({
       });
 
       input.addEventListener('keydown', (event) => {
-        const links = Array.from(results.querySelectorAll('a'));
+        const options = Array.from(results.querySelectorAll<HTMLAnchorElement>('[role="option"]'));
         if (event.key === 'ArrowDown') {
           event.preventDefault();
-          if (links.length === 0) return;
-          setActive((activeIndex + 1) % links.length);
+          if (options.length === 0) return;
+          setActive((activeIndex + 1) % options.length);
         } else if (event.key === 'ArrowUp') {
           event.preventDefault();
-          if (links.length === 0) return;
-          setActive((activeIndex - 1 + links.length) % links.length);
+          if (options.length === 0) return;
+          setActive((activeIndex - 1 + options.length) % options.length);
         } else if (event.key === 'Enter') {
-          if (activeIndex >= 0 && links[activeIndex]) {
+          if (activeIndex >= 0 && options[activeIndex]) {
             event.preventDefault();
-            links[activeIndex].click();
+            options[activeIndex].click();
           }
         } else if (event.key === 'Escape') {
           event.preventDefault();
@@ -245,6 +271,8 @@ const searchPages = DOCS_PAGES.map((page) => ({
         status.textContent = '';
         results.replaceChildren();
         activeIndex = -1;
+        input.setAttribute('aria-expanded', 'false');
+        input.removeAttribute('aria-activedescendant');
       });
 
       const params = new URLSearchParams(window.location.search);

@@ -133,6 +133,8 @@ const metaLabel = filename || lang;
 
   .code-block__lang {
     color: var(--text-muted);
+    text-transform: none;
+    letter-spacing: 0;
   }
 
   .code-block__copy {
@@ -172,5 +174,11 @@ const metaLabel = filename || lang;
     font-family: var(--font-mono);
     font-size: 0.875rem;
     line-height: 1.7;
+  }
+
+  /* github-dark comment tokens (#6A737D) fail WCAG AA on our code canvas; lift muted syntax color. */
+  .code-block__body :global(.line span[style*='color:#6A737D']),
+  .code-block__body :global(.line span[style*='color: #6A737D']) {
+    color: #8b949e !important;
   }
 </style>

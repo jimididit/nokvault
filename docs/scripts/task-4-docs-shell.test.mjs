@@ -50,6 +50,12 @@ test('enhanced mobile docs nav dismisses via a dedicated backdrop target, not ::
   assert.doesNotMatch(styles, /mobile-docs-nav[^{]*\[open\]::before|mobile-docs-nav\[open\]::before/);
   assert.match(source, /data-mobile-docs-backdrop|mobile-docs-nav__backdrop/);
 
+  // Runtime-created backdrop must use :global styles; Astro scoping would otherwise miss it.
+  assert.match(source, /:global\(\.mobile-docs-nav__backdrop\)/);
+  assert.match(source, /:global\(\.mobile-docs-nav\[data-enhanced='true'\]\[open\] \.mobile-docs-nav__backdrop\)/);
+  assert.match(styles, /\.mobile-docs-nav__backdrop[^{]*\{[^}]*display:\s*none/s);
+  assert.match(styles, /\.mobile-docs-nav__backdrop[^{]*\{[^}]*position:\s*fixed/s);
+
   // Backdrop click must close; relying only on !root.contains cannot dismiss a ::before painted on root.
   assert.match(source, /data-mobile-docs-backdrop/);
   assert.match(source, /backdrop\.addEventListener\(\s*['"]click['"][\s\S]{0,80}close\s*\(/);
@@ -63,8 +69,10 @@ test('docs search exposes dialog markup, serialized pages, and no-JS docs fallba
 
   assert.match(html, /<label[^>]*for="docs-search-input"[^>]*>\s*Search documentation\s*<\/label>/);
   assert.match(html, /<input[^>]*id="docs-search-input"[^>]*type="search"/);
+  assert.match(html, /role="combobox"/);
+  assert.match(html, /aria-controls="docs-search-results"/);
   assert.match(html, /<p[^>]*id="docs-search-status"[^>]*role="status"[^>]*aria-live="polite"/);
-  assert.match(html, /<ul[^>]*id="docs-search-results"/);
+  assert.match(html, /<ul[^>]*id="docs-search-results"[^>]*role="listbox"/);
   assert.match(html, /id="docs-search-data"|data-docs-pages=/);
   assert.match(html, /"title"\s*:\s*"Installation"/);
   assert.match(html, /Watch and Schedule/);

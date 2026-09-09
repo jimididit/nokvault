@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Cipher Editorial landing page and documentation redesign with responsive navigation, local search, self-hosted typography, and dual themes
 - Hash-pinned Homebrew and Scoop manifests with CI validation against the published v0.3.0 binaries
 - Deterministic malformed-header coverage and tiered parser/decrypt fuzzing on pull requests and weekly CI
 - Stable schema-version-1 `--json` results for encrypt, decrypt, secure-delete, and rotate-key, plus NDJSON event streams for watch and schedule
@@ -16,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Removed React, Tailwind, and third-party GitHub widget runtime from the static documentation site
 - Reject Argon2id header/config parameters above 256 MiB memory, 10 iterations, or 16 threads before key derivation
 - Operational JSON mode suppresses prompts, progress bars, styling, and command-owned stderr; failures emit structured stdout and return nonzero
 - Root-help branding remains excluded from version, subcommand, redirected, error, completion, and JSON output
