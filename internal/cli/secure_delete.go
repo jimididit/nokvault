@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/jimididit/nokvault/internal/core"
 	"github.com/jimididit/nokvault/internal/utils"
@@ -58,13 +59,34 @@ func runSecureDelete(cmd *cobra.Command, args []string) error {
 
 	if secureDeleteDryRun {
 		if info.IsDir() {
-			return dryRunSecureDeleteDirectory(path)
+			paths, err := collectSecureDeletePaths(path)
+			if err != nil {
+				return err
+			}
+			if JSONEnabled() {
+				return EmitResult("secure-delete", SecureDeleteResult{
+					Path: path, TargetKind: "directory", DryRun: true,
+					Passes: secureDeletePasses, Processed: len(paths),
+					Succeeded: len(paths), Paths: paths,
+				})
+			}
+			for _, filePath := range paths {
+				PrintInfo(fmt.Sprintf("Would securely delete: %s", filePath))
+			}
+			return nil
+		}
+		if JSONEnabled() {
+			return EmitResult("secure-delete", SecureDeleteResult{
+				Path: path, TargetKind: "file", DryRun: true,
+				Passes: secureDeletePasses, Processed: 1, Succeeded: 1,
+				Paths: []string{path},
+			})
 		}
 		PrintInfo(fmt.Sprintf("Would securely delete: %s", path))
 		return nil
 	}
 
-	if err := requireConfirmation(secureDeleteYes, isInteractive(), os.Stdin, os.Stderr); err != nil {
+	if err := requireConfirmation(secureDeleteYes, !JSONEnabled() && isInteractive(), os.Stdin, os.Stderr); err != nil {
 		PrintError(err.Error())
 		return err
 	}
@@ -75,9 +97,13 @@ func runSecureDelete(cmd *cobra.Command, args []string) error {
 		if secureDeleteVerbose {
 			PrintInfo(fmt.Sprintf("Performing %d overwrite passes per file...", secureDeletePasses))
 		}
-		if err := secureDeleteDirectory(path, secureDeletePasses, secureDeleteVerbose); err != nil {
+		result, err := secureDeleteDirectory(path, secureDeletePasses, secureDeleteVerbose)
+		if err != nil {
 			PrintError(fmt.Sprintf("Secure deletion failed: %v", err))
-			return err
+			return WithErrorData(err, result)
+		}
+		if JSONEnabled() {
+			return EmitResult("secure-delete", result)
 		}
 		PrintSuccess(fmt.Sprintf("Securely deleted directory contents: %s", path))
 		return nil
@@ -92,35 +118,57 @@ func runSecureDelete(cmd *cobra.Command, args []string) error {
 		PrintInfo(fmt.Sprintf("Performing %d overwrite passes...", secureDeletePasses))
 	}
 
-	if err := service.Delete(path); err != nil {
+	result, err := secureDeleteFileResult(path, secureDeletePasses, service.Delete)
+	if err != nil {
 		PrintError(fmt.Sprintf("Secure deletion failed: %v", err))
-		return err
+		return WithErrorData(err, result)
 	}
 
+	if JSONEnabled() {
+		return EmitResult("secure-delete", result)
+	}
 	PrintSuccess(fmt.Sprintf("Securely deleted: %s", path))
 	return nil
 }
 
-func dryRunSecureDeleteDirectory(dirPath string) error {
+func secureDeleteFileResult(path string, passes int, deleteFile func(string) error) (SecureDeleteResult, error) {
+	result := SecureDeleteResult{
+		Path: path, TargetKind: "file", Passes: passes, Processed: 1,
+	}
+	if err := deleteFile(path); err != nil {
+		result.Failed = 1
+		result.Failures = []FileFailure{fileFailure(path, err)}
+		return result, err
+	}
+	result.Succeeded = 1
+	result.Paths = []string{path}
+	return result, nil
+}
+
+func collectSecureDeletePaths(dirPath string) ([]string, error) {
 	fileHandler := core.NewFileHandler()
-	return fileHandler.WalkDirectory(dirPath, func(path string, info os.FileInfo, err error) error {
+	var paths []string
+	err := fileHandler.WalkDirectory(dirPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if info.IsDir() {
 			return nil
 		}
-		PrintInfo(fmt.Sprintf("Would securely delete: %s", path))
+		paths = append(paths, path)
 		return nil
 	})
+	sort.Strings(paths)
+	return paths, err
 }
 
 // secureDeleteDirectory securely deletes all files in a directory
-func secureDeleteDirectory(dirPath string, passes int, verbose bool) error {
+func secureDeleteDirectory(dirPath string, passes int, verbose bool) (SecureDeleteResult, error) {
 	fileHandler := core.NewFileHandler()
 	service := core.NewSecureDeleteService(passes)
-
-	var errors []error
+	result := SecureDeleteResult{
+		Path: dirPath, TargetKind: "directory", Passes: passes,
+	}
 
 	err := fileHandler.WalkDirectory(dirPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -130,25 +178,35 @@ func secureDeleteDirectory(dirPath string, passes int, verbose bool) error {
 		if info.IsDir() {
 			return nil
 		}
+		result.Processed++
 
 		if verbose {
 			PrintInfo(fmt.Sprintf("Securely deleting: %s", path))
 		}
 
 		if err := service.Delete(path); err != nil {
-			errors = append(errors, fmt.Errorf("failed to delete %s: %w", path, err))
+			result.Failed++
+			result.Failures = append(result.Failures, fileFailure(path, err))
+		} else {
+			result.Succeeded++
+			result.Paths = append(result.Paths, path)
 		}
 
 		return nil
 	})
 
 	if err != nil {
-		return err
+		return result, err
 	}
 
-	if len(errors) > 0 {
-		return fmt.Errorf("some files failed to delete: %d errors", len(errors))
+	if result.Failed > 0 {
+		return result, utils.NewError(
+			utils.ErrPartialFailure.Code,
+			fmt.Sprintf("Secure deletion completed with %d file error(s)", result.Failed),
+			nil,
+		)
 	}
 
-	return nil
+	sort.Strings(result.Paths)
+	return result, nil
 }

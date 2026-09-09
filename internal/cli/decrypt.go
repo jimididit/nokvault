@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -87,14 +88,39 @@ func runDecrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	if decryptDryRun {
+		processed := 1
+		targetKind := "file"
+		if info.IsDir() {
+			targetKind = "directory"
+			processed = 0
+			countErr := core.NewFileHandler().WalkDirectory(inputPath, func(path string, entry os.FileInfo, walkErr error) error {
+				if walkErr != nil {
+					return walkErr
+				}
+				if !entry.IsDir() && filepath.Ext(path) == ".nokvault" {
+					processed++
+				}
+				return nil
+			})
+			if countErr != nil {
+				return countErr
+			}
+		}
+		if JSONEnabled() {
+			return EmitResult("decrypt", DecryptResult{
+				Input: inputPath, Output: outputPath, TargetKind: targetKind,
+				DryRun: true, Processed: processed, Succeeded: processed,
+				Force: decryptForce, Strict: decryptStrict,
+			})
+		}
 		PrintInfo(fmt.Sprintf("Would decrypt: %s -> %s", inputPath, outputPath))
 		return nil
 	}
 
 	// Get password first (needed for both file and directory)
-	password, err := utils.GetPassword(decryptPassword, decryptKeyfile, decryptNoPrompt, false)
+	password, err := utils.GetPassword(decryptPassword, decryptKeyfile, decryptNoPrompt || JSONEnabled(), false)
 	if err != nil {
-		return err
+		return utils.NewError(utils.ErrInvalidPassword.Code, "Failed to get decryption password", err)
 	}
 	defer utils.ZeroizePassword(password)
 
@@ -208,12 +234,22 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 		}
 	}
 
+	if JSONEnabled() {
+		return EmitResult("decrypt", DecryptResult{
+			Input: inputPath, Output: outputPath, TargetKind: "file",
+			Processed: 1, Succeeded: 1, Force: decryptForce, Strict: decryptStrict,
+		})
+	}
 	PrintSuccess(fmt.Sprintf("Decrypted: %s -> %s", inputPath, outputPath))
 	return nil
 }
 
 func decryptDirectory(inputPath, outputPath string, password []byte, encryptionService *core.EncryptionService) error {
 	fileHandler := core.NewFileHandler()
+	result := DecryptResult{
+		Input: inputPath, Output: outputPath, TargetKind: "directory",
+		Force: decryptForce, Strict: decryptStrict,
+	}
 
 	// Count .nokvault files for progress
 	totalFiles := 0
@@ -230,10 +266,14 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		if isPathPolicyError(err) {
 			return err
 		}
-		return fmt.Errorf("failed to count files: %w", err)
+		return WithErrorData(fmt.Errorf("failed to count files: %w", err), result)
 	}
+	result.Processed = totalFiles
 
 	if totalFiles == 0 {
+		if JSONEnabled() {
+			return EmitResult("decrypt", result)
+		}
 		PrintInfo("No .nokvault files found in directory")
 		return nil
 	}
@@ -241,7 +281,7 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 	PrintInfo(fmt.Sprintf("Decrypting %d files in directory...", totalFiles))
 
 	// Create progress bar
-	progressBar := utils.NewProgressBar(int64(totalFiles), "Decrypting files")
+	progressBar := newOperationProgressBar(int64(totalFiles), "Decrypting files")
 
 	// For directory decryption, we need to handle key derivation per file
 	// Each file may have a different salt, so we derive the key per file
@@ -253,8 +293,15 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		PrintError(fmt.Sprintf("Failed to decrypt %s: %v", relPath, cause))
 		progressBar.Increment(1)
 		failedFiles = append(failedFiles, relPath)
+		result.Failed++
+		result.Failures = append(result.Failures, fileFailure(relPath, cause))
 		if decryptStrict {
-			return fmt.Errorf("strict mode: aborted after failure on %s: %w", relPath, cause)
+			result.AbortedAt = relPath
+			return WithErrorData(utils.NewError(
+				utils.ErrPartialFailure.Code,
+				fmt.Sprintf("Strict directory decryption aborted after failure on %s", relPath),
+				cause,
+			), result)
 		}
 		return nil
 	}
@@ -330,6 +377,7 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		}
 
 		successCount++
+		result.Succeeded++
 		progressBar.Increment(1)
 		if decryptVerbose {
 			PrintInfo(fmt.Sprintf("Decrypted: %s", outputRelPath))
@@ -339,7 +387,11 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 	})
 	if walkErr != nil {
 		progressBar.Abort()
-		return walkErr
+		var operationErr *operationError
+		if errors.As(walkErr, &operationErr) {
+			return walkErr
+		}
+		return WithErrorData(walkErr, result)
 	}
 
 	// Report results
@@ -351,17 +403,31 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		if successCount > 0 {
 			PrintInfo(fmt.Sprintf("Successfully decrypted %d file(s)", successCount))
 		}
-		return fmt.Errorf("directory decryption completed with %d error(s) out of %d file(s)", len(failedFiles), totalFiles)
+		return WithErrorData(
+			utils.NewError(
+				utils.ErrPartialFailure.Code,
+				fmt.Sprintf("Directory decryption completed with %d error(s) out of %d file(s)", len(failedFiles), totalFiles),
+				nil,
+			),
+			result,
+		)
 	}
 
 	if successCount == 0 && totalFiles > 0 {
 		progressBar.Wait()
-		return fmt.Errorf("failed to decrypt any files - check password and file integrity")
+		return WithErrorData(utils.NewError(
+			utils.ErrPartialFailure.Code,
+			"Failed to decrypt any files",
+			nil,
+		), result)
 	}
 
 	// Complete and wait for progress bar before printing success message
 	progressBar.Wait()
 
+	if JSONEnabled() {
+		return EmitResult("decrypt", result)
+	}
 	PrintSuccess(fmt.Sprintf("Decrypted %d files: %s -> %s", successCount, inputPath, outputPath))
 	return nil
 }
@@ -378,7 +444,7 @@ func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionServi
 	// Read header with metadata
 	header, metadata, err := fileHandler.ReadHeaderWithMetadata(inputFile)
 	if err != nil {
-		return fmt.Errorf("failed to read header: %w", err)
+		return utils.NewError(utils.ErrInvalidFormat.Code, "Invalid nokvault file format", err)
 	}
 
 	// Read encrypted data (skip header)
@@ -397,7 +463,7 @@ func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionServi
 	// Decrypt data
 	plaintext, err := encryptionService.DecryptData(ciphertext, key)
 	if err != nil {
-		return fmt.Errorf("decryption failed: %w", err)
+		return utils.NewError(utils.ErrDecryptionFailed.Code, "Decryption failed", err)
 	}
 
 	// Try to decompress if data appears to be compressed

@@ -43,19 +43,30 @@ func NewProgressBar(total int64, description string) *ProgressBar {
 	}
 }
 
+// NewSilentProgressBar returns a no-op progress bar.
+func NewSilentProgressBar() *ProgressBar {
+	return &ProgressBar{}
+}
+
 // Increment increments the progress bar
 func (pb *ProgressBar) Increment(n int64) {
+	if pb == nil || pb.bar == nil {
+		return
+	}
 	pb.bar.IncrBy(int(n))
 }
 
 // SetTotal sets the total value
 func (pb *ProgressBar) SetTotal(total int64) {
+	if pb == nil || pb.bar == nil {
+		return
+	}
 	pb.bar.SetTotal(total, false)
 }
 
 // Wait waits for the progress bar to complete and cleans up
 func (pb *ProgressBar) Wait() {
-	if pb.bar == nil || pb.p == nil {
+	if pb == nil || pb.bar == nil || pb.p == nil {
 		return
 	}
 
@@ -73,7 +84,7 @@ func (pb *ProgressBar) Wait() {
 // Abort stops an incomplete progress bar without waiting for its original
 // total. Use this when an operation intentionally exits early.
 func (pb *ProgressBar) Abort() {
-	if pb.bar == nil || pb.p == nil {
+	if pb == nil || pb.bar == nil || pb.p == nil {
 		return
 	}
 	pb.bar.Abort(true)
@@ -82,5 +93,8 @@ func (pb *ProgressBar) Abort() {
 
 // Writer returns a writer that updates the progress bar
 func (pb *ProgressBar) Writer() io.Writer {
+	if pb == nil || pb.bar == nil {
+		return io.Discard
+	}
 	return pb.bar.ProxyWriter(io.Discard)
 }

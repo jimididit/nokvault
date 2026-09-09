@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -78,9 +79,9 @@ func runScheduleEncrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get password/key
-	password, err := utils.GetPassword(schedulePassword, scheduleKeyfile, scheduleNoPrompt, false)
+	password, err := utils.GetPassword(schedulePassword, scheduleKeyfile, scheduleNoPrompt || JSONEnabled(), false)
 	if err != nil {
-		return fmt.Errorf("failed to get password: %w", err)
+		return utils.NewError(utils.ErrInvalidPassword.Code, "Failed to get schedule password", err)
 	}
 	defer utils.ZeroizePassword(password)
 
@@ -103,55 +104,119 @@ func runScheduleEncrypt(cmd *cobra.Command, args []string) error {
 	PrintInfo("Press Ctrl+C to stop...")
 
 	// Setup signal handling for graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	// Run initial encryption
-	if err := performScheduledEncrypt(path, encryptionService, key, salt); err != nil {
-		logScheduleEncryptError(err)
+	if err := EmitEvent("schedule encrypt", "schedule.started", EventData{
+		Path: path, TargetKind: targetKind(info), Interval: scheduleInterval.String(),
+	}); err != nil {
+		return err
 	}
 
 	// Schedule periodic encryption
 	ticker := time.NewTicker(scheduleInterval)
 	defer ticker.Stop()
 
+	run := func() (EncryptResult, error) {
+		return performScheduledEncryptResult(path, encryptionService, key, salt)
+	}
+	return runScheduleLoop(ctx, path, ticker.C, run)
+}
+
+func runScheduleLoop(
+	ctx context.Context,
+	path string,
+	ticks <-chan time.Time,
+	run func() (EncryptResult, error),
+) error {
+	if err := runScheduleTick(path, run, false); err != nil {
+		return err
+	}
 	for {
 		select {
-		case <-ticker.C:
-			if err := performScheduledEncrypt(path, encryptionService, key, salt); err != nil {
-				logScheduleEncryptError(err)
-			} else {
-				PrintSuccess(fmt.Sprintf("Scheduled encryption completed: %s", path))
+		case _, ok := <-ticks:
+			if !ok {
+				return nil
 			}
-		case <-sigChan:
+			if err := runScheduleTick(path, run, true); err != nil {
+				return err
+			}
+		case <-ctx.Done():
 			PrintInfo("\nStopping scheduled encryption...")
-			return nil
+			return EmitEvent("schedule encrypt", "schedule.stopped", EventData{Path: path})
 		}
 	}
 }
 
-func performScheduledEncrypt(path string, encryptionService *core.EncryptionService, key, salt []byte) error {
-	if err := utils.ValidateNoSymlinkComponents(path); err != nil {
+func runScheduleTick(path string, run func() (EncryptResult, error), announceHuman bool) error {
+	if err := EmitEvent("schedule encrypt", "schedule.tick.started", EventData{Path: path}); err != nil {
 		return err
+	}
+	result, err := run()
+	if err != nil {
+		if JSONEnabled() {
+			return EmitEvent("schedule encrypt", "operation.failed", EventData{
+				Path: path, Processed: result.Processed, Succeeded: result.Succeeded,
+				Failed: result.Failed, Error: errorBody(err, scheduleVerbose),
+			})
+		}
+		logScheduleEncryptError(err)
+		return nil
+	}
+	if JSONEnabled() {
+		return EmitEvent("schedule encrypt", "schedule.tick.completed", EventData{
+			Path: path, Output: result.Output, Processed: result.Processed,
+			Succeeded: result.Succeeded, Failed: result.Failed,
+		})
+	}
+	if announceHuman {
+		PrintSuccess(fmt.Sprintf("Scheduled encryption completed: %s", path))
+	}
+	return nil
+}
+
+func performScheduledEncrypt(path string, encryptionService *core.EncryptionService, key, salt []byte) error {
+	_, err := performScheduledEncryptResult(path, encryptionService, key, salt)
+	return err
+}
+
+func performScheduledEncryptResult(path string, encryptionService *core.EncryptionService, key, salt []byte) (EncryptResult, error) {
+	result := EncryptResult{
+		Input: path, Output: path + ".nokvault",
+		Compression: scheduleCompress,
+	}
+	if err := utils.ValidateNoSymlinkComponents(path); err != nil {
+		return result, err
 	}
 
 	info, err := os.Lstat(path)
 	if err != nil {
-		return err
+		return result, err
 	}
+	result.TargetKind = targetKind(info)
 
 	outputPath := path + ".nokvault"
 	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
-		return err
+		return result, err
 	}
 
 	if info.IsDir() {
 		if err := preflightDirectoryEncryptOutputs(path, outputPath); err != nil {
-			return err
+			return result, err
 		}
+		totalFiles, err := core.NewFileHandler().CountFiles(path)
+		if err != nil {
+			return result, err
+		}
+		result.Processed = totalFiles
 		encryptor := core.NewDirectoryEncryptor(encryptionService, scheduleVerbose)
 		encryptor.SetCompression(scheduleCompress)
-		return encryptor.EncryptDirectory(path, outputPath, key, salt, nil)
+		if err := encryptor.EncryptDirectory(path, outputPath, key, salt, nil); err != nil {
+			result.Failed = totalFiles
+			return result, err
+		}
+		result.Succeeded = totalFiles
+		return result, nil
 	}
 
 	return encryptFileWithCompression(path, outputPath, key, salt, encryptionService, scheduleCompress)
