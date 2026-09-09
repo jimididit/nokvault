@@ -146,7 +146,7 @@ test('FAQ, changelog, contributing, and license use NokVault and factual release
   assert.match(faq, /SYMLINK_DISALLOWED|PATH_ESCAPE/);
   assert.doesNotMatch(faq, /Constant-time operations to prevent timing attacks/i);
 
-  assert.match(changelog, /v0\.3\.0/);
+  assert.match(changelog, /v0\.4\.0/);
   assert.match(changelog, /nokvault --version/);
   assert.doesNotMatch(changelog, /v2\.0\.0|v3\.0\.0|v1\.1\.0|v1\.0\.1/);
   assert.doesNotMatch(changelog, /Major Releases \(v2/);
