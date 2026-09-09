@@ -2,11 +2,13 @@ package cli
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -78,4 +80,70 @@ func TestSystemBannerCapabilitiesTreatsBufferAsNonInteractive(t *testing.T) {
 	caps := systemBannerCapabilities(&bytes.Buffer{})
 	assert.False(t, caps.interactive)
 	assert.False(t, caps.color)
+}
+
+func TestWrapRootHelpTargetsOnlyRoot(t *testing.T) {
+	root := &cobra.Command{Use: "nokvault"}
+	child := &cobra.Command{Use: "encrypt"}
+	root.AddCommand(child)
+	var output bytes.Buffer
+	root.SetOut(&output)
+	next := func(cmd *cobra.Command, args []string) error {
+		_, err := io.WriteString(cmd.OutOrStdout(), "Usage: delegated\n")
+		return err
+	}
+	detect := func(io.Writer) bannerCapabilities {
+		return bannerCapabilities{interactive: true, width: 72}
+	}
+	help := wrapRootHelp(root, next, detect)
+
+	require.NoError(t, help(root, nil))
+	assert.Contains(t, output.String(), "███╗")
+	assert.Contains(t, output.String(), "Usage: delegated")
+
+	output.Reset()
+	require.NoError(t, help(child, nil))
+	assert.NotContains(t, output.String(), "███╗")
+	assert.Equal(t, "Usage: delegated\n", output.String())
+}
+
+func TestWrapRootHelpSuppressesBannerForJSONFlag(t *testing.T) {
+	root := &cobra.Command{Use: "nokvault"}
+	var output bytes.Buffer
+	root.SetOut(&output)
+	next := func(cmd *cobra.Command, args []string) error {
+		_, err := io.WriteString(cmd.OutOrStdout(), "Usage: delegated\n")
+		return err
+	}
+	detect := func(io.Writer) bannerCapabilities {
+		return bannerCapabilities{interactive: true, width: 72}
+	}
+	jsonOutput = true
+	t.Cleanup(func() { jsonOutput = false })
+
+	require.NoError(t, wrapRootHelp(root, next, detect)(root, nil))
+	assert.Equal(t, "Usage: delegated\n", output.String())
+}
+
+type rejectedWriter struct{}
+
+func (rejectedWriter) Write([]byte) (int, error) {
+	return 0, io.ErrClosedPipe
+}
+
+func TestWrapRootHelpReturnsBannerWriteError(t *testing.T) {
+	root := &cobra.Command{Use: "nokvault"}
+	root.SetOut(rejectedWriter{})
+	delegated := false
+	next := func(*cobra.Command, []string) error {
+		delegated = true
+		return nil
+	}
+	detect := func(io.Writer) bannerCapabilities {
+		return bannerCapabilities{interactive: true, width: 72}
+	}
+
+	err := wrapRootHelp(root, next, detect)(root, nil)
+	require.ErrorIs(t, err, io.ErrClosedPipe)
+	assert.False(t, delegated)
 }

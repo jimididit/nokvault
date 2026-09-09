@@ -1,6 +1,10 @@
 package cli
 
-import "time"
+import (
+	"time"
+
+	"github.com/spf13/cobra"
+)
 
 // ResetCLIStateForTest clears package-level Cobra flag bindings and args.
 // Integration tests share a single rootCmd; without this, flag values leak
@@ -17,6 +21,19 @@ func ResetCLIStateForTest() {
 		_ = flag.Value.Set("false")
 		flag.Changed = false
 	}
+	var resetHelpAndVersion func(*cobra.Command)
+	resetHelpAndVersion = func(cmd *cobra.Command) {
+		for _, name := range []string{"help", "version"} {
+			if flag := cmd.Flags().Lookup(name); flag != nil {
+				_ = flag.Value.Set("false")
+				flag.Changed = false
+			}
+		}
+		for _, child := range cmd.Commands() {
+			resetHelpAndVersion(child)
+		}
+	}
+	resetHelpAndVersion(rootCmd)
 	resetReporter()
 
 	encryptOutput = ""

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
 
@@ -84,4 +85,37 @@ func systemBannerCapabilities(output io.Writer) bannerCapabilities {
 		caps.width = width
 	}
 	return caps
+}
+
+type bannerCapabilityDetector func(io.Writer) bannerCapabilities
+
+func wrapRootHelp(
+	root *cobra.Command,
+	next func(*cobra.Command, []string) error,
+	detect bannerCapabilityDetector,
+) func(*cobra.Command, []string) error {
+	return func(target *cobra.Command, args []string) error {
+		if target == root && !jsonOutput {
+			banner := renderBanner(detect(target.OutOrStdout()))
+			if banner != "" {
+				if _, err := io.WriteString(target.OutOrStdout(), banner); err != nil {
+					return err
+				}
+			}
+		}
+		return next(target, args)
+	}
+}
+
+func installRootHelpBanner(root *cobra.Command) {
+	next := root.HelpFunc()
+	wrapped := wrapRootHelp(root, func(cmd *cobra.Command, args []string) error {
+		next(cmd, args)
+		return nil
+	}, systemBannerCapabilities)
+	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		if err := wrapped(cmd, args); err != nil {
+			cmd.PrintErrln(err)
+		}
+	})
 }
