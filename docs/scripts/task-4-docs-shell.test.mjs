@@ -35,7 +35,7 @@ test('desktop and mobile docs navigation render all six groups with current-page
     /href="[^"]*docs\/installation\/?"[^>]*aria-current="page"/,
   );
   assert.doesNotMatch(html, /api\.github\.com/);
-  assert.match(html, />\s*0\.3\.0\s*</);
+  assert.match(html, />\s*0\.4\.0\s*</);
 });
 
 test('enhanced mobile docs nav dismisses via a dedicated backdrop target, not ::before inside details', async () => {

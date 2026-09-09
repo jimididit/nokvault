@@ -282,7 +282,7 @@ async function main() {
     const text = document.body.innerText;
     return {
       title: document.title,
-      versionVisible: /0\.3\.0/.test(text),
+      versionVisible: /0\.4\.0/.test(text),
       productName: /NokVault/.test(text),
       hasGithubApi: [...document.scripts].some((s) => /api\.github\.com/.test(s.src || s.textContent || '')),
       externalFonts: [...document.querySelectorAll('link')].some((l) => /fonts\.google|typekit|cdn\.font/i.test(l.href)),
