@@ -16,8 +16,12 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
     </nav>
     <div class="site-header__actions">
       <ThemeControl />
-      <a class="button button--primary site-header__install" href={`${base}docs/installation`}>
-        Install NokVault
+      <a
+        class="button button--primary site-header__install"
+        href={`${base}docs/installation`}
+        aria-label="Install NokVault"
+      >
+        Install<span class="site-header__install-brand"> NokVault</span>
       </a>
     </div>
   </div>
@@ -64,6 +68,12 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .site-header__install {
+    min-height: 44px;
+    white-space: nowrap;
   }
 
   @media (min-width: 768px) {
@@ -90,7 +100,20 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
   }
 
   @media (max-width: 560px) {
+    .site-header__inner {
+      gap: 12px;
+    }
+
+    .site-header__actions {
+      gap: 8px;
+    }
+
     .site-header__install {
+      padding-inline: 12px;
+      font-size: 0.8125rem;
+    }
+
+    .site-header__install-brand {
       display: none;
     }
   }

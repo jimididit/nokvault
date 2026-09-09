@@ -116,8 +116,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build
+      - name: Type check
+        run: npm run check
+
+      - name: Build and validate
+        run: npm run test:build
 
   package-homebrew:
     name: Homebrew package
