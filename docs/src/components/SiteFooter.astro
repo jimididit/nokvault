@@ -1,0 +1,71 @@
+---
+import { SITE } from '../data/site';
+
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="site-footer__inner">
+    <p class="site-footer__statement">Local encryption, deliberately private.</p>
+    <nav aria-label="Footer navigation">
+      <a href={`${base}docs/`}>Docs</a>
+      <a href={`${base}docs/security`}>Security</a>
+      <a href={SITE.releases} target="_blank" rel="noopener noreferrer">Releases</a>
+      <a href={SITE.repository} target="_blank" rel="noopener noreferrer">Source</a>
+      <a href={`${base}docs/license`}>License</a>
+    </nav>
+    <p class="site-footer__copyright">&copy; {year} {SITE.name}</p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--border);
+    padding-block: 32px;
+    color: var(--text-muted);
+  }
+
+  .site-footer__inner {
+    display: grid;
+    gap: 16px;
+    width: min(calc(100% - 32px), var(--content-wide));
+    margin-inline: auto;
+  }
+
+  .site-footer p {
+    margin: 0;
+  }
+
+  .site-footer__statement {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .site-footer nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+  }
+
+  .site-footer a {
+    color: inherit;
+    font-size: 0.875rem;
+  }
+
+  .site-footer__copyright {
+    font: 0.75rem/1.5 var(--font-mono);
+  }
+
+  @media (min-width: 768px) {
+    .site-footer__inner {
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      width: min(calc(100% - 64px), var(--content-wide));
+    }
+
+    .site-footer__copyright {
+      grid-column: 1 / -1;
+    }
+  }
+</style>

@@ -1,0 +1,103 @@
+<fieldset class="theme-control" data-theme-control>
+  <legend class="sr-only">Color theme</legend>
+  {
+    [
+      ['system', 'System'],
+      ['light', 'Light'],
+      ['dark', 'Dark'],
+    ].map(([value, label]) => (
+      <label>
+        <input type="radio" name="color-theme" value={value} checked={value === 'system'} />
+        <span>{label}</span>
+      </label>
+    ))
+  }
+</fieldset>
+
+<script>
+  const storageKey = 'nokvault-theme';
+  const control = document.querySelector<HTMLElement>('[data-theme-control]');
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+
+  const resolveTheme = (preference: string) =>
+    preference === 'system' ? (media.matches ? 'dark' : 'light') : preference;
+
+  const applyTheme = (preference: string, persist = false) => {
+    document.documentElement.dataset.themePreference = preference;
+    document.documentElement.dataset.theme = resolveTheme(preference);
+
+    control
+      ?.querySelectorAll<HTMLInputElement>('input[name="color-theme"]')
+      .forEach((input) => {
+        input.checked = input.value === preference;
+      });
+
+    if (persist) {
+      try {
+        localStorage.setItem(storageKey, preference);
+      } catch {}
+    }
+  };
+
+  applyTheme(document.documentElement.dataset.themePreference ?? 'system');
+
+  control?.addEventListener('change', (event) => {
+    const input = event.target;
+    if (input instanceof HTMLInputElement && input.name === 'color-theme') {
+      applyTheme(input.value, true);
+    }
+  });
+
+  media.addEventListener('change', () => {
+    if (document.documentElement.dataset.themePreference === 'system') {
+      applyTheme('system');
+    }
+  });
+</script>
+
+<style>
+  .theme-control {
+    display: inline-flex;
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 2px;
+  }
+
+  label {
+    position: relative;
+    cursor: pointer;
+  }
+
+  input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+
+  span {
+    display: grid;
+    min-height: 36px;
+    place-items: center;
+    padding-inline: 10px;
+    color: var(--text-muted);
+    font: 600 0.75rem/1 var(--font-sans);
+  }
+
+  input:checked + span {
+    background: var(--surface-raised);
+    color: var(--text);
+  }
+
+  input:focus-visible + span {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 640px) {
+    span {
+      padding-inline: 8px;
+    }
+  }
+</style>

@@ -1,77 +1,61 @@
 ---
-import GitHubButtons from '../components/GitHubButtons.astro';
 import SEO from '../components/SEO.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
 import StructuredData from '../components/StructuredData.astro';
+import { SITE } from '../data/site';
+import '../styles/global.css';
 
 export interface Props {
   title: string;
   description?: string;
   canonical?: string;
   keywords?: string[];
+  bodyClass?: string;
 }
 
-const { title, description = "Nokvault - A modern CLI tool for encrypting local files and folders", canonical, keywords } = Astro.props;
+const {
+  title,
+  description = SITE.description,
+  canonical,
+  keywords,
+  bodyClass,
+} = Astro.props;
 const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script is:inline>
+      (() => {
+        const key = 'nokvault-theme';
+        let preference = 'system';
+        try {
+          const saved = localStorage.getItem(key);
+          if (saved === 'light' || saved === 'dark' || saved === 'system') preference = saved;
+        } catch {}
+        const resolved = preference === 'system'
+          ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : preference;
+        document.documentElement.dataset.themePreference = preference;
+        document.documentElement.dataset.theme = resolved;
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
     <SEO title={title} description={description} canonical={canonical} keywords={keywords} />
     <StructuredData type="WebSite" />
   </head>
-  <body class="bg-dark-bg text-dark-text min-h-screen">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <header class="border-b border-dark-border py-6">
-        <nav class="flex items-center justify-between flex-wrap gap-4">
-          <a href={`${base}`} class="text-2xl font-bold text-white hover:text-blue-400 transition">
-            Nokvault
-          </a>
-          <div class="flex items-center gap-6">
-            <div class="flex gap-6">
-              <a href={`${base}`} class="hover:text-blue-400 transition">Home</a>
-              <a href={`${base}docs/`} class="hover:text-blue-400 transition">Documentation</a>
-            </div>
-            <GitHubButtons />
-          </div>
-        </nav>
-      </header>
-      <main class="py-8">
-        <slot />
-      </main>
-      <footer class="border-t border-dark-border py-8 mt-16 text-center text-dark-text-muted">
-        <p>&copy; {new Date().getFullYear()} Nokvault. MIT License.</p>
-      </footer>
-    </div>
+  <body class={bodyClass}>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <SiteHeader />
+    <main id="main-content" tabindex="-1">
+      <slot />
+    </main>
+    <SiteFooter />
   </body>
 </html>
-
-<style is:global>
-  html {
-    font-family: system-ui, -apple-system, sans-serif;
-  }
-  body {
-    margin: 0;
-  }
-  code {
-    background-color: #1f1f1f;
-    padding: 0.2em 0.4em;
-    border-radius: 0.25rem;
-    font-size: 0.9em;
-  }
-  pre {
-    background-color: #1f1f1f;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    overflow-x: auto;
-  }
-  pre code {
-    background-color: transparent;
-    padding: 0;
-  }
-</style>
