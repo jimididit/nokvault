@@ -95,6 +95,7 @@ test('docs search exposes dialog markup, serialized pages, and no-JS docs fallba
   assert.match(html, /docs-search__icon/);
   assert.match(html, /docs-search__field/);
   assert.match(html, /circle[^>]*cx="11"[^>]*cy="11"[^>]*r="7"/);
+});
 
 test('article chrome renders breadcrumbs, TOC, and previous/next links', async () => {
   const installation = await readPage('docs/installation/index.html');
