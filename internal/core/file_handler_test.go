@@ -213,11 +213,131 @@ func TestFileHandler_ReadHeader_RejectsInconsistentDataOffset(t *testing.T) {
 	var buf bytes.Buffer
 	require.NoError(t, fh.WriteHeader(&buf, make([]byte, 16), nil, crypto.DefaultArgon2Params()))
 
-	raw := append([]byte(nil), buf.Bytes()...)
-	binary.LittleEndian.PutUint64(raw[30:38], uint64(HeaderWireSize(Version2)+1))
+	for name, offset := range map[string]uint64{
+		"below expected": uint64(HeaderWireSize(Version2) - 1),
+		"above expected": uint64(HeaderWireSize(Version2) + 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			raw := append([]byte(nil), buf.Bytes()...)
+			binary.LittleEndian.PutUint64(raw[30:38], offset)
 
-	_, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(raw))
-	require.ErrorContains(t, err, "invalid data offset")
+			_, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(raw))
+			require.ErrorContains(t, err, "invalid data offset")
+		})
+	}
+}
+
+func TestFileHandler_ReadHeader_RejectsEveryTruncatedPrefix(t *testing.T) {
+	fh := NewFileHandler()
+
+	var v1 bytes.Buffer
+	magic := [8]byte{}
+	copy(magic[:], NokvaultMagic)
+	require.NoError(t, binary.Write(&v1, binary.LittleEndian, magic))
+	require.NoError(t, binary.Write(&v1, binary.LittleEndian, Version1))
+	require.NoError(t, binary.Write(&v1, binary.LittleEndian, [16]byte{}))
+	require.NoError(t, binary.Write(&v1, binary.LittleEndian, uint32(0)))
+	require.NoError(t, binary.Write(&v1, binary.LittleEndian, uint64(HeaderWireSize(Version1))))
+
+	var v2 bytes.Buffer
+	require.NoError(t, fh.WriteHeader(&v2, make([]byte, 16), nil, crypto.DefaultArgon2Params()))
+
+	var v2Metadata bytes.Buffer
+	require.NoError(t, fh.WriteHeader(&v2Metadata, make([]byte, 16), &FileMetadata{
+		Name:         "evidence.txt",
+		Size:         42,
+		Mode:         0o600,
+		ModTime:      time.Unix(1_700_000_000, 0).UTC(),
+		RelativePath: "case/evidence.txt",
+	}, crypto.DefaultArgon2Params()))
+
+	fixtures := map[string][]byte{
+		"v1":               v1.Bytes(),
+		"v2":               v2.Bytes(),
+		"v2 with metadata": v2Metadata.Bytes(),
+	}
+	for name, valid := range fixtures {
+		t.Run(name, func(t *testing.T) {
+			for length := 0; length < len(valid); length++ {
+				_, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(valid[:length]))
+				if err == nil {
+					t.Fatalf("prefix length %d of %d unexpectedly parsed", length, len(valid))
+				}
+			}
+
+			_, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(valid))
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestFileHandler_ReadHeader_RejectsMalformedFields(t *testing.T) {
+	fh := NewFileHandler()
+	var valid bytes.Buffer
+	require.NoError(t, fh.WriteHeader(&valid, make([]byte, 16), nil, crypto.DefaultArgon2Params()))
+
+	mutate := func(fn func([]byte)) []byte {
+		data := append([]byte(nil), valid.Bytes()...)
+		fn(data)
+		return data
+	}
+
+	tests := []struct {
+		name string
+		data []byte
+	}{
+		{
+			name: "unsupported version",
+			data: mutate(func(data []byte) {
+				binary.LittleEndian.PutUint16(data[8:10], 99)
+			}),
+		},
+		{
+			name: "memory above maximum",
+			data: mutate(func(data []byte) {
+				binary.LittleEndian.PutUint32(data[38:42], MaxKDFMemory+1)
+			}),
+		},
+		{
+			name: "time above maximum",
+			data: mutate(func(data []byte) {
+				binary.LittleEndian.PutUint32(data[42:46], MaxKDFTime+1)
+			}),
+		},
+		{
+			name: "parallelism above maximum",
+			data: mutate(func(data []byte) {
+				data[46] = MaxKDFParallelism + 1
+			}),
+		},
+		{
+			name: "truncated metadata",
+			data: func() []byte {
+				data := mutate(func(data []byte) {
+					binary.LittleEndian.PutUint32(data[26:30], 4)
+					binary.LittleEndian.PutUint64(data[30:38], uint64(HeaderWireSize(Version2)+4))
+				})
+				return append(data, []byte("{}")...)
+			}(),
+		},
+		{
+			name: "invalid metadata json",
+			data: func() []byte {
+				data := mutate(func(data []byte) {
+					binary.LittleEndian.PutUint32(data[26:30], 1)
+					binary.LittleEndian.PutUint64(data[30:38], uint64(HeaderWireSize(Version2)+1))
+				})
+				return append(data, '{')
+			}(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(tt.data))
+			require.Error(t, err)
+		})
+	}
 }
 
 func TestFileHandler_EnsureDirectory(t *testing.T) {
@@ -545,6 +665,12 @@ func TestValidateKDFParams(t *testing.T) {
 		{name: "zero time", params: &crypto.Argon2Params{Memory: 65536, Time: 0, Parallelism: 4, KeyLength: 32}, wantErr: "must be non-zero"},
 		{name: "zero parallelism", params: &crypto.Argon2Params{Memory: 65536, Time: 3, Parallelism: 0, KeyLength: 32}, wantErr: "must be non-zero"},
 		{name: "wrong key length", params: &crypto.Argon2Params{Memory: 65536, Time: 3, Parallelism: 4, KeyLength: 16}, wantErr: "key length must be 32"},
+		{name: "memory at maximum", params: &crypto.Argon2Params{Memory: MaxKDFMemory, Time: 3, Parallelism: 4, KeyLength: 32}, wantErr: ""},
+		{name: "memory above maximum", params: &crypto.Argon2Params{Memory: MaxKDFMemory + 1, Time: 3, Parallelism: 4, KeyLength: 32}, wantErr: "memory"},
+		{name: "time at maximum", params: &crypto.Argon2Params{Memory: 65536, Time: MaxKDFTime, Parallelism: 4, KeyLength: 32}, wantErr: ""},
+		{name: "time above maximum", params: &crypto.Argon2Params{Memory: 65536, Time: MaxKDFTime + 1, Parallelism: 4, KeyLength: 32}, wantErr: "time"},
+		{name: "parallelism at maximum", params: &crypto.Argon2Params{Memory: 65536, Time: 3, Parallelism: MaxKDFParallelism, KeyLength: 32}, wantErr: ""},
+		{name: "parallelism above maximum", params: &crypto.Argon2Params{Memory: 65536, Time: 3, Parallelism: MaxKDFParallelism + 1, KeyLength: 32}, wantErr: "parallelism"},
 		{name: "valid defaults", params: valid, wantErr: ""},
 	}
 

@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Hash-pinned Homebrew and Scoop manifests with CI validation against the published v0.3.0 binaries
+- Deterministic malformed-header coverage and tiered parser/decrypt fuzzing on pull requests and weekly CI
+
+### Changed
+
+- Reject Argon2id header/config parameters above 256 MiB memory, 10 iterations, or 16 threads before key derivation
 
 ## [0.3.0] - 2026-09-08
 
