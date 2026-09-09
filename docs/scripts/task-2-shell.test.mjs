@@ -22,7 +22,9 @@ test('rendered shell removes GitHub Buttons and unsupported metadata', async () 
   const html = await readPage('index.html');
 
   assert.doesNotMatch(html, /buttons\.github\.io/);
-  assert.doesNotMatch(html, /aggregateRating|SearchAction/);
+  assert.doesNotMatch(html, /aggregateRating/);
+  assert.match(html, /"@type"\s*:\s*"SearchAction"/);
+  assert.match(html, /docs\/\?q=\{search_term_string\}/);
   assert.match(html, /property="og:site_name" content="NokVault"/);
   assert.match(html, /name="theme-color"[^>]*media="\(prefers-color-scheme: light\)"/);
   assert.match(html, /name="theme-color"[^>]*media="\(prefers-color-scheme: dark\)"/);

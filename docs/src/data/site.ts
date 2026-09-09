@@ -22,7 +22,7 @@ export const DOCS_PAGES = [
   { group: 'Project', title: 'License', href: '/docs/license', description: 'MIT license terms.', headings: [] },
 ] as const;
 
-function headingId(heading: string) {
+export function headingId(heading: string) {
   return heading
     .toLowerCase()
     .trim()
@@ -48,7 +48,7 @@ export const INSTALL_OPTIONS = [
   { id: 'source', label: 'Source', command: 'go install github.com/jimididit/nokvault/cmd/nokvault@v0.3.0' },
 ] as const;
 
-function normalizePath(pathname: string) {
+export function normalizePath(pathname: string) {
   const path = pathname.split(/[?#]/, 1)[0] || '/';
   const withLeadingSlash = path.startsWith('/') ? path : `/${path}`;
   if (withLeadingSlash === '/') return withLeadingSlash;
@@ -68,4 +68,11 @@ export function getAdjacentDocs(pathname: string) {
     previous: index > 0 ? DOCS_PAGES[index - 1] : undefined,
     next: index >= 0 && index < DOCS_PAGES.length - 1 ? DOCS_PAGES[index + 1] : undefined,
   };
+}
+
+export function withBase(href: string, base: string) {
+  if (/^https?:\/\//i.test(href)) return href;
+  const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+  const path = href.startsWith('/') ? href.slice(1) : href;
+  return `${normalizedBase}${path}`;
 }

@@ -62,11 +62,18 @@ if (type === 'SoftwareApplication' && data) {
     '@type': 'WebSite',
     name: SITE.name,
     description: SITE.description,
-    url: `${siteUrl}${base}`
+    url: `${siteUrl}${base}`,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${siteUrl}${base}docs/?q={search_term_string}`
+      },
+      'query-input': 'required name=search_term_string'
+    }
   };
 }
 
-// Remove undefined properties
 const cleanSchema = JSON.parse(JSON.stringify(schema, (_key, value) => value === undefined ? undefined : value));
 ---
 

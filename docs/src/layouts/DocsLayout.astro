@@ -1,10 +1,14 @@
 ---
-import Sidebar from '../components/Sidebar.astro';
+import ArticleNavigation from '../components/ArticleNavigation.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import DocsSearch from '../components/DocsSearch.astro';
 import SEO from '../components/SEO.astro';
+import Sidebar from '../components/Sidebar.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import StructuredData from '../components/StructuredData.astro';
-import { SITE } from '../data/site';
+import TableOfContents from '../components/TableOfContents.astro';
+import { getDocPage, headingId, SITE } from '../data/site';
 import '../styles/global.css';
 
 export interface Props {
@@ -13,17 +17,37 @@ export interface Props {
   canonical?: string;
   keywords?: string[];
   breadcrumbs?: Array<{ name: string; url: string }>;
+  toc?: Array<{ label: string; href: string; depth?: 2 | 3 }>;
 }
 
-const { title, description = `${SITE.name} Documentation`, canonical, keywords, breadcrumbs } = Astro.props;
-const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+const {
+  title,
+  description = `${SITE.name} Documentation`,
+  canonical,
+  keywords,
+  breadcrumbs,
+  toc,
+} = Astro.props;
 
-// Generate breadcrumbs if not provided
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+const page = getDocPage(Astro.url.pathname);
+const crumbTitle = page?.title ?? title.replace(/\s*-\s*Nokvault$/i, '').replace(/\s*-\s*NokVault$/i, '');
+const docsIndexPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const isDocsIndex = docsIndexPath === '/docs' || docsIndexPath.endsWith('/docs');
+
 const defaultBreadcrumbs = breadcrumbs || [
   { name: 'Home', url: base },
   { name: 'Documentation', url: `${base}docs/` },
-  ...(Astro.url.pathname !== '/docs/' ? [{ name: title.replace(' - Nokvault', ''), url: Astro.url.pathname }] : [])
+  ...(isDocsIndex ? [] : [{ name: crumbTitle, url: Astro.url.pathname }]),
 ];
+
+const resolvedToc =
+  toc ??
+  (page?.headings || []).map((heading) => ({
+    label: heading,
+    href: `#${headingId(heading)}`,
+    depth: 2 as const,
+  }));
 ---
 
 <!doctype html>
@@ -51,50 +75,88 @@ const defaultBreadcrumbs = breadcrumbs || [
     <title>{title}</title>
     <SEO title={title} description={description} canonical={canonical} keywords={keywords} />
     <StructuredData type="BreadcrumbList" breadcrumbs={defaultBreadcrumbs} />
+    <StructuredData type="WebSite" />
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
     <SiteHeader />
-    <Sidebar />
-    <div class="docs-container">
-      <main id="main-content" class="docs-main" tabindex="-1">
-        <slot />
-      </main>
-      <SiteFooter />
+    <div class="docs-shell">
+      <div class="docs-shell__sidebar">
+        <Sidebar />
+      </div>
+      <div class="docs-shell__content">
+        <DocsSearch />
+        <main id="main-content" class="docs-article" tabindex="-1">
+          <Breadcrumbs items={defaultBreadcrumbs} />
+          <div class="docs-article__body">
+            <slot />
+          </div>
+          <ArticleNavigation />
+        </main>
+      </div>
+      <aside class="docs-shell__toc" aria-label="Page outline">
+        <TableOfContents entries={resolvedToc} />
+      </aside>
     </div>
+    <SiteFooter />
   </body>
 </html>
 
 <style>
-  .docs-container {
-    min-height: calc(100vh - var(--header-height));
-    display: flex;
-    flex-direction: column;
+  .docs-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    width: min(calc(100% - 32px), var(--content-wide));
+    margin-inline: auto;
+    padding-block: 24px 64px;
   }
 
-  .docs-main {
-    flex: 1;
-    max-width: 1200px;
+  .docs-shell__toc {
+    display: none;
+  }
+
+  .docs-article {
     width: 100%;
-    margin: 0 auto;
-    padding: 2rem;
+    max-width: var(--content-prose);
   }
 
-  /* Desktop: add left margin for sidebar */
+  .docs-article__body {
+    overflow-x: auto;
+  }
+
+  .docs-article__body :global(table),
+  .docs-article__body :global(pre) {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  @media (min-width: 768px) {
+    .docs-shell {
+      width: min(calc(100% - 64px), var(--content-wide));
+      padding-block: 40px 80px;
+    }
+  }
+
   @media (min-width: 1024px) {
-    .docs-container {
-      margin-left: 280px;
+    .docs-shell {
+      grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+      gap: 48px;
+      align-items: start;
     }
 
-    .docs-main {
-      padding: 3rem 4rem;
+    .docs-shell__sidebar :global(.mobile-docs-nav) {
+      display: none;
     }
   }
 
-  /* Mobile adjustments */
-  @media (max-width: 1023px) {
-    .docs-main {
-      padding: 1.5rem;
+  @media (min-width: 1200px) {
+    .docs-shell {
+      grid-template-columns: minmax(200px, 240px) minmax(0, 1fr) minmax(160px, 220px);
+    }
+
+    .docs-shell__toc {
+      display: block;
     }
   }
 </style>
