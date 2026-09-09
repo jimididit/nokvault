@@ -27,3 +27,11 @@ test('rendered shell removes GitHub Buttons and unsupported metadata', async () 
   assert.match(html, /name="theme-color"[^>]*media="\(prefers-color-scheme: light\)"/);
   assert.match(html, /name="theme-color"[^>]*media="\(prefers-color-scheme: dark\)"/);
 });
+
+test('landing metadata and heading use the NokVault wordmark casing', async () => {
+  const html = await readPage('index.html');
+
+  assert.match(html, /<title>NokVault - Encrypt and Protect Your Files \| CLI Encryption Tool<\/title>/);
+  assert.match(html, /<meta name="description" content="NokVault is a modern, cross-platform CLI tool/);
+  assert.match(html, /<h1[^>]*>NokVault<\/h1>/);
+});
