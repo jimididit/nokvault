@@ -1,44 +1,44 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import CodeBlock from '../../components/CodeBlock.astro';
+import { SITE } from '../../data/site';
+
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
-<DocsLayout title="Contributing - Nokvault">
-  <div class="prose prose-invert max-w-none">
-    <h1>Contributing</h1>
-    <p class="text-xl text-dark-text-muted mb-8">
-      Contributions are welcome! Help make Nokvault better for everyone.
-    </p>
+<DocsLayout
+  title="Contributing - NokVault"
+  description="Build, test, and contribute to NokVault."
+  canonical={`${base}docs/contributing`}
+>
+  <h1>Contributing</h1>
+  <p class="lede">Contributions are welcome. Help make {SITE.name} better for everyone.</p>
 
-    <section class="mb-8">
-      <h2>How to Contribute</h2>
-      <p class="text-dark-text-muted mb-4">
-        There are many ways to contribute to Nokvault:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Report bugs</li>
-        <li>Suggest new features</li>
-        <li>Submit pull requests</li>
-        <li>Improve documentation</li>
-        <li>Write tests</li>
-        <li>Help other users</li>
-      </ul>
-    </section>
+  <section aria-labelledby="how-to-contribute">
+    <h2 id="how-to-contribute">How to contribute</h2>
+    <p>There are many ways to contribute:</p>
+    <ul>
+      <li>Report bugs</li>
+      <li>Suggest new features</li>
+      <li>Submit pull requests</li>
+      <li>Improve documentation</li>
+      <li>Write tests</li>
+      <li>Help other users</li>
+    </ul>
+  </section>
 
-    <section class="mb-8">
-      <h2>Getting Started</h2>
-      <p class="text-dark-text-muted mb-4">
-        To start contributing:
-      </p>
-      <ol class="list-decimal list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Fork the repository on GitHub</li>
-        <li>Clone your fork locally</li>
-        <li>Create a feature branch</li>
-        <li>Make your changes</li>
-        <li>Test your changes</li>
-        <li>Submit a pull request</li>
-      </ol>
-      <CodeBlock code={`# Fork and clone
+  <section aria-labelledby="getting-started">
+    <h2 id="getting-started">Getting started</h2>
+    <ol>
+      <li>Fork the repository on GitHub</li>
+      <li>Clone your fork locally</li>
+      <li>Create a feature branch</li>
+      <li>Make your changes</li>
+      <li>Test your changes</li>
+      <li>Submit a pull request</li>
+    </ol>
+    <CodeBlock
+      code={`# Fork and clone
 git clone https://github.com/jimididit/nokvault.git
 cd nokvault
 
@@ -49,15 +49,15 @@ git checkout -b feature/amazing-feature
 git commit -m "Add amazing feature"
 
 # Push to your fork
-git push origin feature/amazing-feature`} lang="bash" />
-    </section>
+git push origin feature/amazing-feature`}
+      lang="bash"
+    />
+  </section>
 
-    <section class="mb-8">
-      <h2>Development Setup</h2>
-      <p class="text-dark-text-muted mb-4">
-        Set up your development environment:
-      </p>
-      <CodeBlock code={`# Install dependencies
+  <section aria-labelledby="development-setup">
+    <h2 id="development-setup">Development setup</h2>
+    <CodeBlock
+      code={`# Install dependencies
 go mod download
 
 # Run tests
@@ -66,123 +66,83 @@ go test ./...
 # Build the project
 # Windows
 go build -o nokvault.exe ./cmd/nokvault
-# Linux/macOS  
+# Linux/macOS
 go build -o nokvault ./cmd/nokvault
 
 # Run with your changes
-./nokvault --version`} lang="bash" />
-    </section>
+./nokvault --version`}
+      lang="bash"
+    />
+  </section>
 
-    <section class="mb-8">
-      <h2>Code Standards</h2>
-      <p class="text-dark-text-muted mb-4">
-        Please follow these guidelines:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Follow Go conventions and style guide</li>
-        <li>Write clear, descriptive commit messages</li>
-        <li>Add tests for new features</li>
-        <li>Update documentation as needed</li>
-        <li>Ensure all tests pass before submitting</li>
-        <li>Run <code>go fmt</code> and <code>go vet</code> before committing</li>
-      </ul>
-    </section>
+  <section aria-labelledby="code-standards">
+    <h2 id="code-standards">Code standards</h2>
+    <ul>
+      <li>Follow Go conventions and style guide</li>
+      <li>Write clear, descriptive commit messages</li>
+      <li>Add tests for new features</li>
+      <li>Update documentation as needed</li>
+      <li>Ensure all tests pass before submitting</li>
+      <li>Run <code>go fmt</code> and <code>go vet</code> before committing</li>
+    </ul>
+  </section>
 
-    <section class="mb-8">
-      <h2>Testing</h2>
-      <p class="text-dark-text-muted mb-4">
-        Ensure your changes are tested:
-      </p>
-      <CodeBlock code={`# Run all tests
+  <section aria-labelledby="testing">
+    <h2 id="testing">Testing</h2>
+    <CodeBlock
+      code={`# Run all tests
 go test ./...
 
 # Run tests with coverage
 go test -cover ./...
 
 # Run tests for a specific package
-go test ./internal/crypto/...`} lang="bash" />
-      <p class="text-dark-text-muted mt-4">
-        Aim for high test coverage, especially for security-critical code.
-      </p>
-    </section>
+go test ./internal/crypto/...`}
+      lang="bash"
+    />
+    <p>Aim for high coverage on security-critical packages.</p>
+  </section>
 
-    <section class="mb-8">
-      <h2>Pull Request Process</h2>
-      <p class="text-dark-text-muted mb-4">
-        When submitting a pull request:
-      </p>
-      <ol class="list-decimal list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Ensure your code follows the project's style guidelines</li>
-        <li>Add or update tests as needed</li>
-        <li>Update documentation if you've changed functionality</li>
-        <li>Ensure all tests pass</li>
-        <li>Write a clear description of your changes</li>
-        <li>Reference any related issues</li>
-      </ol>
-    </section>
+  <section aria-labelledby="pull-request-process">
+    <h2 id="pull-request-process">Pull request process</h2>
+    <ol>
+      <li>Ensure your code follows the project's style guidelines</li>
+      <li>Add or update tests as needed</li>
+      <li>Update documentation if you've changed functionality</li>
+      <li>Ensure all tests pass</li>
+      <li>Write a clear description of your changes</li>
+      <li>Reference any related issues</li>
+    </ol>
+  </section>
 
-    <section class="mb-8">
-      <h2>Reporting Issues</h2>
-      <p class="text-dark-text-muted mb-4">
-        When reporting bugs, please include:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Nokvault version</li>
-        <li>Operating system and version</li>
-        <li>Steps to reproduce the issue</li>
-        <li>Expected behavior</li>
-        <li>Actual behavior</li>
-        <li>Error messages or logs</li>
-      </ul>
-    </section>
+  <section aria-labelledby="reporting-issues">
+    <h2 id="reporting-issues">Reporting issues</h2>
+    <p>When reporting bugs, include:</p>
+    <ul>
+      <li>{SITE.name} version</li>
+      <li>Operating system and version</li>
+      <li>Steps to reproduce the issue</li>
+      <li>Expected behavior</li>
+      <li>Actual behavior</li>
+      <li>Error messages or logs</li>
+    </ul>
+  </section>
 
-    <section class="mb-8">
-      <h2>Security Issues</h2>
-      <p class="text-dark-text-muted mb-4">
-        If you discover a security vulnerability, please:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li><strong>Do not</strong> open a public issue</li>
-        <li>Email security concerns privately</li>
-        <li>Allow time for the issue to be addressed before disclosure</li>
-      </ul>
-    </section>
+  <section aria-labelledby="security-issues">
+    <h2 id="security-issues">Security issues</h2>
+    <ul>
+      <li><strong>Do not</strong> open a public issue for vulnerabilities</li>
+      <li>Email security concerns privately</li>
+      <li>Allow time for the issue to be addressed before disclosure</li>
+    </ul>
+  </section>
 
-    <section class="mb-8">
-      <h2>Questions?</h2>
-      <p class="text-dark-text-muted mb-4">
-        If you have questions about contributing:
-      </p>
-      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
-        <li>Open an issue for discussion</li>
-        <li>Check existing issues and pull requests</li>
-        <li>Review the codebase to understand patterns</li>
-      </ul>
-    </section>
-  </div>
+  <section aria-labelledby="questions">
+    <h2 id="questions">Questions?</h2>
+    <ul>
+      <li>Open an issue for discussion</li>
+      <li>Check existing issues and pull requests</li>
+      <li>Review the codebase to understand patterns</li>
+    </ul>
+  </section>
 </DocsLayout>
-
-<style>
-  .prose {
-    color: #e5e5e5;
-  }
-  .prose h1 {
-    color: #fff;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-  .prose h2 {
-    color: #fff;
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin-top: 2rem;
-    margin-bottom: 1rem;
-  }
-  .prose code {
-    background-color: #1f1f1f;
-    padding: 0.2em 0.4em;
-    border-radius: 0.25rem;
-    font-size: 0.9em;
-  }
-</style>
