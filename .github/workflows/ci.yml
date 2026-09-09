@@ -156,7 +156,7 @@ jobs:
           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
           $env:SCOOP = "$PWD\.scoop-root"
           New-Item -ItemType Directory -Path "$env:SCOOP\shims" -Force | Out-Null
-          & .\.scoop-root\apps\scoop\current\bin\scoop.ps1 install "$PWD\scoop\nokvault.json"
+          & .\.scoop-root\apps\scoop\current\bin\scoop.ps1 install --no-update-scoop "$PWD\scoop\nokvault.json"
           if ($LASTEXITCODE -ne 0) {
             throw "NokVault Scoop installation failed with exit code $LASTEXITCODE"
           }
