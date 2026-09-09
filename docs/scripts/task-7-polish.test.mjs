@@ -61,4 +61,27 @@ test('mobile docs backdrop styles are global so runtime nodes receive them', asy
   assert.match(source, /:global\(\.mobile-docs-nav__backdrop\)/);
   assert.match(styles, /\.mobile-docs-nav__backdrop[^{]*\{[^}]*position:\s*fixed/s);
   assert.match(styles, /\.mobile-docs-nav__backdrop[^{]*\{[^}]*display:\s*none/s);
+  assert.match(source, /overflow-y:\s*auto/);
+  assert.match(styles, /mobile-docs-nav[^\n{]*\[open\][^{]*\{[^}]*max-height:/s);
+});
+
+test('article previous/next stay on one row at mobile widths', async () => {
+  const source = await readSrc('src/components/ArticleNavigation.astro');
+  const styles = await readCombinedStyles();
+
+  assert.match(source, /grid-template-columns:\s*1fr 1fr/);
+  assert.doesNotMatch(source, /grid-template-columns:\s*1fr\s*;/);
+  assert.match(styles, /article-nav[^{]*\{[^}]*grid-template-columns:\s*1fr 1fr/s);
+});
+
+test('theme control is an icon toggle with sun and moon marks', async () => {
+  const html = await readPage('index.html');
+  const source = await readSrc('src/components/ThemeControl.astro');
+
+  assert.match(html, /<button[^>]*data-theme-control/);
+  assert.match(html, /theme-control__icon--sun/);
+  assert.match(html, /theme-control__icon--moon/);
+  assert.doesNotMatch(html, /name="color-theme"/);
+  assert.match(source, /Switch to light theme|Switch to dark theme/);
+  assert.match(source, /transition:/);
 });

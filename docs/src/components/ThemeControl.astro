@@ -1,36 +1,42 @@
-<fieldset class="theme-control" data-theme-control>
-  <legend class="sr-only">Color theme</legend>
-  {
-    [
-      ['system', 'System'],
-      ['light', 'Light'],
-      ['dark', 'Dark'],
-    ].map(([value, label]) => (
-      <label>
-        <input type="radio" name="color-theme" value={value} checked={value === 'system'} />
-        <span>{label}</span>
-      </label>
-    ))
-  }
-</fieldset>
+<button
+  type="button"
+  class="theme-control"
+  data-theme-control
+  aria-label="Switch to dark theme"
+>
+  <span class="theme-control__icons" aria-hidden="true">
+    <svg class="theme-control__icon theme-control__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+    </svg>
+    <svg class="theme-control__icon theme-control__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"></path>
+    </svg>
+  </span>
+</button>
 
 <script>
   const storageKey = 'nokvault-theme';
-  const control = document.querySelector<HTMLElement>('[data-theme-control]');
+  const control = document.querySelector<HTMLButtonElement>('[data-theme-control]');
   const media = window.matchMedia('(prefers-color-scheme: dark)');
 
   const resolveTheme = (preference: string) =>
     preference === 'system' ? (media.matches ? 'dark' : 'light') : preference;
 
+  const syncControl = () => {
+    if (!control) return;
+    const resolved = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+    control.setAttribute(
+      'aria-label',
+      resolved === 'dark' ? 'Switch to light theme' : 'Switch to dark theme',
+    );
+    control.dataset.resolved = resolved;
+  };
+
   const applyTheme = (preference: string, persist = false) => {
     document.documentElement.dataset.themePreference = preference;
     document.documentElement.dataset.theme = resolveTheme(preference);
-
-    control
-      ?.querySelectorAll<HTMLInputElement>('input[name="color-theme"]')
-      .forEach((input) => {
-        input.checked = input.value === preference;
-      });
+    syncControl();
 
     if (persist) {
       try {
@@ -41,11 +47,9 @@
 
   applyTheme(document.documentElement.dataset.themePreference ?? 'system');
 
-  control?.addEventListener('change', (event) => {
-    const input = event.target;
-    if (input instanceof HTMLInputElement && input.name === 'color-theme') {
-      applyTheme(input.value, true);
-    }
+  control?.addEventListener('click', () => {
+    const resolved = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+    applyTheme(resolved === 'dark' ? 'light' : 'dark', true);
   });
 
   media.addEventListener('change', () => {
@@ -57,47 +61,69 @@
 
 <style>
   .theme-control {
-    display: inline-flex;
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
     margin: 0;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 2px;
-  }
-
-  label {
-    position: relative;
+    padding: 0;
+    background: transparent;
+    color: var(--text);
     cursor: pointer;
   }
 
-  input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-  }
-
-  span {
-    display: grid;
-    min-height: 44px;
-    place-items: center;
-    padding-inline: 10px;
-    color: var(--text-muted);
-    font: 600 0.75rem/1 var(--font-sans);
-  }
-
-  input:checked + span {
+  .theme-control:hover {
     background: var(--surface-raised);
-    color: var(--text);
   }
 
-  input:focus-visible + span {
+  .theme-control:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
 
-  @media (max-width: 640px) {
-    span {
-      padding-inline: 8px;
+  .theme-control__icons {
+    position: relative;
+    width: 20px;
+    height: 20px;
+  }
+
+  .theme-control__icon {
+    position: absolute;
+    inset: 0;
+    width: 20px;
+    height: 20px;
+    transition:
+      opacity 220ms ease,
+      transform 220ms ease;
+  }
+
+  :global([data-theme='light']) .theme-control__icon--sun,
+  :global(:root:not([data-theme='dark'])) .theme-control__icon--sun {
+    opacity: 0;
+    transform: rotate(90deg) scale(0.55);
+  }
+
+  :global([data-theme='light']) .theme-control__icon--moon,
+  :global(:root:not([data-theme='dark'])) .theme-control__icon--moon {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+
+  :global([data-theme='dark']) .theme-control__icon--sun {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+
+  :global([data-theme='dark']) .theme-control__icon--moon {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.55);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .theme-control__icon {
+      transition: none;
     }
   }
 </style>

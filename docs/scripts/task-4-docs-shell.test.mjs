@@ -62,6 +62,8 @@ test('enhanced mobile docs nav dismisses via a dedicated backdrop target, not ::
   assert.match(source, /Escape/);
   assert.match(source, /restoreFocus/);
   assert.match(source, /overflow/);
+  assert.match(source, /overflow-y:\s*auto/);
+  assert.match(source, /max-height:\s*calc\(100dvh/);
 });
 
 test('docs search exposes dialog markup, serialized pages, and no-JS docs fallback', async () => {

@@ -94,14 +94,22 @@ async function main() {
     }
   }
 
-  // Theme persistence + no flash check via init script
+  // Theme toggle persistence + no flash check via init script
   await page.setViewport({ width: 1440, height: 900 });
   await page.goto(`${BASE}/`, { waitUntil: 'networkidle0' });
-  await page.click('input[name="color-theme"][value="dark"]');
+  await page.evaluate(() => {
+    try {
+      localStorage.removeItem('nokvault-theme');
+    } catch {}
+  });
+  await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+  await page.reload({ waitUntil: 'networkidle0' });
+  await page.click('[data-theme-control]');
   evidence.theme.afterSelectDark = await page.evaluate(() => ({
     preference: document.documentElement.dataset.themePreference,
     theme: document.documentElement.dataset.theme,
     storage: localStorage.getItem('nokvault-theme'),
+    controlLabel: document.querySelector('[data-theme-control]')?.getAttribute('aria-label') || null,
   }));
 
   let flashObserved = false;
@@ -123,15 +131,13 @@ async function main() {
   flashObserved = Boolean(evidence.theme.afterReload.flash?.mismatched);
   evidence.theme.noFlashOnReload = !flashObserved;
 
-  // System preference media change
-  await page.click('input[name="color-theme"][value="system"]');
-  await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+  // System preference still honored when preference remains system (first visit / cleared UI choice)
   await page.evaluate(() => {
-    // ThemeControl listens to matchMedia change; force a re-read.
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    media.dispatchEvent(new Event('change'));
+    try {
+      localStorage.setItem('nokvault-theme', 'system');
+    } catch {}
   });
-  // Remount by reloading with system preference already stored
+  await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
   await page.reload({ waitUntil: 'networkidle0' });
   evidence.theme.systemLight = await page.evaluate(() => ({
     preference: document.documentElement.dataset.themePreference,

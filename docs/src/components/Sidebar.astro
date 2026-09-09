@@ -209,11 +209,32 @@ const mobileGroups = renderGroups();
     display: block;
   }
 
+  .mobile-docs-nav[data-enhanced='true'][open] {
+    position: relative;
+    z-index: 61;
+    max-height: calc(100dvh - var(--header-height) - 24px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
   .mobile-docs-nav[data-enhanced='true'][open] > summary,
   .mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__panel {
     position: relative;
     z-index: 61;
     background: var(--surface);
+  }
+
+  .mobile-docs-nav[data-enhanced='true'][open] > summary {
+    flex: 0 0 auto;
+  }
+
+  .mobile-docs-nav[data-enhanced='true'][open] .mobile-docs-nav__panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   @media (min-width: 1024px) {

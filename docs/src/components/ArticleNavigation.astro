@@ -29,8 +29,9 @@ const { previous, next } = getAdjacentDocs(Astro.url.pathname);
 <style>
   .article-nav {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    column-gap: 16px;
     margin-top: 48px;
     padding-top: 24px;
     border-top: 1px solid var(--border);
@@ -40,10 +41,15 @@ const { previous, next } = getAdjacentDocs(Astro.url.pathname);
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-width: 0;
     min-height: 44px;
     padding: 12px 0;
     color: var(--text);
     text-decoration: none;
+  }
+
+  .article-nav__placeholder {
+    min-width: 0;
   }
 
   .article-nav__label {
@@ -55,15 +61,10 @@ const { previous, next } = getAdjacentDocs(Astro.url.pathname);
 
   .article-nav__title {
     font-weight: 600;
+    overflow-wrap: anywhere;
   }
 
   .article-nav__link--next {
     text-align: end;
-  }
-
-  @media (min-width: 640px) {
-    .article-nav {
-      grid-template-columns: 1fr 1fr;
-    }
   }
 </style>
