@@ -54,6 +54,8 @@ func getDefaultHint(code string) string {
 		return "Use a regular file or directory path. Symlinks are not followed."
 	case "PATH_ESCAPE":
 		return "Use a relative path that stays inside the selected output directory."
+	case "PARTIAL_FAILURE":
+		return "Inspect the reported file failures, correct them, and retry the operation."
 	default:
 		return "Check the documentation or use --verbose for more details."
 	}
@@ -72,6 +74,7 @@ var (
 	ErrOutputExists         = &NokvaultError{Code: "OUTPUT_EXISTS", Message: "Output path already exists"}
 	ErrSymlinkDisallowed    = &NokvaultError{Code: "SYMLINK_DISALLOWED", Message: "Symlink paths are not allowed"}
 	ErrPathEscape           = &NokvaultError{Code: "PATH_ESCAPE", Message: "Path escapes the output root"}
+	ErrPartialFailure       = &NokvaultError{Code: "PARTIAL_FAILURE", Message: "Operation completed with file failures"}
 )
 
 // NewError creates a new error with context

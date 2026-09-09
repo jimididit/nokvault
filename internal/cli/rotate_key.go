@@ -58,16 +58,16 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get old password
-	oldPassword, err := utils.GetPassword(rotateKeyOldPassword, rotateKeyOldKeyfile, rotateKeyNoPrompt, false)
+	oldPassword, err := utils.GetPassword(rotateKeyOldPassword, rotateKeyOldKeyfile, rotateKeyNoPrompt || JSONEnabled(), false)
 	if err != nil {
-		return fmt.Errorf("failed to get old password: %w", err)
+		return utils.NewError(utils.ErrInvalidPassword.Code, "Failed to get old password", err)
 	}
 	defer utils.ZeroizePassword(oldPassword)
 
 	// Get new password
-	newPassword, err := utils.GetPassword(rotateKeyNewPassword, rotateKeyNewKeyfile, rotateKeyNoPrompt, true)
+	newPassword, err := utils.GetPassword(rotateKeyNewPassword, rotateKeyNewKeyfile, rotateKeyNoPrompt || JSONEnabled(), true)
 	if err != nil {
-		return fmt.Errorf("failed to get new password: %w", err)
+		return utils.NewError(utils.ErrInvalidPassword.Code, "Failed to get new password", err)
 	}
 	defer utils.ZeroizePassword(newPassword)
 
@@ -167,6 +167,9 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if JSONEnabled() {
+		return EmitResult("rotate-key", RotateKeyResult{Path: inputPath, Status: "rotated"})
+	}
 	PrintSuccess(fmt.Sprintf("Key rotated successfully: %s", inputPath))
 	return nil
 }

@@ -79,14 +79,30 @@ func runEncrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	if encryptDryRun {
+		processed := 1
+		targetKind := "file"
+		if info.IsDir() {
+			targetKind = "directory"
+			processed, err = core.NewFileHandler().CountFiles(inputPath)
+			if err != nil {
+				return fmt.Errorf("failed to count files: %w", err)
+			}
+		}
+		if JSONEnabled() {
+			return EmitResult("encrypt", EncryptResult{
+				Input: inputPath, Output: outputPath, TargetKind: targetKind,
+				DryRun: true, Processed: processed, Succeeded: processed,
+				Compression: shouldCompress(), Force: encryptForce,
+			})
+		}
 		PrintInfo(fmt.Sprintf("Would encrypt: %s -> %s", inputPath, outputPath))
 		return nil
 	}
 
 	// Get password
-	password, err := utils.GetPassword(encryptPassword, encryptKeyfile, encryptNoPrompt, true)
+	password, err := utils.GetPassword(encryptPassword, encryptKeyfile, encryptNoPrompt || JSONEnabled(), true)
 	if err != nil {
-		return err
+		return utils.NewError(utils.ErrInvalidPassword.Code, "Failed to get encryption password", err)
 	}
 	defer utils.ZeroizePassword(password)
 
@@ -104,18 +120,36 @@ func runEncrypt(cmd *cobra.Command, args []string) error {
 	}
 	defer utils.ZeroizeKey(key)
 
+	var result EncryptResult
 	if info.IsDir() {
-		return encryptDirectory(inputPath, outputPath, key, salt, encryptionService)
+		result, err = encryptDirectoryWithCompression(inputPath, outputPath, key, salt, encryptionService, shouldCompress())
+	} else {
+		result, err = encryptFileWithCompression(inputPath, outputPath, key, salt, encryptionService, shouldCompress())
 	}
-
-	return encryptFile(inputPath, outputPath, key, salt, encryptionService)
+	if err != nil {
+		return err
+	}
+	if JSONEnabled() {
+		return EmitResult("encrypt", result)
+	}
+	if info.IsDir() {
+		PrintSuccess(fmt.Sprintf("Encrypted %d files: %s -> %s", result.Succeeded, inputPath, outputPath))
+	} else {
+		PrintSuccess(fmt.Sprintf("Encrypted: %s -> %s", inputPath, outputPath))
+	}
+	return nil
 }
 
-func encryptFile(inputPath, outputPath string, key, salt []byte, encryptionService *core.EncryptionService) error {
-	return encryptFileWithCompression(inputPath, outputPath, key, salt, encryptionService, shouldCompress())
-}
-
-func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, encryptionService *core.EncryptionService, compress bool) error {
+func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, encryptionService *core.EncryptionService, compress bool) (result EncryptResult, err error) {
+	result = EncryptResult{
+		Input: inputPath, Output: outputPath, TargetKind: "file",
+		Processed: 1, Compression: compress, Force: encryptForce,
+	}
+	defer func() {
+		if err != nil {
+			result.Failed = 1
+		}
+	}()
 	if encryptVerbose {
 		PrintInfo(fmt.Sprintf("Encrypting file: %s", inputPath))
 		if compress {
@@ -127,14 +161,14 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 	fileHandler := core.NewFileHandler()
 	metadata, err := fileHandler.ReadMetadata(inputPath)
 	if err != nil {
-		return fmt.Errorf("failed to read metadata: %w", err)
+		return result, fmt.Errorf("failed to read metadata: %w", err)
 	}
 
 	// Read file data
 	// #nosec G304 -- runEncrypt validates the user-selected input path before this read.
 	data, err := os.ReadFile(inputPath)
 	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
+		return result, fmt.Errorf("failed to read file: %w", err)
 	}
 
 	// Compress if enabled
@@ -143,7 +177,7 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 		if compressionService.ShouldCompress(data, 1024) { // Compress if > 1KB
 			compressed, err := compressionService.Compress(data)
 			if err != nil {
-				return fmt.Errorf("compression failed: %w", err)
+				return result, fmt.Errorf("compression failed: %w", err)
 			}
 			if encryptVerbose {
 				PrintInfo(fmt.Sprintf("Compressed: %d -> %d bytes (%.1f%%)", len(data), len(compressed), float64(len(compressed))/float64(len(data))*100))
@@ -164,19 +198,19 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 	// Encrypt data
 	ciphertext, err := encryptionService.EncryptData(data, key)
 	if err != nil {
-		return utils.NewError(utils.ErrEncryptionFailed.Code, "Encryption failed", err)
+		return result, utils.NewError(utils.ErrEncryptionFailed.Code, "Encryption failed", err)
 	}
 
 	// Ensure output directory exists (only if not root directory)
 	if outputDir := filepath.Dir(outputPath); outputDir != "." && outputDir != "" {
 		if err := os.MkdirAll(outputDir, 0700); err != nil {
-			return fmt.Errorf("failed to create output directory: %w", err)
+			return result, fmt.Errorf("failed to create output directory: %w", err)
 		}
 	}
 
 	if err := refuseIfExists(outputPath, encryptForce); err != nil {
 		PrintError(err.Error())
-		return err
+		return result, err
 	}
 
 	atomicWrite := utils.AtomicWriteFuncNoReplace
@@ -193,11 +227,11 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 		return nil
 	})
 	if err != nil {
-		return err
+		return result, err
 	}
 
-	PrintSuccess(fmt.Sprintf("Encrypted: %s -> %s", inputPath, outputPath))
-	return nil
+	result.Succeeded = 1
+	return result, nil
 }
 
 func shouldCompress() bool {
@@ -212,22 +246,23 @@ func shouldCompress() bool {
 	return false
 }
 
-func encryptDirectory(inputPath, outputPath string, key, salt []byte, encryptionService *core.EncryptionService) error {
-	return encryptDirectoryWithCompression(inputPath, outputPath, key, salt, encryptionService, shouldCompress())
-}
-
-func encryptDirectoryWithCompression(inputPath, outputPath string, key, salt []byte, encryptionService *core.EncryptionService, compress bool) error {
+func encryptDirectoryWithCompression(inputPath, outputPath string, key, salt []byte, encryptionService *core.EncryptionService, compress bool) (EncryptResult, error) {
+	result := EncryptResult{
+		Input: inputPath, Output: outputPath, TargetKind: "directory",
+		Compression: compress, Force: encryptForce,
+	}
 	fileHandler := core.NewFileHandler()
 
 	// Count files for progress
 	totalFiles, err := fileHandler.CountFiles(inputPath)
 	if err != nil {
-		return fmt.Errorf("failed to count files: %w", err)
+		return result, fmt.Errorf("failed to count files: %w", err)
 	}
+	result.Processed = totalFiles
 
 	if totalFiles == 0 {
 		PrintInfo("No files found in directory")
-		return nil
+		return result, nil
 	}
 
 	if encryptVerbose && compress {
@@ -258,11 +293,11 @@ func encryptDirectoryWithCompression(inputPath, outputPath string, key, salt []b
 		}
 		return nil
 	}); err != nil {
-		return err
+		return result, err
 	}
 
 	// Create progress bar
-	progressBar := utils.NewProgressBar(int64(totalFiles), "Encrypting files")
+	progressBar := newOperationProgressBar(int64(totalFiles), "Encrypting files")
 
 	// Create directory encryptor
 	encryptor := core.NewDirectoryEncryptor(encryptionService, encryptVerbose)
@@ -282,9 +317,9 @@ func encryptDirectoryWithCompression(inputPath, outputPath string, key, salt []b
 
 	if err != nil {
 		PrintError(fmt.Sprintf("Directory encryption failed: %v", err))
-		return err
+		return result, err
 	}
 
-	PrintSuccess(fmt.Sprintf("Encrypted %d files: %s -> %s", totalFiles, inputPath, outputPath))
-	return nil
+	result.Succeeded = totalFiles
+	return result, nil
 }

@@ -113,6 +113,19 @@ nokvault secure-delete ./secrets --dry-run
 | `secure-delete <path>` | Securely delete (`--yes` / `--dry-run`). Refuses symlink/reparse paths and does not follow them. |
 | `config` | Initialize or inspect Argon2id settings for new encryptions |
 
+### Machine-readable output
+
+Operational commands support a stable schema-version-1 `--json` mode:
+
+```bash
+nokvault encrypt evidence.img --keyfile ./key --no-prompt --json
+
+nokvault watch ./incoming --auto-encrypt --keyfile ./key --no-prompt --json |
+  jq -c 'select(.event == "encryption.completed")'
+```
+
+`encrypt`, `decrypt`, `secure-delete`, and `rotate-key` emit exactly one JSON result or error object. `watch` and `schedule encrypt` emit newline-delimited JSON lifecycle and operation events. In operational JSON mode, stdout contains JSON only, stderr stays empty, prompts and progress bars are disabled, and failures return a nonzero exit code with a structured error. Consumers should ignore unknown fields; breaking field changes require a new schema version.
+
 ## Configuration
 
 Initialize the supported Argon2id configuration:

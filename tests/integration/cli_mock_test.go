@@ -315,6 +315,12 @@ func TestCLI_Commands_Flags(t *testing.T) {
 		{"encrypt", "force", true},
 		{"decrypt", "force", true},
 		{"decrypt", "strict", true},
+		{"encrypt", "json", true},
+		{"decrypt", "json", true},
+		{"secure-delete", "json", true},
+		{"rotate-key", "json", true},
+		{"watch", "json", true},
+		{"schedule", "json", true},
 		{"config", "init", true},
 		{"config", "show", true},
 		{"config", "get", true},
@@ -327,10 +333,10 @@ func TestCLI_Commands_Flags(t *testing.T) {
 		require.NoError(t, err, "Command %s should exist", tt.command)
 
 		if tt.shouldHave {
-			flag := cmd.Flags().Lookup(tt.flagName)
+			flag := cmd.Flag(tt.flagName)
 			assert.NotNil(t, flag, "Command %s should have flag %s", tt.command, tt.flagName)
 		} else {
-			flag := cmd.Flags().Lookup(tt.flagName)
+			flag := cmd.Flag(tt.flagName)
 			assert.Nil(t, flag, "Command %s should not have flag %s", tt.command, tt.flagName)
 		}
 	}

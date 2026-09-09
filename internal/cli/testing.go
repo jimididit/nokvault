@@ -8,6 +8,16 @@ import "time"
 func ResetCLIStateForTest() {
 	ClearRuntimeConfig()
 	rootCmd.SetArgs(nil)
+	rootCmd.SetOut(nil)
+	rootCmd.SetErr(nil)
+	rootCmd.SilenceErrors = false
+	rootCmd.SilenceUsage = false
+	jsonOutput = false
+	if flag := rootCmd.PersistentFlags().Lookup("json"); flag != nil {
+		_ = flag.Value.Set("false")
+		flag.Changed = false
+	}
+	resetReporter()
 
 	encryptOutput = ""
 	encryptPassword = ""

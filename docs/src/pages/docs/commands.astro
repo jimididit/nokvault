@@ -33,6 +33,25 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
       </ul>
     </section>
 
+    <section class="mb-8">
+      <h2>Machine-readable output</h2>
+      <p class="text-dark-text-muted mb-4">
+        Operational commands inherit <code>--json</code>, which emits stable schema-version-1 records for scripts and SOAR workflows. In this mode stdout contains JSON only, stderr stays empty, prompts and progress bars are disabled, and failures use a nonzero exit code with a structured error.
+      </p>
+      <ul class="list-disc list-inside space-y-2 text-dark-text-muted mb-4">
+        <li><code>encrypt</code>, <code>decrypt</code>, <code>secure-delete</code>, and <code>rotate-key</code> emit exactly one result or error object.</li>
+        <li><code>watch</code> and <code>schedule encrypt</code> emit newline-delimited JSON lifecycle, file, completion, and failure events.</li>
+        <li>Consumers should ignore unknown fields. A breaking field or meaning change requires a new schema version.</li>
+        <li>Help, version, completion, and <code>config</code> are not part of the version-1 operational schema.</li>
+      </ul>
+      <CodeBlock code={`# One bounded result
+nokvault encrypt evidence.img --keyfile ./key --no-prompt --json
+
+# Filter a long-running NDJSON stream
+nokvault watch ./incoming --auto-encrypt --keyfile ./key --no-prompt --json \\
+  | jq -c 'select(.event == "encryption.completed")'`} lang="bash" />
+    </section>
+
     <div class="space-y-8">
       <section>
         <h2><code>encrypt &lt;path&gt;</code></h2>
