@@ -220,7 +220,7 @@ that legitimately begins with gzip magic may be mis-handled by decompress sniffi
 
 ## 10. Compatibility matrix
 
-| File \\ Reader | Modern NokVault (v1+v2) | Pre-v2 / v1-only tool |
+| Vault file | Modern NokVault (v1+v2) | Pre-v2 / v1-only tool |
 | --- | --- | --- |
 | Historical v1 file | Decrypt using default KDF | Decrypt using default KDF |
 | Current v2 file | Decrypt using header KDF | Unsupported version |
