@@ -12,7 +12,7 @@ A modern, feature-rich CLI tool for encrypting local files and folders. Built wi
 ## Features
 
 - **🔒 Strong Encryption**: AES-256-GCM authenticated encryption with Argon2id key derivation
-- **📋 Format v2**: KDF parameters stored in each `.nokvault` header (v1 files still decrypt)
+- **📋 Format v2**: KDF parameters stored in each `.nokvault` header (v1 files still decrypt). Wire layout: [`docs/format-v2.md`](docs/format-v2.md)
 - **📁 Directory Support**: Encrypt entire directories recursively with metadata preservation
 - **🔑 Flexible Authentication**: Interactive password, keyfile, or `NOKVAULT_PASSWORD` (CLI `--password` refused)
 - **⚡ Auto-Encryption**: Watch directories and automatically encrypt files on change
@@ -198,6 +198,7 @@ nokvault encrypt ./files -v
 
 - **Encryption**: AES-256-GCM authenticated encryption
 - **Key Derivation**: Argon2id with configurable parameters (persisted in format v2 headers)
+- **Format spec**: On-disk header and AEAD framing are documented in [`docs/format-v2.md`](docs/format-v2.md)
 - **Memory Safety**: Sensitive data zeroized after use
 - **Atomic encrypt writes**: Temp file + fsync + rename
 - **Decrypt modes**: Clamped to ≤0600 / ≤0700 unless `--preserve-mode`
