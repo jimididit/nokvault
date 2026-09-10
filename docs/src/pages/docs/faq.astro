@@ -74,8 +74,8 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
 
     <h3>What happens to the original files after encryption?</h3>
     <p>
-      By default, originals remain unchanged and encrypted copies use a <code>.nokvault</code> extension. Delete originals
-      only after you verify recovery.
+      By default, originals remain unchanged and encrypted copies use a <code>.nokv</code> extension
+      (legacy <code>.nokvault</code> files still decrypt). Delete originals only after you verify recovery.
     </p>
 
     <h3>Can I use NokVault in scripts and automation?</h3>
@@ -102,7 +102,7 @@ nokvault encrypt file.txt --no-prompt`}
 nokvault decrypt ./encrypted-documents
 
 # Or use a loop
-for file in *.nokvault; do
+for file in *.nokv; do
   nokvault decrypt "$file" --keyfile ~/.keys/master.key --no-prompt
 done`}
       lang="bash"

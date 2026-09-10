@@ -22,12 +22,12 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
     <p>The simplest way to encrypt a file is the <code>encrypt</code> command:</p>
     <CodeBlock code="nokvault encrypt document.txt" lang="bash" />
     <p>
-      This creates <code>document.txt.nokvault</code> and prompts for a password. The original file remains unchanged unless you pass
+      This creates <code>document.txt.nokv</code> and prompts for a password. The original file remains unchanged unless you pass
       <code>--delete-original</code>.
     </p>
     <div class="callout">
       <p>
-        <strong>Verify recovery before deleting plaintext.</strong> Decrypt the new <code>.nokvault</code> file and confirm the restored
+        <strong>Verify recovery before deleting plaintext.</strong> Decrypt the new <code>.nokv</code> file and confirm the restored
         content before you remove or securely delete the original. Without a working credential (password or keyfile), encrypted data cannot
         be recovered.
       </p>
@@ -37,7 +37,7 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
   <section aria-labelledby="decrypt-a-file">
     <h2 id="decrypt-a-file">Decrypt a file</h2>
     <p>Decrypt with the <code>decrypt</code> command:</p>
-    <CodeBlock code="nokvault decrypt document.txt.nokvault" lang="bash" />
+    <CodeBlock code="nokvault decrypt document.txt.nokv" lang="bash" />
     <p>
       {SITE.name} detects the original filename and restores it. You are prompted for the password used during encryption.
     </p>
@@ -54,7 +54,7 @@ openssl rand -out ~/.keys/master.key 32
 nokvault encrypt document.txt --keyfile ~/.keys/master.key
 
 # Decrypt with keyfile
-nokvault decrypt document.txt.nokvault --keyfile ~/.keys/master.key`}
+nokvault decrypt document.txt.nokv --keyfile ~/.keys/master.key`}
       lang="bash"
     />
     <p>
@@ -103,14 +103,14 @@ nokvault encrypt ./documents
   <section aria-labelledby="specifying-output">
     <h2 id="specifying-output">Specifying output location</h2>
     <p>
-      By default, encrypted files are created beside the input with a <code>.nokvault</code> extension. You can choose a custom output:
+      By default, encrypted files are created beside the input with a <code>.nokv</code> extension. You can choose a custom output:
     </p>
     <CodeBlock
       code={`# Encrypt to specific location
-nokvault encrypt document.txt --output ./encrypted/secure.nokvault
+nokvault encrypt document.txt --output ./encrypted/secure.nokv
 
 # Decrypt to specific location
-nokvault decrypt document.nokvault --output ./decrypted/restored.txt`}
+nokvault decrypt document.nokv --output ./decrypted/restored.txt`}
       lang="bash"
     />
   </section>

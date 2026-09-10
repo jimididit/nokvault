@@ -19,7 +19,7 @@ func TestCLI_EncryptDecrypt_CustomKDFParams(t *testing.T) {
 	if err := os.WriteFile(inputPath, plaintext, 0600); err != nil {
 		t.Fatalf("write input: %v", err)
 	}
-	encryptedPath := inputPath + ".nokvault"
+	encryptedPath := inputPath + ".nokv"
 
 	rootCmd := freshRootCmd(t)
 	cfg := config.DefaultConfig()

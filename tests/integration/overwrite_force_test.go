@@ -38,7 +38,7 @@ func TestCLI_Decrypt_RefuseOverwriteWithoutForce(t *testing.T) {
 	rootCmd.SetArgs([]string{"encrypt", input, "--keyfile", keyfile, "--no-prompt"})
 	require.NoError(t, rootCmd.Execute())
 
-	enc := input + ".nokvault"
+	enc := input + ".nokv"
 	out := filepath.Join(dir, "out.txt")
 	require.NoError(t, os.WriteFile(out, []byte("existing"), 0o600))
 
@@ -88,11 +88,11 @@ func TestCLI_Decrypt_StrictAbortsEarly(t *testing.T) {
 	good := filepath.Join(dir, "good.txt")
 	require.NoError(t, os.WriteFile(good, []byte("ok"), 0o600))
 	rootCmd := freshRootCmd(t)
-	rootCmd.SetArgs([]string{"encrypt", good, "--keyfile", keyfile, "--no-prompt", "--output", filepath.Join(inDir, "z_good.txt.nokvault")})
+	rootCmd.SetArgs([]string{"encrypt", good, "--keyfile", keyfile, "--no-prompt", "--output", filepath.Join(inDir, "z_good.txt.nokv")})
 	require.NoError(t, rootCmd.Execute())
 
 	// filepath.Walk is lexical: the corrupt file must be encountered first.
-	require.NoError(t, os.WriteFile(filepath.Join(inDir, "a_bad.nokvault"), []byte("not-a-vault"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(inDir, "a_bad.nokv"), []byte("not-a-vault"), 0o600))
 
 	rootCmd = freshRootCmd(t)
 	rootCmd.SetArgs([]string{

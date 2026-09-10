@@ -18,7 +18,7 @@ func TestCLI_RotateKey_RoundTrip(t *testing.T) {
 	if err := os.WriteFile(inputPath, plaintext, 0600); err != nil {
 		t.Fatalf("write input: %v", err)
 	}
-	encryptedPath := inputPath + ".nokvault"
+	encryptedPath := inputPath + ".nokv"
 
 	oldKeyfile := writeTempKeyfile(t, oldPassword)
 	newKeyfile := writeTempKeyfile(t, newPassword)

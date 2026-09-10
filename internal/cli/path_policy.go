@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/jimididit/nokvault/internal/core"
 	"github.com/jimididit/nokvault/internal/utils"
@@ -79,15 +78,16 @@ func preflightContainedOutputs(inputPath, outputRoot string, outputRel func(relP
 
 func preflightDirectoryEncryptOutputs(inputPath, outputRoot string) error {
 	return preflightContainedOutputs(inputPath, outputRoot, func(relPath string) (string, bool) {
-		return relPath + ".nokvault", true
+		return utils.WithVaultExt(relPath), true
 	})
 }
 
 func preflightDirectoryDecryptOutputs(inputPath, outputRoot string) error {
 	return preflightContainedOutputs(inputPath, outputRoot, func(relPath string) (string, bool) {
-		if !strings.HasSuffix(relPath, ".nokvault") {
+		stripped, ok := utils.StripVaultExt(relPath)
+		if !ok {
 			return "", false
 		}
-		return relPath[:len(relPath)-len(".nokvault")], true
+		return stripped, true
 	})
 }

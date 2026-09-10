@@ -89,7 +89,7 @@ func (de *DirectoryEncryptor) EncryptDirectory(inputDir, outputDir string, key, 
 		}
 
 		// Create output path maintaining directory structure
-		outputPath, err := utils.SafeJoin(outputDir, relPath+".nokvault")
+		outputPath, err := utils.SafeJoin(outputDir, utils.WithVaultExt(relPath))
 		if err != nil {
 			return fmt.Errorf("failed to construct output path for %s: %w", relPath, err)
 		}
@@ -194,7 +194,7 @@ func (dd *DirectoryDecryptor) SetPreserveMode(preserve bool) {
 	dd.preserveMode = preserve
 }
 
-// DecryptDirectory decrypts all .nokvault files in a directory recursively
+// DecryptDirectory decrypts all vault files (.nokv / legacy .nokvault) in a directory recursively
 func (dd *DirectoryDecryptor) DecryptDirectory(inputDir, outputDir string, password []byte, onProgress func(current, total int, currentFile string)) error {
 	// Count/validate input before creating a missing output root.
 	totalFiles := 0
@@ -202,7 +202,7 @@ func (dd *DirectoryDecryptor) DecryptDirectory(inputDir, outputDir string, passw
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() && filepath.Ext(path) == ".nokvault" {
+		if !info.IsDir() && utils.IsVaultPath(path) {
 			totalFiles++
 		}
 		return nil
@@ -217,14 +217,14 @@ func (dd *DirectoryDecryptor) DecryptDirectory(inputDir, outputDir string, passw
 
 	currentFile := 0
 
-	// Walk directory and decrypt each .nokvault file
+	// Walk directory and decrypt each vault file
 	err = dd.fileHandler.WalkDirectory(inputDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("error accessing %s: %w", path, err)
 		}
 
-		// Skip directories and non-.nokvault files
-		if info.IsDir() || filepath.Ext(path) != ".nokvault" {
+		// Skip directories and non-vault files
+		if info.IsDir() || !utils.IsVaultPath(path) {
 			return nil
 		}
 
@@ -236,8 +236,10 @@ func (dd *DirectoryDecryptor) DecryptDirectory(inputDir, outputDir string, passw
 			return fmt.Errorf("failed to get relative path: %w", err)
 		}
 
-		// Remove .nokvault extension
-		outputRelPath := relPath[:len(relPath)-len(".nokvault")]
+		outputRelPath, ok := utils.StripVaultExt(relPath)
+		if !ok {
+			return fmt.Errorf("not a vault path: %s", relPath)
+		}
 		outputPath, err := utils.SafeJoin(outputDir, outputRelPath)
 		if err != nil {
 			return fmt.Errorf("failed to construct output path for %s: %w", outputRelPath, err)

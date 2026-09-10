@@ -15,8 +15,9 @@ var encryptCmd = &cobra.Command{
 	Short: "Encrypt a file or directory",
 	Long: `Encrypt a file or directory using AES-256-GCM encryption.
 
-The encrypted output will be saved as <path>.nokvault by default.
-You can specify a custom output path using the --output flag.`,
+The encrypted output will be saved as <path>.nokv by default.
+You can specify a custom output path using the --output flag.
+Legacy .nokvault outputs remain decryptable.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runEncrypt,
 }
@@ -65,7 +66,11 @@ func runEncrypt(cmd *cobra.Command, args []string) error {
 	// Determine output path
 	outputPath := encryptOutput
 	if outputPath == "" {
-		outputPath = inputPath + ".nokvault"
+		var derErr error
+		outputPath, derErr = utils.DefaultVaultOutput(inputPath)
+		if derErr != nil {
+			return utils.NewError(utils.ErrInvalidPath.Code, derErr.Error(), derErr)
+		}
 	}
 
 	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
@@ -283,7 +288,7 @@ func encryptDirectoryWithCompression(inputPath, outputPath string, key, salt []b
 		if relErr != nil {
 			return relErr
 		}
-		out, joinErr := utils.SafeJoin(outputPath, relPath+".nokvault")
+		out, joinErr := utils.SafeJoin(outputPath, utils.WithVaultExt(relPath))
 		if joinErr != nil {
 			return joinErr
 		}

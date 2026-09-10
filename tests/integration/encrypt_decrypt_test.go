@@ -45,7 +45,7 @@ func TestEncryptDecryptFile(t *testing.T) {
 	}
 
 	// Encrypt file
-	encryptedPath := tmpFile.Name() + ".nokvault"
+	encryptedPath := tmpFile.Name() + ".nokv"
 	encryptedFile, err := os.Create(encryptedPath)
 	if err != nil {
 		t.Fatalf("Failed to create encrypted file: %v", err)
@@ -173,7 +173,7 @@ func TestEncryptDecryptDirectory(t *testing.T) {
 
 	// Verify encrypted files exist
 	for relPath := range testFiles {
-		encryptedPath := filepath.Join(encryptedDir, relPath+".nokvault")
+		encryptedPath := filepath.Join(encryptedDir, relPath+".nokv")
 		if _, err := os.Stat(encryptedPath); err != nil {
 			t.Errorf("Encrypted file %s does not exist: %v", encryptedPath, err)
 		}

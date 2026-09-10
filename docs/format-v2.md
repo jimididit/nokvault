@@ -1,6 +1,6 @@
 # NokVault vault format (v1 / v2)
 
-> Wire format specification for `.nokvault` files. This file lives under the
+> Wire format specification for NokVault vault files (default filename suffix `.nokv`; legacy `.nokvault` still accepted on read). This file lives under the
 > `docs/` package directory for versioning; it is **not** an Astro website page.
 
 **Status:** Implemented (matches current NokVault Go sources)  

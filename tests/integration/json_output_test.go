@@ -51,14 +51,14 @@ func TestJSONEncryptAndDecryptFile(t *testing.T) {
 	require.Equal(t, "encrypt", record.Command)
 	data := resultData(t, record)
 	require.Equal(t, input, data["input"])
-	require.Equal(t, input+".nokvault", data["output"])
+	require.Equal(t, input+".nokv", data["output"])
 	require.Equal(t, "file", data["target_kind"])
 	require.Equal(t, float64(1), data["processed"])
 	require.Equal(t, float64(1), data["succeeded"])
 
 	output := filepath.Join(dir, "roundtrip.txt")
 	exitCode, record, _, stderr = runJSONCLI(
-		t, "decrypt", input+".nokvault", "--keyfile", keyfile,
+		t, "decrypt", input+".nokv", "--keyfile", keyfile,
 		"--no-prompt", "--output", output, "--json",
 	)
 	require.Zero(t, exitCode)
@@ -80,12 +80,12 @@ func TestJSONEncryptDryRunDoesNotMutate(t *testing.T) {
 	require.Zero(t, exitCode)
 	require.Empty(t, stderr)
 	require.Equal(t, true, resultData(t, record)["dry_run"])
-	_, err := os.Stat(input + ".nokvault")
+	_, err := os.Stat(input + ".nokv")
 	require.True(t, os.IsNotExist(err))
 }
 
 func TestJSONDecryptDryRunDoesNotRequireCredentialsOrMutate(t *testing.T) {
-	input := filepath.Join(t.TempDir(), "sample.nokvault")
+	input := filepath.Join(t.TempDir(), "sample.nokv")
 	require.NoError(t, os.WriteFile(input, []byte("not-read-in-dry-run"), 0o600))
 
 	exitCode, record, _, stderr := runJSONCLI(t, "decrypt", input, "--dry-run", "--json")
@@ -93,7 +93,7 @@ func TestJSONDecryptDryRunDoesNotRequireCredentialsOrMutate(t *testing.T) {
 	require.Zero(t, exitCode)
 	require.Empty(t, stderr)
 	require.Equal(t, true, resultData(t, record)["dry_run"])
-	_, err := os.Stat(strings.TrimSuffix(input, ".nokvault"))
+	_, err := os.Stat(strings.TrimSuffix(input, ".nokv"))
 	require.True(t, os.IsNotExist(err))
 }
 
@@ -106,11 +106,11 @@ func TestJSONDecryptPartialAndStrictResults(t *testing.T) {
 	require.NoError(t, os.WriteFile(plain, []byte("ok"), 0o600))
 
 	exitCode, _, _, _ := runJSONCLI(
-		t, "encrypt", plain, "--output", filepath.Join(vaultDir, "z_good.txt.nokvault"),
+		t, "encrypt", plain, "--output", filepath.Join(vaultDir, "z_good.txt.nokv"),
 		"--keyfile", keyfile, "--no-prompt", "--json",
 	)
 	require.Zero(t, exitCode)
-	require.NoError(t, os.WriteFile(filepath.Join(vaultDir, "a_bad.nokvault"), []byte("bad"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(vaultDir, "a_bad.nokv"), []byte("bad"), 0o600))
 
 	exitCode, record, _, stderr := runJSONCLI(
 		t, "decrypt", vaultDir, "--output", filepath.Join(dir, "continue"),
@@ -134,7 +134,7 @@ func TestJSONDecryptPartialAndStrictResults(t *testing.T) {
 	data = resultData(t, record)
 	require.Equal(t, float64(0), data["succeeded"])
 	require.Equal(t, float64(1), data["failed"])
-	require.Equal(t, "a_bad.nokvault", data["aborted_at"])
+	require.Equal(t, "a_bad.nokv", data["aborted_at"])
 }
 
 func TestJSONSecureDeleteDryRunAndDelete(t *testing.T) {
@@ -191,7 +191,7 @@ func TestJSONRotateKey(t *testing.T) {
 		t, "encrypt", input, "--keyfile", oldKeyfile, "--no-prompt", "--json",
 	)
 	require.Zero(t, exitCode)
-	encrypted := input + ".nokvault"
+	encrypted := input + ".nokv"
 
 	exitCode, record, _, stderr := runJSONCLI(
 		t, "rotate-key", encrypted,
@@ -253,7 +253,7 @@ func TestJSONRotateKeyVerboseWrongCredentialOmitsDiagnostic(t *testing.T) {
 	require.Zero(t, exitCode)
 
 	exitCode, record, stdout, stderr := runJSONCLI(
-		t, "rotate-key", input+".nokvault",
+		t, "rotate-key", input+".nokv",
 		"--old-keyfile", wrongKeyfile, "--new-keyfile", newKeyfile,
 		"--no-prompt", "--verbose", "--json",
 	)

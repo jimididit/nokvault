@@ -89,14 +89,14 @@ NokVault is a local CLI for encrypting files and directories, with optional watc
 - User plaintext (source files and transient plaintext during encrypt, decrypt, and `rotate-key`)
 - Secrets: interactive passwords, keyfile bytes, and `NOKVAULT_PASSWORD`
 - Derived AES-256 keys and salts in process memory
-- On-disk `.nokvault` containers (header, optional plaintext JSON metadata, ciphertext payload)
+- On-disk `.nokv` containers (legacy `.nokvault` filenames still decrypt; header, optional plaintext JSON metadata, ciphertext payload)
 - Released binaries and their checksum / attestation metadata
 
 ### Attackers and environments
 
 | Class | What we model |
 | --- | --- |
-| Offline vault thief | Possesses `.nokvault` file(s) but not the password or keyfile |
+| Offline vault thief | Possesses `.nokv` / legacy `.nokvault` file(s) but not the password or keyfile |
 | Same-user local process | Can read environment variables, process listings, and files the user can open |
 | Hostile directory tree | Symlinks, Windows junctions, other reparse points, and path-escape attempts |
 | Supply-chain / wrong binary | Unverified download or tampered artifact |

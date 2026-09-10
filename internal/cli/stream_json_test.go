@@ -62,7 +62,7 @@ func TestJSONScheduleLoopEmitsOrderedLifecycle(t *testing.T) {
 	ticks := make(chan time.Time)
 	err := runScheduleLoop(ctx, "evidence", ticks, func() (EncryptResult, error) {
 		return EncryptResult{
-			Input: "evidence", Output: "evidence.nokvault",
+			Input: "evidence", Output: "evidence.nokv",
 			TargetKind: "file", Processed: 1, Succeeded: 1,
 		}, nil
 	})
@@ -99,7 +99,7 @@ func TestScheduledFileFailureReportsAttemptCounts(t *testing.T) {
 	t.Cleanup(ResetCLIStateForTest)
 	path := filepath.Join(t.TempDir(), "scheduled.txt")
 	require.NoError(t, os.WriteFile(path, []byte("payload"), 0o600))
-	require.NoError(t, os.WriteFile(path+".nokvault", []byte("existing"), 0o600))
+	require.NoError(t, os.WriteFile(path+".nokv", []byte("existing"), 0o600))
 
 	result, err := performScheduledEncryptResult(
 		path,
@@ -127,7 +127,7 @@ func TestJSONWatchCallbackEmitsCompleteRecords(t *testing.T) {
 
 	callback(path, fsnotify.Event{Name: path, Op: fsnotify.Create})
 	require.Eventually(t, func() bool {
-		_, err := os.Stat(path + ".nokvault")
+		_, err := os.Stat(path + ".nokv")
 		return err == nil
 	}, time.Second, 10*time.Millisecond)
 	require.Eventually(t, func() bool {
@@ -161,7 +161,7 @@ func TestJSONWatchShutdownCancelsPendingEncryption(t *testing.T) {
 	require.NoError(t, EmitEvent("watch", "watch.stopped", EventData{Path: filepath.Dir(path)}))
 	time.Sleep(250 * time.Millisecond)
 
-	_, err := os.Stat(path + ".nokvault")
+	_, err := os.Stat(path + ".nokv")
 	require.True(t, os.IsNotExist(err))
 	records := decodeNDJSON(t, stdout.Bytes())
 	require.Equal(t, "watch.stopped", records[len(records)-1].Event)
@@ -234,7 +234,7 @@ func TestJSONWatchConcurrentCallbacksRemainValidNDJSON(t *testing.T) {
 	callbacks.Wait()
 	require.Eventually(t, func() bool {
 		for i := 0; i < fileCount; i++ {
-			path := filepath.Join(dir, fmt.Sprintf("incoming-%02d.txt.nokvault", i))
+			path := filepath.Join(dir, fmt.Sprintf("incoming-%02d.txt.nokv", i))
 			if _, err := os.Stat(path); err != nil {
 				return false
 			}
