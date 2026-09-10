@@ -1,81 +1,88 @@
-# Security Policy
+# SECURITY.md Threat Model Implementation Plan
 
-## Supported Versions
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-We actively support the following versions of Nokvault with security updates:
+**Goal:** Add an honest Threat Model and Residual Risks section to root `SECURITY.md`, absorbing Known Security Considerations, matching actual code and `docs/format-v2.md`.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.4.x   | :white_check_mark: |
-| ≤ 0.3.x | :x:                |
+**Architecture:** Docs-only edit on branch `docs/security-threat-model`. Replace the Known Security Considerations block with Threat Model + Residual Risks; add a Security Audit pointer. No Go or Astro site changes.
 
-## Reporting a Vulnerability
+**Tech Stack:** Markdown (`SECURITY.md`); verification against `docs/format-v2.md` and existing SECURITY wording.
 
-We take security vulnerabilities seriously. If you discover a security vulnerability in Nokvault, please follow these steps:
+**Design spec:** `docs/specs/2026-09-10-security-threat-model-design.md`  
+**Path note:** Plans live under `docs/plans/` because `docs/superpowers/` is gitignored.  
+**Worktree:** `E:\repos\nokvault\.worktrees\security-threat-model`
 
-### 1. **Do NOT** create a public GitHub issue
+## Global Constraints
 
-Security vulnerabilities should be reported privately to prevent exploitation before a fix is available.
+- Root `SECURITY.md` only (no docs-site rewrite)
+- Checklist threat model **plus** residual-risk package
+- Approach A: append/replace in place; absorb Known Security Considerations (delete old heading)
+- Reviewer-honest tone; no new marketing claims
+- Cross-link `docs/format-v2.md` for wire/AAD details
+- Empty AAD and unauthenticated metadata must be stated explicitly
+- Docs-only PR; no `.go` changes
+- Do not invent mitigations; label future work only for L2/L7/format bump
 
-### 2. Report the vulnerability
+---
 
-Please email security concerns to: **<security@jimididit.com>** (or open a private security advisory on GitHub)
+## File Structure
 
-Include the following information:
+| File | Responsibility |
+| --- | --- |
+| Modify: `SECURITY.md` | Insert Threat Model + Residual Risks; remove Known Security Considerations; Audit pointer |
+| Reference: `docs/format-v2.md` | AAD empty, metadata plaintext, compression sniff |
+| Reference: `docs/specs/2026-09-10-security-threat-model-design.md` | Approved outline |
 
-- Description of the vulnerability
-- Steps to reproduce the issue
-- Potential impact
-- Suggested fix (if any)
+---
 
-### 3. Response timeline
+### Task 1: Rewrite `SECURITY.md` sections
 
-- **Initial Response**: Within 48 hours
-- **Status Update**: Within 7 days
-- **Fix Timeline**: Depends on severity, typically 30-90 days
+**Files:**
+- Modify: `SECURITY.md` (from Security Features through Security Audit)
 
-### 4. Disclosure
+**Interfaces:**
+- Consumes: Design outline in `docs/specs/2026-09-10-security-threat-model-design.md`
+- Produces: Updated `SECURITY.md` with Threat Model + Residual Risks as single source of truth
 
-We will coordinate with you on the disclosure timeline. Once a fix is available:
+- [ ] **Step 1: Confirm current section anchors**
 
-- A security advisory will be published on GitHub
-- The vulnerability will be listed in the CHANGELOG
-- A new release will be made with the fix
+Open `SECURITY.md` and locate:
 
-## Security Best Practices
+- `## Security Features` (keep)
+- `## Known Security Considerations` (remove after absorb)
+- `## Security Audit` (add pointer)
 
-### For Users
+- [ ] **Step 2: Optionally add one format-spec link under Security Features**
 
-1. **Keep Nokvault Updated**: Always use the latest version to receive security patches
-2. **Use Strong Passwords**: Use long, random passwords or keyfiles
-3. **Protect Keyfiles**: Store keyfiles securely with appropriate permissions (600 on Unix)
-4. **Use Keyfiles**: Prefer keyfiles over passwords when possible
-5. **Secure Deletion**: Use `secure-delete` for sensitive files
-6. **Rotate Keys**: Periodically rotate encryption keys using `rotate-key`
-7. **Verify Downloads**: Verify release checksums and GitHub build provenance with `gh attestation verify <binary> --repo jimididit/nokvault`
-8. **Regular Paths**: Point commands at regular files and directories; Nokvault does not follow symlinks or junctions
+After the Path policy bullet in Security Features, ensure authenticity claim stays payload-scoped. Add this bullet if not already present:
 
-### For Developers
-
-1. **Dependency Updates**: Keep dependencies up to date
-2. **Code Review**: All security-sensitive code changes require review
-3. **Testing**: Ensure security-related tests pass before merging
-4. **Documentation**: Document security implications of changes
-5. **Automated Analysis**: CI runs vulnerability, static, and security-focused analysis on every change
-
-## Security Features
-
-Nokvault implements several security measures:
-
-- **Authenticated Encryption**: AES-256-GCM provides confidentiality and authenticity for the encrypted **payload** (header/metadata are not AEAD-bound; see Threat Model and [`docs/format-v2.md`](docs/format-v2.md))
-- **Key Derivation**: Argon2id with configurable parameters prevents brute-force attacks
-- **Memory Safety**: Sensitive data is zeroized after use
-- **Timing Attack Protection**: Constant-time operations for key comparisons
-- **File Integrity**: Built-in authentication tags detect tampering
-- **Secure Deletion**: Multi-pass overwrite before unlink (effectiveness depends on storage media; see Residual Risks)
-- **Path policy**: Default-deny for symlinks, Windows junctions, and other reparse points; lexical output containment. Not a claim of race-proof concurrent replacement protection.
+```markdown
 - **Format documentation**: On-disk layout and AEAD binding limits are documented in [`docs/format-v2.md`](docs/format-v2.md)
+```
 
+Also soften Secure Deletion feature bullet if it overclaims — change:
+
+```markdown
+- **Secure Deletion**: Multiple overwrite passes make file recovery difficult
+```
+
+To:
+
+```markdown
+- **Secure Deletion**: Multi-pass overwrite before unlink (effectiveness depends on storage media; see Residual Risks)
+```
+
+And clarify authenticated encryption bullet:
+
+```markdown
+- **Authenticated Encryption**: AES-256-GCM provides confidentiality and authenticity for the encrypted **payload** (header/metadata are not AEAD-bound; see Threat Model and [`docs/format-v2.md`](docs/format-v2.md))
+```
+
+- [ ] **Step 3: Replace Known Security Considerations with the following two sections**
+
+Delete the entire `## Known Security Considerations` section (all six numbered items) and insert this content in its place (between Security Features and Security Audit):
+
+```markdown
 ## Threat Model
 
 This section describes what NokVault protects, against whom, and what it explicitly does not claim. It matches the current implementation. Wire-format details live in [`docs/format-v2.md`](docs/format-v2.md).
@@ -176,7 +183,25 @@ Known limits and footguns. Reviewers should treat these as intentional honesty, 
 
 12. **Argon2id cost on low-resource devices**  
     Default parameters (and stricter custom parameters) can be slow on constrained hardware. That is a usability tradeoff for offline-guessing resistance, not a bypass of the KDF.
+```
 
+- [ ] **Step 4: Update Security Audit section**
+
+Replace:
+
+```markdown
+## Security Audit
+
+If you're conducting a security audit or penetration test:
+
+1. Please notify us in advance if possible
+2. Follow responsible disclosure practices
+3. We welcome security research and will work with you
+```
+
+With:
+
+```markdown
 ## Security Audit
 
 Start with this document's **Threat Model** and **Residual Risks**, plus the wire format in [`docs/format-v2.md`](docs/format-v2.md).
@@ -186,7 +211,72 @@ If you're conducting a security audit or penetration test:
 1. Please notify us in advance if possible
 2. Follow responsible disclosure practices
 3. We welcome security research and will work with you
+```
 
-## Acknowledgments
+- [ ] **Step 5: Commit**
 
-We thank security researchers who responsibly disclose vulnerabilities. Contributors will be acknowledged (with permission) in security advisories and release notes.
+```bash
+git add SECURITY.md
+git commit -m "docs: add SECURITY.md threat model and residual risks"
+```
+
+---
+
+### Task 2: Honesty verification
+
+**Files:**
+- Verify: `SECURITY.md`, `docs/format-v2.md`
+- No Go changes expected
+
+**Interfaces:**
+- Consumes: Task 1 `SECURITY.md`
+- Produces: Verification notes in report; fix+commit only if contradictions found
+
+- [ ] **Step 1: Placeholder and overclaim scan**
+
+```bash
+rg -n "TBD|TODO|FIXME|AAD bound|guarantees secure|race-proof|full-disk" SECURITY.md
+```
+
+Expected: no TBD/TODO/FIXME. Mentions of AAD/race must be in the **empty / not claimed** sense only.
+
+- [ ] **Step 2: Cross-check critical claims against format spec**
+
+Confirm `SECURITY.md` and `docs/format-v2.md` agree on:
+
+- GCM AAD empty
+- Metadata not AEAD-covered
+- Compression not a header flag / gzip sniff
+- Payload = nonce \|\| ciphertext\|\|tag
+
+```bash
+rg -n "AAD|metadata|compress|nonce" SECURITY.md docs/format-v2.md
+```
+
+- [ ] **Step 3: Confirm docs-only diff vs main**
+
+```bash
+git diff main...HEAD --stat
+```
+
+Expected: `SECURITY.md` plus already-committed design/plan markdown under `docs/`. No `.go` files.
+
+- [ ] **Step 4: Stop before push/PR unless the user asks**
+
+Summarize files changed and that threat model + residual risks are present.
+
+---
+
+## Self-review (plan vs design)
+
+| Design requirement | Task |
+| --- | --- |
+| Threat Model (scope, assets, attackers, trust, protections, non-goals) | Task 1 |
+| Residual Risks (10+ items including AAD, SSD, env, RAM, sniff) | Task 1 |
+| Absorb/delete Known Security Considerations | Task 1 |
+| Security Audit pointer | Task 1 |
+| Format cross-link | Task 1 |
+| Honesty verification | Task 2 |
+| Docs-only | Global + Task 2 |
+
+No independent subsystems; single docs plan is appropriate.
