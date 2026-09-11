@@ -47,7 +47,7 @@ func TestCLI_EncryptDecrypt_CustomKDFParams(t *testing.T) {
 	defer encFile.Close()
 
 	fh := core.NewFileHandler()
-	header, _, _, err := fh.ReadHeaderWithMetadata(encFile)
+	header, _, _, _, err := fh.ReadHeaderWithMetadata(encFile)
 	if err != nil {
 		t.Fatalf("read header: %v", err)
 	}

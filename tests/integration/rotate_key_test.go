@@ -198,6 +198,6 @@ func readVaultHeader(t *testing.T, path string) (*core.NokvaultHeader, error) {
 	defer f.Close()
 
 	fh := core.NewFileHandler()
-	header, _, _, err := fh.ReadHeaderWithMetadata(f)
+	header, _, _, _, err := fh.ReadHeaderWithMetadata(f)
 	return header, err
 }

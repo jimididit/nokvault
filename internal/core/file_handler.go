@@ -26,16 +26,17 @@ type FileMetadata struct {
 
 // NokvaultHeader is the in-memory header. Wire layout depends on Version.
 type NokvaultHeader struct {
-	Magic        [8]byte
-	Version      uint16
-	Salt         [16]byte
-	MetadataSize uint32
-	DataOffset   uint64
-	Memory       uint32
-	Time         uint32
-	Parallelism  uint8
-	KeyLength    uint32
-	Compress     uint8
+	Magic         [8]byte
+	Version       uint16
+	Salt          [16]byte
+	MetadataSize  uint32
+	DataOffset    uint64
+	Memory        uint32
+	Time          uint32
+	Parallelism   uint8
+	KeyLength     uint32
+	Compress      uint8
+	RecipientCount uint16 // v4 only
 }
 
 const (
@@ -43,6 +44,7 @@ const (
 	Version1        = uint16(1)
 	Version2        = uint16(2)
 	Version3        = uint16(3)
+	Version4        = uint16(4)
 	CurrentVersion  = Version3
 	maxMetadataSize = 1 << 20
 
@@ -60,6 +62,8 @@ func HeaderWireSize(version uint16) int {
 		return HeaderWireSize(Version1) + 4 + 4 + 1 + 3 + 4 // +16 = 54
 	case Version3:
 		return HeaderWireSize(Version2) + 1 + 3 // +4 = 58
+	case Version4:
+		return HeaderWireSize(Version3) + 2 + 2 // +4 = 62
 	default:
 		return -1
 	}
@@ -249,6 +253,107 @@ func (fh *FileHandler) WriteHeader(writer io.Writer, salt []byte, metadata *File
 	return aad, nil
 }
 
+// WriteRecipientHeader writes a v4 recipient-mode header with stanzas and returns AAD.
+func (fh *FileHandler) WriteRecipientHeader(w io.Writer, metadata *FileMetadata, compress uint8, stanzas []crypto.X25519Stanza) ([]byte, error) {
+	if len(stanzas) == 0 {
+		return nil, fmt.Errorf("recipient header requires at least one stanza")
+	}
+	if len(stanzas) > crypto.MaxRecipients {
+		return nil, fmt.Errorf("recipient count %d exceeds maximum %d", len(stanzas), crypto.MaxRecipients)
+	}
+	if compress > 1 {
+		return nil, fmt.Errorf("invalid compress value: %d", compress)
+	}
+
+	var metadataJSON []byte
+	if metadata != nil {
+		var err error
+		metadataJSON, err = json.Marshal(metadata)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize metadata: %w", err)
+		}
+	}
+
+	if len(metadataJSON) > maxMetadataSize {
+		return nil, fmt.Errorf("metadata exceeds maximum size of %d bytes", maxMetadataSize)
+	}
+
+	// #nosec G115 -- the explicit MaxUint32 bound above makes this conversion safe.
+	metadataLength := uint32(len(metadataJSON))
+	headerSize := HeaderWireSize(Version4)
+	stanzaBytes := crypto.MarshalStanzas(stanzas)
+	dataOffset := uint64(headerSize) + uint64(metadataLength) + uint64(len(stanzaBytes))
+
+	var magic [8]byte
+	copy(magic[:], NokvaultMagic)
+	var saltZero [16]byte // v4 salt must be zero
+
+	var wire bytes.Buffer
+	writeField := func(value any) error {
+		return binary.Write(&wire, binary.LittleEndian, value)
+	}
+
+	if err := writeField(magic); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	if err := writeField(Version4); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	if err := writeField(saltZero); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	if err := writeField(metadataLength); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	if err := writeField(dataOffset); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	// v4 KDF fields must be zero
+	if err := writeField(uint32(0)); err != nil { // Memory
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	if err := writeField(uint32(0)); err != nil { // Time
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	if err := writeField(uint8(0)); err != nil { // Parallelism
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	pad := [3]byte{}
+	if err := writeField(pad); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	if err := writeField(uint32(crypto.DefaultKeyLength)); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	if err := writeField(compress); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	if err := writeField(pad); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	// #nosec G115 -- len(stanzas) is bounded by MaxRecipients check
+	if err := writeField(uint16(len(stanzas))); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	pad2 := [2]byte{}
+	if err := writeField(pad2); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+
+	wire.Write(metadataJSON)
+	wire.Write(stanzaBytes)
+
+	aad := append([]byte(nil), wire.Bytes()...)
+	n, err := w.Write(aad)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write header, metadata, and stanzas: %w", err)
+	}
+	if n != len(aad) {
+		return nil, fmt.Errorf("failed to write header, metadata, and stanzas: %w", io.ErrShortWrite)
+	}
+	return aad, nil
+}
+
 // ReadHeader reads a nokvault header from a file
 func (fh *FileHandler) ReadHeader(reader io.Reader) (*NokvaultHeader, error) {
 	h := &NokvaultHeader{}
@@ -310,6 +415,56 @@ func (fh *FileHandler) ReadHeader(reader io.Reader) (*NokvaultHeader, error) {
 				return nil, fmt.Errorf("invalid compress value: %d", h.Compress)
 			}
 		}
+	case Version4:
+		// Read KDF fields (must be zero for recipient mode)
+		if err := binary.Read(reader, binary.LittleEndian, &h.Memory); err != nil {
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+		if err := binary.Read(reader, binary.LittleEndian, &h.Time); err != nil {
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+		if err := binary.Read(reader, binary.LittleEndian, &h.Parallelism); err != nil {
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+		var pad [3]byte
+		if err := binary.Read(reader, binary.LittleEndian, &pad); err != nil {
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+		if err := binary.Read(reader, binary.LittleEndian, &h.KeyLength); err != nil {
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+		if err := binary.Read(reader, binary.LittleEndian, &h.Compress); err != nil {
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+		var v4Pad [3]byte
+		if err := binary.Read(reader, binary.LittleEndian, &v4Pad); err != nil {
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+		if err := binary.Read(reader, binary.LittleEndian, &h.RecipientCount); err != nil {
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+		var pad2 [2]byte
+		if err := binary.Read(reader, binary.LittleEndian, &pad2); err != nil {
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+
+		// Validate v4-specific constraints
+		var zeroSalt [16]byte
+		if h.Salt != zeroSalt {
+			return nil, fmt.Errorf("recipient-mode header must have zero salt")
+		}
+		if h.Memory != 0 || h.Time != 0 || h.Parallelism != 0 {
+			return nil, fmt.Errorf("recipient-mode header must have zero KDF params")
+		}
+		if h.KeyLength != crypto.DefaultKeyLength {
+			return nil, fmt.Errorf("recipient-mode header must have KeyLength=%d", crypto.DefaultKeyLength)
+		}
+		if h.Compress > 1 {
+			return nil, fmt.Errorf("invalid compress value: %d", h.Compress)
+		}
+		if h.RecipientCount == 0 || h.RecipientCount > crypto.MaxRecipients {
+			return nil, fmt.Errorf("recipient count %d out of valid range [1, %d]", h.RecipientCount, crypto.MaxRecipients)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported version: %d", h.Version)
 	}
@@ -322,20 +477,23 @@ func (fh *FileHandler) ReadHeader(reader io.Reader) (*NokvaultHeader, error) {
 		return nil, fmt.Errorf("unsupported version: %d", h.Version)
 	}
 	expectedDataOffset := uint64(headerSize) + uint64(h.MetadataSize)
+	if h.Version == Version4 {
+		expectedDataOffset += uint64(h.RecipientCount) * uint64(crypto.X25519StanzaSize)
+	}
 	if h.DataOffset != expectedDataOffset {
 		return nil, fmt.Errorf("invalid data offset %d (expected %d)", h.DataOffset, expectedDataOffset)
 	}
 	return h, nil
 }
 
-// ReadHeaderWithMetadata reads header and metadata from a file. For v3 it also
-// returns the exact consumed header and metadata bytes used as payload AAD.
-// Legacy formats return nil AAD.
-func (fh *FileHandler) ReadHeaderWithMetadata(reader io.Reader) (*NokvaultHeader, *FileMetadata, []byte, error) {
+// ReadHeaderWithMetadata reads header and metadata from a file. For v3 and v4 it also
+// returns the exact consumed header, metadata, and stanzas (v4 only) bytes used as payload AAD.
+// Legacy formats return nil AAD and nil stanzas. v1-v3 return nil stanzas.
+func (fh *FileHandler) ReadHeaderWithMetadata(reader io.Reader) (*NokvaultHeader, *FileMetadata, []byte, []crypto.X25519Stanza, error) {
 	var consumed bytes.Buffer
 	header, err := fh.ReadHeader(io.TeeReader(reader, &consumed))
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	// Read metadata if present
@@ -343,21 +501,39 @@ func (fh *FileHandler) ReadHeaderWithMetadata(reader io.Reader) (*NokvaultHeader
 	if header.MetadataSize > 0 {
 		metadataJSON := make([]byte, header.MetadataSize)
 		if _, err := io.ReadFull(reader, metadataJSON); err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to read metadata: %w", err)
+			return nil, nil, nil, nil, fmt.Errorf("failed to read metadata: %w", err)
 		}
 		consumed.Write(metadataJSON)
 
 		metadata = &FileMetadata{}
 		if err := json.Unmarshal(metadataJSON, metadata); err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to deserialize metadata: %w", err)
+			return nil, nil, nil, nil, fmt.Errorf("failed to deserialize metadata: %w", err)
+		}
+	}
+
+	var stanzas []crypto.X25519Stanza
+	if header.Version == Version4 {
+		// Read recipient stanzas
+		stanzaBytes := make([]byte, uint64(header.RecipientCount)*uint64(crypto.X25519StanzaSize))
+		if _, err := io.ReadFull(reader, stanzaBytes); err != nil {
+			return nil, nil, nil, nil, fmt.Errorf("failed to read recipient stanzas: %w", err)
+		}
+		consumed.Write(stanzaBytes)
+
+		stanzas, err = crypto.ParseStanzas(stanzaBytes, int(header.RecipientCount))
+		if err != nil {
+			return nil, nil, nil, nil, fmt.Errorf("failed to parse recipient stanzas: %w", err)
+		}
+		if len(stanzas) != int(header.RecipientCount) {
+			return nil, nil, nil, nil, fmt.Errorf("parsed %d stanzas but header declared %d", len(stanzas), header.RecipientCount)
 		}
 	}
 
 	var aad []byte
-	if header.Version == Version3 {
+	if header.Version == Version3 || header.Version == Version4 {
 		aad = append([]byte(nil), consumed.Bytes()...)
 	}
-	return header, metadata, aad, nil
+	return header, metadata, aad, stanzas, nil
 }
 
 // EnsureDirectory ensures a directory exists

@@ -66,7 +66,7 @@ func TestEncryptDecryptFile(t *testing.T) {
 	defer encryptedFile.Close()
 
 	// Read header
-	header, readMetadata, aad, err := fileHandler.ReadHeaderWithMetadata(encryptedFile)
+	header, readMetadata, aad, _, err := fileHandler.ReadHeaderWithMetadata(encryptedFile)
 	if err != nil {
 		t.Fatalf("Failed to read header: %v", err)
 	}

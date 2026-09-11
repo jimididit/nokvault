@@ -295,7 +295,7 @@ func (dd *DirectoryDecryptor) decryptFileWithMetadata(inputPath, outputPath stri
 	defer inputFile.Close()
 
 	// Read header with metadata
-	header, metadata, aad, err := dd.fileHandler.ReadHeaderWithMetadata(inputFile)
+	header, metadata, aad, _, err := dd.fileHandler.ReadHeaderWithMetadata(inputFile)
 	if err != nil {
 		return fmt.Errorf("failed to read header: %w", err)
 	}

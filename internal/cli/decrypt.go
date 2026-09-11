@@ -150,7 +150,7 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 
 	// Read header with metadata
 	fileHandler := core.NewFileHandler()
-	header, metadata, aad, err := fileHandler.ReadHeaderWithMetadata(inputFile)
+	header, metadata, aad, _, err := fileHandler.ReadHeaderWithMetadata(inputFile)
 	if err != nil {
 		PrintError("Invalid nokvault file format")
 		return utils.NewError(utils.ErrInvalidFormat.Code, "Invalid nokvault file format", err)
@@ -333,7 +333,7 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		}
 		defer inputFile.Close()
 
-		header, _, _, err := fileHandler.ReadHeaderWithMetadata(inputFile)
+		header, _, _, _, err := fileHandler.ReadHeaderWithMetadata(inputFile)
 		if err != nil {
 			return recordFailure(relPath, err)
 		}
@@ -418,7 +418,7 @@ func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionServi
 	defer inputFile.Close()
 
 	// Read header with metadata
-	header, metadata, aad, err := fileHandler.ReadHeaderWithMetadata(inputFile)
+	header, metadata, aad, _, err := fileHandler.ReadHeaderWithMetadata(inputFile)
 	if err != nil {
 		return utils.NewError(utils.ErrInvalidFormat.Code, "Invalid nokvault file format", err)
 	}

@@ -86,7 +86,7 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 
 	// Read header
 	fileHandler := core.NewFileHandler()
-	header, metadata, aad, err := fileHandler.ReadHeaderWithMetadata(inputFile)
+	header, metadata, aad, _, err := fileHandler.ReadHeaderWithMetadata(inputFile)
 	if err != nil {
 		PrintError("Invalid nokvault file format")
 		return utils.NewError(utils.ErrInvalidFormat.Code, "Invalid nokvault file format", err)
