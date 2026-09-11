@@ -93,7 +93,12 @@ func WriteIdentityFile(path string, id *Identity, force bool) error {
 		return err
 	}
 	content := "# nokvault identity\n" + encoded + "\n"
-	return os.WriteFile(path, []byte(content), 0o600)
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		return err
+	}
+	// os.WriteFile preserves existing permissions when overwriting; enforce 0600.
+	_ = os.Chmod(path, 0o600)
+	return nil
 }
 
 func ReadIdentityFile(path string) (*Identity, error) {
