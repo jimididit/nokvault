@@ -99,6 +99,8 @@ ROADMAP.md
 AUDIT_REPORT.md
 .superpowers/
 docs/superpowers/
+docs/specs/
+docs/plans/
 .worktrees/
 
 # Config files with sensitive data (if any)
