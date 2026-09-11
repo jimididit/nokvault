@@ -125,17 +125,12 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 
 	compressFlag := header.Compress
 	if header.Version < core.Version3 {
-		if _, err := plaintextFile.Seek(0, io.SeekStart); err != nil {
-			return fmt.Errorf("failed to rewind decrypted payload: %w", err)
+		compressionService := core.NewCompressionService()
+		flag, err := compressionService.LegacyCompressFlag(plaintextFile)
+		if err != nil {
+			return fmt.Errorf("failed to inspect decrypted payload: %w", err)
 		}
-		var magic [2]byte
-		n, readErr := io.ReadFull(plaintextFile, magic[:])
-		if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
-			return fmt.Errorf("failed to inspect decrypted payload: %w", readErr)
-		}
-		if n == len(magic) && magic[0] == 0x1f && magic[1] == 0x8b {
-			compressFlag = 1
-		}
+		compressFlag = flag
 	}
 
 	// Close before replace - Windows cannot rename over a file that is still open.

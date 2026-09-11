@@ -222,3 +222,28 @@ func TestCompressionService_GzipWriter_GzipReader(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, original, decompressed)
 }
+
+func TestCompressionService_LegacyCompressFlag(t *testing.T) {
+	cs := NewCompressionService()
+
+	t.Run("gzip magic without valid stream", func(t *testing.T) {
+		fake := bytes.NewReader([]byte{0x1f, 0x8b, 'n', 'o', 't', ' ', 'g', 'z', 'i', 'p'})
+		flag, err := cs.LegacyCompressFlag(fake)
+		require.NoError(t, err)
+		assert.Equal(t, uint8(0), flag)
+	})
+
+	t.Run("valid gzip stream", func(t *testing.T) {
+		compressed, err := cs.Compress([]byte("legacy gzip payload"))
+		require.NoError(t, err)
+		flag, err := cs.LegacyCompressFlag(bytes.NewReader(compressed))
+		require.NoError(t, err)
+		assert.Equal(t, uint8(1), flag)
+	})
+
+	t.Run("plain text without gzip magic", func(t *testing.T) {
+		flag, err := cs.LegacyCompressFlag(bytes.NewReader([]byte("plain legacy payload")))
+		require.NoError(t, err)
+		assert.Equal(t, uint8(0), flag)
+	})
+}
