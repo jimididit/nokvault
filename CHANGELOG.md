@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Format v4 multi-recipient vaults: X25519 identity/recipient encoding, per-recipient file-key wrap, and recipient section in the wire format
+- `nokvault keygen` to create identity files and emit `nokvault1…` public recipients
+- `encrypt --recipient` / `-r` (repeatable) for file and directory encryption; any one recipient can decrypt
+- `decrypt --identity` (repeatable) for v4 vaults
+
+### Changed
+
+- Passphrase/keyfile encryptions still write format v3; recipient encryptions write format v4
+- v4 STREAM binds header, metadata, and recipient stanzas as AAD (see `docs/format-v2.md`)
+
+### Security
+
+- Updated threat model: optional multi-recipient share of `.nokv` is in scope for v4; identity files are sensitive assets (see `SECURITY.md`)
+
 ## [0.5.0] - 2026-09-11
 
 ### Added

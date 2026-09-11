@@ -12,7 +12,8 @@ A modern, feature-rich CLI tool for encrypting local files and folders. Built wi
 ## Features
 
 - **🔒 Strong Encryption**: AES-256-GCM authenticated encryption with Argon2id key derivation
-- **📋 Format v3**: New vaults use bounded-memory, age-style STREAM encryption with authenticated headers and metadata; v1/v2 files still decrypt. Default extension is `.nokv` (legacy `.nokvault` still decrypts). Wire layout: [`docs/format-v2.md`](docs/format-v2.md)
+- **📋 Format v3 / v4**: Passphrase vaults use format v3 (bounded-memory STREAM + authenticated header/metadata). Recipient vaults use format v4 (X25519 multi-recipient wrap + authenticated recipient section). v1/v2 still decrypt. Default extension is `.nokv`. Wire layout: [`docs/format-v2.md`](docs/format-v2.md)
+- **👥 Multi-recipient sharing**: Encrypt with `-r` so any one of N X25519 recipients can decrypt with `--identity` (no passphrase on the same vault)
 - **📁 Directory Support**: Encrypt entire directories recursively with metadata preservation
 - **🔑 Flexible Authentication**: Interactive password, keyfile, or `NOKVAULT_PASSWORD` (CLI `--password` refused)
 - **⚡ Auto-Encryption**: Watch directories and automatically encrypt files on change
@@ -88,6 +89,15 @@ nokvault encrypt ./documents
 # Use a keyfile
 nokvault encrypt file.txt --keyfile ~/.keys/master.key
 
+# Generate an X25519 identity and public recipient
+nokvault keygen -o ./alice-identity.txt
+
+# Encrypt for one or more recipients (writes format v4; no password/keyfile)
+nokvault encrypt report.pdf -r nokvault1abc... -r ./bob-recipient.txt
+
+# Decrypt a recipient vault
+nokvault decrypt report.pdf.nokv --identity ./alice-identity.txt
+
 # Watch and auto-encrypt
 nokvault watch ./documents --auto-encrypt --keyfile ~/.keys/master.key
 
@@ -108,8 +118,9 @@ nokvault secure-delete ./secrets --dry-run
 
 | Command | Description |
 | --------- | ------------- |
-| `encrypt <path>` | Encrypt a file or directory (`--force` to overwrite outputs). Rejects symlink/reparse inputs and outputs. |
-| `decrypt <path>` | Decrypt a nokvault encrypted file (`--force`, `--strict`). Same path policy as encrypt. |
+| `keygen` | Create an X25519 identity file and print the public `nokvault1…` recipient (`--public-out`, `--force`) |
+| `encrypt <path>` | Encrypt a file or directory (`--force`, repeatable `-r` / `--recipient`). Passphrase path writes v3; `-r` writes v4. Rejects symlink/reparse inputs and outputs. |
+| `decrypt <path>` | Decrypt a vault (`--force`, `--strict`, repeatable `--identity` for v4). Same path policy as encrypt. |
 | `watch <path>` | Watch directory for changes and optionally auto-encrypt. Symlink roots and events are rejected. |
 | `schedule encrypt <path>` | Schedule periodic encryption operations. Re-validates the tree on every run. |
 | `rotate-key <path>` | Rotate encryption key for a file. Rejects symlink/reparse inputs. |
@@ -198,7 +209,8 @@ nokvault encrypt ./files -v
 
 - **Encryption**: AES-256-GCM authenticated encryption
 - **Key Derivation**: Argon2id with configurable parameters (persisted in format v2/v3 headers)
-- **Streaming format**: New encryptions write format v3 with 64 KiB AES-GCM STREAM chunks and bind the exact header and metadata bytes as AAD
+- **Streaming format**: v3/v4 use 64 KiB AES-GCM STREAM chunks; v3 binds header+metadata as AAD, v4 also binds the recipient section
+- **Recipients (v4)**: X25519 wrap with domain-separated HKDF; identity files use the same permission policy as keyfiles
 - **Format spec**: On-disk header and AEAD framing are documented in [`docs/format-v2.md`](docs/format-v2.md)
 - **Memory Safety**: Sensitive data zeroized after use
 - **Atomic encrypt writes**: Temp file + fsync + rename
