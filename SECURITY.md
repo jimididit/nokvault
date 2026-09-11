@@ -153,16 +153,16 @@ Known limits and footguns. Reviewers should treat these as intentional honesty, 
    Multi-pass overwrite before unlink is oriented toward traditional HDDs. On many SSDs and flash devices (TRIM, wear leveling), overwritten data may remain recoverable. Do not treat `secure-delete` as cryptographic erase.
 
 4. **Empty GCM AAD in legacy v1/v2 vaults**
-   Legacy header fields and metadata are not bound into AES-GCM. New v3 vaults bind the exact 58-byte header and metadata bytes to every STREAM chunk. Existing v1/v2 files remain unchanged until re-encrypted or rotated. Details: [`docs/format-v2.md`](docs/format-v2.md) §9 and §14.
+   Legacy header fields and metadata are not bound into AES-GCM. New v3/v4 vaults bind the exact header and metadata bytes to every STREAM chunk (v4 also binds the recipient section). Existing v1/v2 files remain unchanged until re-encrypted or rotated. Details: [`docs/format-v2.md`](docs/format-v2.md) §10 and §11.
 
-5. **Plaintext metadata (unauthenticated in v1/v2, AAD-bound in v3)**  
-   Optional JSON metadata is always visible on disk. It is unauthenticated in v1/v2 and authenticated as AAD in v3; authentication does not provide metadata confidentiality.
+5. **Plaintext metadata (unauthenticated in v1/v2, AAD-bound in v3/v4)**  
+   Optional JSON metadata is always visible on disk. It is unauthenticated in v1/v2 and authenticated as AAD in v3/v4; authentication does not provide metadata confidentiality.
 
 6. **Whole-file-in-RAM legacy decrypt**
-   New v3 vaults use bounded-memory STREAM encryption and decryption. Decrypting legacy v1/v2 payloads still buffers the whole encrypted payload in memory, so very large legacy vaults may be impractical until rewritten as v3.
+   New v3/v4 vaults use bounded-memory STREAM encryption and decryption. Decrypting legacy v1/v2 payloads still buffers the whole encrypted payload in memory, so very large legacy vaults may be impractical until rewritten as v3.
 
 7. **Legacy compression sniff after decrypt**
-   V1/v2 have no compress flag, so the CLI may attempt gzip decompression when decrypted plaintext begins with magic `1f 8b`; legitimate plaintext starting with those bytes can be mis-handled. V3 stores an explicit authenticated `Compress` flag.
+   V1/v2 have no compress flag, so the CLI may attempt gzip decompression when decrypted plaintext begins with magic `1f 8b`; legitimate plaintext starting with those bytes can be mis-handled. v3/v4 store an explicit authenticated `Compress` flag.
 
 8. **Path policy timing**  
    Symlink/junction checks and output containment run before prompts and mutation, but validation-then-open is not race-proof against a privileged concurrent replacement of a path component.

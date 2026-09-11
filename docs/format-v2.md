@@ -249,8 +249,8 @@ by decompress sniffing.
 
 | Vault file | Current NokVault (v1–v4) | v3-only tool | v2-only tool | v1-only tool |
 | --- | --- | --- | --- | --- |
-| Historical v1 | Decrypt using default KDF | Unsupported version | Decrypt using default KDF | Decrypt using default KDF |
-| Legacy v2 | Decrypt using header KDF | Unsupported version | Decrypt using header KDF | Unsupported version |
+| Historical v1 | Decrypt using default KDF | Decrypt using default KDF | Decrypt using default KDF | Decrypt using default KDF |
+| Legacy v2 | Decrypt using header KDF | Decrypt using header KDF | Decrypt using header KDF | Unsupported version |
 | Passphrase v3 | Decrypt STREAM using header KDF | Decrypt STREAM using header KDF | Unsupported version | Unsupported version |
 | Recipient v4 | Decrypt with `--identity` | Unsupported version | Unsupported version | Unsupported version |
 | Passphrase writer output | Always version 3 | Can read | Cannot read | Cannot read |
