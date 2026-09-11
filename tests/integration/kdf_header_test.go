@@ -47,12 +47,12 @@ func TestCLI_EncryptDecrypt_CustomKDFParams(t *testing.T) {
 	defer encFile.Close()
 
 	fh := core.NewFileHandler()
-	header, _, err := fh.ReadHeaderWithMetadata(encFile)
+	header, _, _, err := fh.ReadHeaderWithMetadata(encFile)
 	if err != nil {
 		t.Fatalf("read header: %v", err)
 	}
-	if header.Version != core.Version2 {
-		t.Fatalf("expected header version 2, got %d", header.Version)
+	if header.Version != core.Version3 {
+		t.Fatalf("expected header version 3, got %d", header.Version)
 	}
 	if header.Memory != 32768 {
 		t.Fatalf("expected Memory=32768 in header, got %d", header.Memory)

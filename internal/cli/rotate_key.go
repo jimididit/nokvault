@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/jimididit/nokvault/internal/core"
 	"github.com/jimididit/nokvault/internal/crypto"
@@ -85,7 +86,7 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 
 	// Read header
 	fileHandler := core.NewFileHandler()
-	header, metadata, err := fileHandler.ReadHeaderWithMetadata(inputFile)
+	header, metadata, aad, err := fileHandler.ReadHeaderWithMetadata(inputFile)
 	if err != nil {
 		PrintError("Invalid nokvault file format")
 		return utils.NewError(utils.ErrInvalidFormat.Code, "Invalid nokvault file format", err)
@@ -100,7 +101,6 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 	}
 	defer utils.ZeroizeKey(oldKey)
 
-	// Read encrypted data
 	dataOffset, err := checkedDataOffset(header.DataOffset)
 	if err != nil {
 		return err
@@ -108,22 +108,35 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 	if _, err := inputFile.Seek(dataOffset, io.SeekStart); err != nil {
 		return fmt.Errorf("failed to seek encrypted data: %w", err)
 	}
-	ciphertext, err := io.ReadAll(inputFile)
+	plaintextFile, err := os.CreateTemp(filepath.Dir(inputPath), ".nokvault-rotate-*.tmp")
 	if err != nil {
-		return fmt.Errorf("failed to read encrypted data: %w", err)
+		return fmt.Errorf("failed to create rotation staging file: %w", err)
 	}
+	plaintextName := plaintextFile.Name()
+	defer func() {
+		_ = plaintextFile.Close()
+		_ = os.Remove(plaintextName)
+	}()
+
+	if err := encryptionService.DecryptVaultPayload(plaintextFile, inputFile, oldKey, header.Version, aad); err != nil {
+		PrintError("Decryption failed - incorrect old password")
+		return utils.NewError(utils.ErrDecryptionFailed.Code, "Decryption failed", err)
+	}
+
+	compressFlag := header.Compress
+	if header.Version < core.Version3 {
+		compressionService := core.NewCompressionService()
+		flag, err := compressionService.LegacyCompressFlag(plaintextFile)
+		if err != nil {
+			return fmt.Errorf("failed to inspect decrypted payload: %w", err)
+		}
+		compressFlag = flag
+	}
+
 	// Close before replace - Windows cannot rename over a file that is still open.
 	if err := inputFile.Close(); err != nil {
 		return fmt.Errorf("failed to close input file: %w", err)
 	}
-
-	// Decrypt with old key
-	plaintext, err := encryptionService.DecryptData(ciphertext, oldKey)
-	if err != nil {
-		PrintError("Decryption failed - incorrect old password")
-		return utils.NewError(utils.ErrDecryptionFailed.Code, "Decryption failed", err)
-	}
-	defer utils.ZeroizePassword(plaintext)
 
 	if rotateKeyVerbose {
 		PrintInfo("Successfully decrypted with old key")
@@ -147,20 +160,13 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 	}
 	defer utils.ZeroizeKey(newKey)
 
-	// Encrypt with new key
-	newCiphertext, err := encryptionService.EncryptData(plaintext, newKey)
-	if err != nil {
-		PrintError("Encryption with new key failed")
-		return err
-	}
-
 	// Create temporary output via atomic write helper
 	if err := utils.AtomicWriteFunc(inputPath, 0o600, func(outputFile *os.File) error {
-		if err := fileHandler.WriteHeader(outputFile, newSalt, metadata, keyManager.Params()); err != nil {
-			return fmt.Errorf("failed to write header: %w", err)
+		if _, err := plaintextFile.Seek(0, io.SeekStart); err != nil {
+			return fmt.Errorf("failed to rewind decrypted payload: %w", err)
 		}
-		if _, err := outputFile.Write(newCiphertext); err != nil {
-			return fmt.Errorf("failed to write encrypted data: %w", err)
+		if err := encryptionService.EncryptVault(outputFile, plaintextFile, newKey, newSalt, metadata, compressFlag); err != nil {
+			return fmt.Errorf("failed to encrypt rotated vault: %w", err)
 		}
 		return nil
 	}); err != nil {

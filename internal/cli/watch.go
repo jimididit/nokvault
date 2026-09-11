@@ -361,28 +361,17 @@ func encryptFileAuto(filePath string, encryptionService *core.EncryptionService,
 		return "", fmt.Errorf("failed to read metadata for %s: %w", filePath, err)
 	}
 
-	// Read file data
-	// #nosec G304 -- watch validates filePath and its components before this read.
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read file %s: %w", filePath, err)
-	}
-
-	// Encrypt data
-	ciphertext, err := encryptionService.EncryptData(data, key)
-	if err != nil {
-		return "", fmt.Errorf("encryption failed for %s: %w", filePath, err)
-	}
-
-	// Create output file
 	if err := utils.AtomicWriteFunc(outputPath, 0o600, func(outputFile *os.File) error {
-		if err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params()); err != nil {
-			return err
+		// #nosec G304 -- watch validates filePath and its components before this open.
+		inputFile, err := os.Open(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to open file %s: %w", filePath, err)
 		}
-		_, err := outputFile.Write(ciphertext)
-		return err
+		defer inputFile.Close()
+
+		return encryptionService.EncryptVault(outputFile, inputFile, key, salt, metadata, 0)
 	}); err != nil {
-		return "", fmt.Errorf("failed to write encrypted file %s: %w", outputPath, err)
+		return "", fmt.Errorf("failed to encrypt file %s to %s: %w", filePath, outputPath, err)
 	}
 
 	return outputPath, nil

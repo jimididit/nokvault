@@ -150,7 +150,7 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 
 	// Read header with metadata
 	fileHandler := core.NewFileHandler()
-	header, metadata, err := fileHandler.ReadHeaderWithMetadata(inputFile)
+	header, metadata, aad, err := fileHandler.ReadHeaderWithMetadata(inputFile)
 	if err != nil {
 		PrintError("Invalid nokvault file format")
 		return utils.NewError(utils.ErrInvalidFormat.Code, "Invalid nokvault file format", err)
@@ -166,11 +166,6 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 	}
 	defer utils.ZeroizeKey(key)
 
-	// Note: For single file operations, we read everything at once,
-	// so progress bars aren't very useful. We'll skip them for now
-	// to avoid deadlock issues. Progress bars work better for directory operations.
-
-	// Read encrypted data (skip header)
 	dataOffset, err := checkedDataOffset(header.DataOffset)
 	if err != nil {
 		return err
@@ -178,32 +173,6 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 	if _, err := inputFile.Seek(dataOffset, io.SeekStart); err != nil {
 		return fmt.Errorf("failed to seek encrypted data: %w", err)
 	}
-	ciphertext, err := io.ReadAll(inputFile)
-	if err != nil {
-		return fmt.Errorf("failed to read encrypted data: %w", err)
-	}
-
-	// Decrypt data
-	plaintext, err := encryptionService.DecryptData(ciphertext, key)
-	if err != nil {
-		return utils.NewErrorWithHint(utils.ErrDecryptionFailed.Code, "Decryption failed - incorrect password or corrupted file", err, "Verify your password is correct. If using a keyfile, ensure it hasn't changed.")
-	}
-
-	// Try to decompress if data appears to be compressed
-	compressionService := core.NewCompressionService()
-	if len(plaintext) >= 2 && plaintext[0] == 0x1f && plaintext[1] == 0x8b {
-		// Looks like gzip compressed data
-		decompressed, err := compressionService.Decompress(plaintext)
-		if err == nil {
-			if decryptVerbose {
-				PrintInfo(fmt.Sprintf("Decompressed: %d -> %d bytes", len(plaintext), len(decompressed)))
-			}
-			plaintext = decompressed
-		} else if decryptVerbose {
-			PrintInfo("Data appears compressed but decompression failed, using as-is")
-		}
-	}
-
 	// Ensure output directory exists (only if not root directory)
 	if outputDir := filepath.Dir(outputPath); outputDir != "." && outputDir != "" {
 		if err := os.MkdirAll(outputDir, 0700); err != nil {
@@ -216,13 +185,18 @@ func decryptFile(inputPath, outputPath string, password []byte, encryptionServic
 		return err
 	}
 
-	// Write decrypted data
-	atomicWrite := utils.AtomicWriteNoReplace
+	atomicWrite := utils.AtomicWriteFuncNoReplace
 	if decryptForce {
-		atomicWrite = utils.AtomicWrite
+		atomicWrite = utils.AtomicWriteFunc
 	}
-	if err := atomicWrite(outputPath, plaintext, 0o600); err != nil {
-		return fmt.Errorf("failed to write output file: %w", err)
+	compressionService := core.NewCompressionService()
+	if err := atomicWrite(outputPath, 0o600, func(outputFile *os.File) error {
+		if err := decryptVaultToOutput(outputFile, inputFile, key, header, aad, encryptionService, compressionService); err != nil {
+			return utils.NewErrorWithHint(utils.ErrDecryptionFailed.Code, "Decryption failed - incorrect password or corrupted file", err, "Verify your password is correct. If using a keyfile, ensure it hasn't changed.")
+		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	// Restore metadata if available
@@ -359,7 +333,7 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		}
 		defer inputFile.Close()
 
-		header, _, err := fileHandler.ReadHeaderWithMetadata(inputFile)
+		header, _, _, err := fileHandler.ReadHeaderWithMetadata(inputFile)
 		if err != nil {
 			return recordFailure(relPath, err)
 		}
@@ -444,7 +418,7 @@ func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionServi
 	defer inputFile.Close()
 
 	// Read header with metadata
-	header, metadata, err := fileHandler.ReadHeaderWithMetadata(inputFile)
+	header, metadata, aad, err := fileHandler.ReadHeaderWithMetadata(inputFile)
 	if err != nil {
 		return utils.NewError(utils.ErrInvalidFormat.Code, "Invalid nokvault file format", err)
 	}
@@ -457,27 +431,6 @@ func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionServi
 	if _, err := inputFile.Seek(dataOffset, io.SeekStart); err != nil {
 		return fmt.Errorf("failed to seek encrypted data: %w", err)
 	}
-	ciphertext, err := io.ReadAll(inputFile)
-	if err != nil {
-		return fmt.Errorf("failed to read encrypted data: %w", err)
-	}
-
-	// Decrypt data
-	plaintext, err := encryptionService.DecryptData(ciphertext, key)
-	if err != nil {
-		return utils.NewError(utils.ErrDecryptionFailed.Code, "Decryption failed", err)
-	}
-
-	// Try to decompress if data appears to be compressed
-	compressionService := core.NewCompressionService()
-	if len(plaintext) >= 2 && plaintext[0] == 0x1f && plaintext[1] == 0x8b {
-		// Looks like gzip compressed data
-		decompressed, err := compressionService.Decompress(plaintext)
-		if err == nil {
-			plaintext = decompressed
-		}
-	}
-
 	// Ensure output directory exists (only if not root directory)
 	if outputDir := filepath.Dir(outputPath); outputDir != "." && outputDir != "" {
 		if err := os.MkdirAll(outputDir, 0700); err != nil {
@@ -489,13 +442,18 @@ func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionServi
 		return err
 	}
 
-	// Write decrypted data
-	atomicWrite := utils.AtomicWriteNoReplace
+	atomicWrite := utils.AtomicWriteFuncNoReplace
 	if decryptForce {
-		atomicWrite = utils.AtomicWrite
+		atomicWrite = utils.AtomicWriteFunc
 	}
-	if err := atomicWrite(outputPath, plaintext, 0o600); err != nil {
-		return fmt.Errorf("failed to write output file: %w", err)
+	compressionService := core.NewCompressionService()
+	if err := atomicWrite(outputPath, 0o600, func(outputFile *os.File) error {
+		if err := decryptVaultToOutput(outputFile, inputFile, key, header, aad, encryptionService, compressionService); err != nil {
+			return utils.NewError(utils.ErrDecryptionFailed.Code, "Decryption failed", err)
+		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	// Restore metadata if available
@@ -505,6 +463,86 @@ func decryptSingleFile(inputPath, outputPath string, key []byte, encryptionServi
 		}
 	}
 
+	return nil
+}
+
+func decryptVaultToOutput(
+	outputFile *os.File,
+	payload io.Reader,
+	key []byte,
+	header *core.NokvaultHeader,
+	aad []byte,
+	encryptionService *core.EncryptionService,
+	compressionService *core.CompressionService,
+) error {
+	if header.Version == core.Version3 && header.Compress == 0 {
+		return encryptionService.DecryptVaultPayload(outputFile, payload, key, header.Version, aad)
+	}
+
+	intermediate, err := os.CreateTemp(filepath.Dir(outputFile.Name()), ".nokvault-plaintext-*.tmp")
+	if err != nil {
+		return fmt.Errorf("failed to create decryption staging file: %w", err)
+	}
+	intermediateName := intermediate.Name()
+	defer func() {
+		_ = intermediate.Close()
+		_ = os.Remove(intermediateName)
+	}()
+
+	if err := encryptionService.DecryptVaultPayload(intermediate, payload, key, header.Version, aad); err != nil {
+		return err
+	}
+	if _, err := intermediate.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("failed to rewind decrypted payload: %w", err)
+	}
+
+	if header.Version == core.Version3 {
+		gzipReader, err := compressionService.GzipReader(intermediate)
+		if err != nil {
+			return fmt.Errorf("failed to create decompressor: %w", err)
+		}
+		_, copyErr := io.Copy(outputFile, gzipReader)
+		closeErr := gzipReader.Close()
+		if copyErr != nil {
+			return fmt.Errorf("failed to decompress payload: %w", copyErr)
+		}
+		if closeErr != nil {
+			return fmt.Errorf("failed to close decompressor: %w", closeErr)
+		}
+		return nil
+	}
+
+	var magic [2]byte
+	n, readErr := io.ReadFull(intermediate, magic[:])
+	if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
+		return fmt.Errorf("failed to inspect legacy plaintext: %w", readErr)
+	}
+	if _, err := intermediate.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("failed to rewind legacy plaintext: %w", err)
+	}
+	if n == len(magic) && magic[0] == 0x1f && magic[1] == 0x8b {
+		gzipReader, gzipErr := compressionService.GzipReader(intermediate)
+		if gzipErr == nil {
+			_, copyErr := io.Copy(outputFile, gzipReader)
+			closeErr := gzipReader.Close()
+			if copyErr == nil && closeErr == nil {
+				return nil
+			}
+		}
+		if err := outputFile.Truncate(0); err != nil {
+			return fmt.Errorf("failed to reset output after legacy gzip fallback: %w", err)
+		}
+		if _, err := outputFile.Seek(0, io.SeekStart); err != nil {
+			return fmt.Errorf("failed to rewind output after legacy gzip fallback: %w", err)
+		}
+		if _, err := intermediate.Seek(0, io.SeekStart); err != nil {
+			return fmt.Errorf("failed to rewind legacy plaintext: %w", err)
+		}
+	}
+
+	if _, err := io.Copy(outputFile, intermediate); err != nil {
+		return fmt.Errorf("failed to write decrypted payload: %w", err)
+	}
 	return nil
 }
 

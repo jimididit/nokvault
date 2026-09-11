@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"os"
 )
 
 // CompressionService handles compression/decompression
@@ -64,4 +65,77 @@ func (cs *CompressionService) ShouldCompress(data []byte, minSize int) bool {
 	}
 
 	return true
+}
+
+// ShouldCompressFile determines if a file should be compressed based on size and gzip magic peek.
+func (cs *CompressionService) ShouldCompressFile(path string, minSize int) (bool, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false, fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	if info.Size() < int64(minSize) {
+		return false, nil
+	}
+
+		f, err := os.Open(path) // #nosec G304 -- caller supplies a validated path for a 2-byte magic peek
+	if err != nil {
+		return false, fmt.Errorf("failed to open file: %w", err)
+	}
+	defer f.Close()
+
+	header := make([]byte, 2)
+	n, err := f.Read(header)
+	if err != nil && err != io.EOF {
+		return false, fmt.Errorf("failed to peek file header: %w", err)
+	}
+
+	if n >= 2 && header[0] == 0x1f && header[1] == 0x8b {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// GzipWriter returns a streaming gzip writer for the given destination.
+func (cs *CompressionService) GzipWriter(w io.Writer) *gzip.Writer {
+	return gzip.NewWriter(w)
+}
+
+// GzipReader returns a streaming gzip reader for the given source.
+func (cs *CompressionService) GzipReader(r io.Reader) (*gzip.Reader, error) {
+	return gzip.NewReader(r)
+}
+
+// LegacyCompressFlag returns 1 when r begins with gzip magic and contains a complete valid gzip stream.
+// It mirrors legacy decrypt gzip sniffing: magic peek alone is insufficient.
+func (cs *CompressionService) LegacyCompressFlag(r io.ReadSeeker) (uint8, error) {
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return 0, fmt.Errorf("failed to rewind plaintext: %w", err)
+	}
+
+	var magic [2]byte
+	n, readErr := io.ReadFull(r, magic[:])
+	if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
+		return 0, fmt.Errorf("failed to inspect plaintext: %w", readErr)
+	}
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return 0, fmt.Errorf("failed to rewind plaintext: %w", err)
+	}
+
+	if n == len(magic) && magic[0] == 0x1f && magic[1] == 0x8b {
+		gzipReader, gzipErr := cs.GzipReader(r)
+		if gzipErr == nil {
+			_, copyErr := io.Copy(io.Discard, gzipReader)
+			closeErr := gzipReader.Close()
+			if copyErr == nil && closeErr == nil {
+				return 1, nil
+			}
+		}
+		if _, err := r.Seek(0, io.SeekStart); err != nil {
+			return 0, fmt.Errorf("failed to rewind plaintext: %w", err)
+		}
+	}
+
+	return 0, nil
 }

@@ -53,19 +53,8 @@ func TestEncryptDecryptFile(t *testing.T) {
 	defer os.Remove(encryptedPath)
 	defer encryptedFile.Close()
 
-	// Write header
-	if err := fileHandler.WriteHeader(encryptedFile, salt, metadata, keyManager.Params()); err != nil {
-		t.Fatalf("Failed to write header: %v", err)
-	}
-
-	// Encrypt data
-	ciphertext, err := encryptionService.EncryptData(testContent, key)
-	if err != nil {
-		t.Fatalf("Failed to encrypt data: %v", err)
-	}
-
-	if _, err := encryptedFile.Write(ciphertext); err != nil {
-		t.Fatalf("Failed to write ciphertext: %v", err)
+	if err := encryptionService.EncryptVault(encryptedFile, bytes.NewReader(testContent), key, salt, metadata, 0); err != nil {
+		t.Fatalf("Failed to encrypt vault: %v", err)
 	}
 	encryptedFile.Close()
 
@@ -77,7 +66,7 @@ func TestEncryptDecryptFile(t *testing.T) {
 	defer encryptedFile.Close()
 
 	// Read header
-	header, readMetadata, err := fileHandler.ReadHeaderWithMetadata(encryptedFile)
+	header, readMetadata, aad, err := fileHandler.ReadHeaderWithMetadata(encryptedFile)
 	if err != nil {
 		t.Fatalf("Failed to read header: %v", err)
 	}
@@ -97,18 +86,15 @@ func TestEncryptDecryptFile(t *testing.T) {
 	}
 
 	dataStart := int64(header.DataOffset)
-	ciphertext = encryptedData[dataStart:]
-
-	// Decrypt
-	plaintext, err := encryptionService.DecryptData(ciphertext, key)
-	if err != nil {
-		t.Fatalf("Failed to decrypt data: %v", err)
+	var plaintext bytes.Buffer
+	if err := encryptionService.DecryptVaultPayload(&plaintext, bytes.NewReader(encryptedData[dataStart:]), key, header.Version, aad); err != nil {
+		t.Fatalf("Failed to decrypt vault: %v", err)
 	}
 
 	// Verify content matches
-	if string(plaintext) != string(testContent) {
+	if plaintext.String() != string(testContent) {
 		t.Errorf("Decrypted content doesn't match. Expected %s, got %s",
-			string(testContent), string(plaintext))
+			string(testContent), plaintext.String())
 	}
 }
 

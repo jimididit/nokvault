@@ -12,13 +12,13 @@ A modern, feature-rich CLI tool for encrypting local files and folders. Built wi
 ## Features
 
 - **🔒 Strong Encryption**: AES-256-GCM authenticated encryption with Argon2id key derivation
-- **📋 Format v2**: KDF parameters stored in each vault header (v1 files still decrypt). Default extension is `.nokv` (legacy `.nokvault` still decrypts). Wire layout: [`docs/format-v2.md`](docs/format-v2.md)
+- **📋 Format v3**: New vaults use bounded-memory, age-style STREAM encryption with authenticated headers and metadata; v1/v2 files still decrypt. Default extension is `.nokv` (legacy `.nokvault` still decrypts). Wire layout: [`docs/format-v2.md`](docs/format-v2.md)
 - **📁 Directory Support**: Encrypt entire directories recursively with metadata preservation
 - **🔑 Flexible Authentication**: Interactive password, keyfile, or `NOKVAULT_PASSWORD` (CLI `--password` refused)
 - **⚡ Auto-Encryption**: Watch directories and automatically encrypt files on change
 - **🔄 Key Rotation**: Re-key files by decrypting and re-encrypting with a new password
 - **🗑️ Secure Deletion**: Overwrite files multiple times before deletion
-- **📦 Compression**: Optional compression before encryption
+- **📦 Compression**: Optional streaming gzip recorded by an authenticated v3 header flag
 - **⚙️ Configuration**: Global and per-project configuration files (`key_derivation` applies to new encryptions)
 - **🛡️ Crash-safe writes**: Encrypt/rotate use temp+fsync+rename; decrypt clamps modes to owner-only unless `--preserve-mode`
 - **🚫 Default-deny paths**: Symlinks, Windows junctions, and other reparse points are rejected on file-touching commands; directory outputs stay inside the selected root
@@ -197,7 +197,8 @@ nokvault encrypt ./files -v
 ## Security
 
 - **Encryption**: AES-256-GCM authenticated encryption
-- **Key Derivation**: Argon2id with configurable parameters (persisted in format v2 headers)
+- **Key Derivation**: Argon2id with configurable parameters (persisted in format v2/v3 headers)
+- **Streaming format**: New encryptions write format v3 with 64 KiB AES-GCM STREAM chunks and bind the exact header and metadata bytes as AAD
 - **Format spec**: On-disk header and AEAD framing are documented in [`docs/format-v2.md`](docs/format-v2.md)
 - **Memory Safety**: Sensitive data zeroized after use
 - **Atomic encrypt writes**: Temp file + fsync + rename

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -34,13 +35,15 @@ type NokvaultHeader struct {
 	Time         uint32
 	Parallelism  uint8
 	KeyLength    uint32
+	Compress     uint8
 }
 
 const (
 	NokvaultMagic   = "NOKVAULT"
 	Version1        = uint16(1)
 	Version2        = uint16(2)
-	CurrentVersion  = Version2
+	Version3        = uint16(3)
+	CurrentVersion  = Version3
 	maxMetadataSize = 1 << 20
 
 	MaxKDFMemory      uint32 = 256 * 1024
@@ -55,6 +58,8 @@ func HeaderWireSize(version uint16) int {
 		return 8 + 2 + 16 + 4 + 8 // 38
 	case Version2:
 		return HeaderWireSize(Version1) + 4 + 4 + 1 + 3 + 4 // +16 = 54
+	case Version3:
+		return HeaderWireSize(Version2) + 1 + 3 // +4 = 58
 	default:
 		return -1
 	}
@@ -152,13 +157,17 @@ func ClampPersistedMode(mode os.FileMode, isDir bool) os.FileMode {
 	return (mode &^ os.ModePerm) | perm
 }
 
-// WriteHeader writes a nokvault header to a file with optional metadata
-func (fh *FileHandler) WriteHeader(writer io.Writer, salt []byte, metadata *FileMetadata, params *crypto.Argon2Params) error {
+// WriteHeader writes a nokvault header with optional metadata and returns the
+// exact bytes written, suitable for use as v3 payload AAD.
+func (fh *FileHandler) WriteHeader(writer io.Writer, salt []byte, metadata *FileMetadata, params *crypto.Argon2Params, compress uint8) ([]byte, error) {
 	if err := ValidateKDFParams(params); err != nil {
-		return err
+		return nil, err
 	}
 	if len(salt) != 16 {
-		return fmt.Errorf("salt must be 16 bytes")
+		return nil, fmt.Errorf("salt must be 16 bytes")
+	}
+	if compress > 1 {
+		return nil, fmt.Errorf("invalid compress value: %d", compress)
 	}
 
 	var metadataJSON []byte
@@ -166,18 +175,18 @@ func (fh *FileHandler) WriteHeader(writer io.Writer, salt []byte, metadata *File
 		var err error
 		metadataJSON, err = json.Marshal(metadata)
 		if err != nil {
-			return fmt.Errorf("failed to serialize metadata: %w", err)
+			return nil, fmt.Errorf("failed to serialize metadata: %w", err)
 		}
 	}
 
 	if len(metadataJSON) > maxMetadataSize {
-		return fmt.Errorf("metadata exceeds maximum size of %d bytes", maxMetadataSize)
+		return nil, fmt.Errorf("metadata exceeds maximum size of %d bytes", maxMetadataSize)
 	}
 	// #nosec G115 -- the explicit MaxUint32 bound above makes this conversion safe.
 	metadataLength := uint32(len(metadataJSON))
 	headerSize := HeaderWireSize(CurrentVersion)
 	if headerSize < 0 {
-		return fmt.Errorf("unsupported header version: %d", CurrentVersion)
+		return nil, fmt.Errorf("unsupported header version: %d", CurrentVersion)
 	}
 	dataOffset := uint64(headerSize) + uint64(metadataLength)
 
@@ -186,45 +195,58 @@ func (fh *FileHandler) WriteHeader(writer io.Writer, salt []byte, metadata *File
 	var saltArr [16]byte
 	copy(saltArr[:], salt)
 
-	if err := binary.Write(writer, binary.LittleEndian, magic); err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
+	var wire bytes.Buffer
+	writeField := func(value any) error {
+		return binary.Write(&wire, binary.LittleEndian, value)
 	}
-	if err := binary.Write(writer, binary.LittleEndian, CurrentVersion); err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
+	if err := writeField(magic); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
 	}
-	if err := binary.Write(writer, binary.LittleEndian, saltArr); err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
+	if err := writeField(CurrentVersion); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
 	}
-	if err := binary.Write(writer, binary.LittleEndian, metadataLength); err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
+	if err := writeField(saltArr); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
 	}
-	if err := binary.Write(writer, binary.LittleEndian, dataOffset); err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
+	if err := writeField(metadataLength); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
 	}
-	// v2 KDF fields
-	if err := binary.Write(writer, binary.LittleEndian, params.Memory); err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
+	if err := writeField(dataOffset); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
 	}
-	if err := binary.Write(writer, binary.LittleEndian, params.Time); err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
+	if err := writeField(params.Memory); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
 	}
-	if err := binary.Write(writer, binary.LittleEndian, params.Parallelism); err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
+	if err := writeField(params.Time); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	if err := writeField(params.Parallelism); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
 	}
 	pad := [3]byte{}
-	if err := binary.Write(writer, binary.LittleEndian, pad); err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
+	if err := writeField(pad); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
 	}
-	if err := binary.Write(writer, binary.LittleEndian, params.KeyLength); err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
+	if err := writeField(params.KeyLength); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
 	}
+	if err := writeField(compress); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	if err := writeField(pad); err != nil {
+		return nil, fmt.Errorf("failed to build header: %w", err)
+	}
+	wire.Write(metadataJSON)
 
-	if len(metadataJSON) > 0 {
-		if _, err := writer.Write(metadataJSON); err != nil {
-			return fmt.Errorf("failed to write metadata: %w", err)
-		}
+	aad := append([]byte(nil), wire.Bytes()...)
+	n, err := writer.Write(aad)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write header and metadata: %w", err)
 	}
-	return nil
+	if n != len(aad) {
+		return nil, fmt.Errorf("failed to write header and metadata: %w", io.ErrShortWrite)
+	}
+	return aad, nil
 }
 
 // ReadHeader reads a nokvault header from a file
@@ -256,7 +278,7 @@ func (fh *FileHandler) ReadHeader(reader io.Reader) (*NokvaultHeader, error) {
 		h.Time = defs.Time
 		h.Parallelism = defs.Parallelism
 		h.KeyLength = defs.KeyLength
-	case Version2:
+	case Version2, Version3:
 		if err := binary.Read(reader, binary.LittleEndian, &h.Memory); err != nil {
 			return nil, fmt.Errorf("failed to read header: %w", err)
 		}
@@ -276,6 +298,18 @@ func (fh *FileHandler) ReadHeader(reader io.Reader) (*NokvaultHeader, error) {
 		if err := ValidateKDFParams(h.Argon2Params()); err != nil {
 			return nil, err
 		}
+		if h.Version == Version3 {
+			if err := binary.Read(reader, binary.LittleEndian, &h.Compress); err != nil {
+				return nil, fmt.Errorf("failed to read header: %w", err)
+			}
+			var v3Pad [3]byte
+			if err := binary.Read(reader, binary.LittleEndian, &v3Pad); err != nil {
+				return nil, fmt.Errorf("failed to read header: %w", err)
+			}
+			if h.Compress > 1 {
+				return nil, fmt.Errorf("invalid compress value: %d", h.Compress)
+			}
+		}
 	default:
 		return nil, fmt.Errorf("unsupported version: %d", h.Version)
 	}
@@ -294,11 +328,14 @@ func (fh *FileHandler) ReadHeader(reader io.Reader) (*NokvaultHeader, error) {
 	return h, nil
 }
 
-// ReadHeaderWithMetadata reads header and metadata from a file
-func (fh *FileHandler) ReadHeaderWithMetadata(reader io.Reader) (*NokvaultHeader, *FileMetadata, error) {
-	header, err := fh.ReadHeader(reader)
+// ReadHeaderWithMetadata reads header and metadata from a file. For v3 it also
+// returns the exact consumed header and metadata bytes used as payload AAD.
+// Legacy formats return nil AAD.
+func (fh *FileHandler) ReadHeaderWithMetadata(reader io.Reader) (*NokvaultHeader, *FileMetadata, []byte, error) {
+	var consumed bytes.Buffer
+	header, err := fh.ReadHeader(io.TeeReader(reader, &consumed))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Read metadata if present
@@ -306,16 +343,21 @@ func (fh *FileHandler) ReadHeaderWithMetadata(reader io.Reader) (*NokvaultHeader
 	if header.MetadataSize > 0 {
 		metadataJSON := make([]byte, header.MetadataSize)
 		if _, err := io.ReadFull(reader, metadataJSON); err != nil {
-			return nil, nil, fmt.Errorf("failed to read metadata: %w", err)
+			return nil, nil, nil, fmt.Errorf("failed to read metadata: %w", err)
 		}
+		consumed.Write(metadataJSON)
 
 		metadata = &FileMetadata{}
 		if err := json.Unmarshal(metadataJSON, metadata); err != nil {
-			return nil, nil, fmt.Errorf("failed to deserialize metadata: %w", err)
+			return nil, nil, nil, fmt.Errorf("failed to deserialize metadata: %w", err)
 		}
 	}
 
-	return header, metadata, nil
+	var aad []byte
+	if header.Version == Version3 {
+		aad = append([]byte(nil), consumed.Bytes()...)
+	}
+	return header, metadata, aad, nil
 }
 
 // EnsureDirectory ensures a directory exists
