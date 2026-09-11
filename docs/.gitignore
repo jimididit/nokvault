@@ -20,3 +20,15 @@ pnpm-debug.log*
 
 # IDE
 .astro/
+
+# Local design / plan scratch (mirrors root .gitignore; keep out of site repo)
+specs/
+plans/
+designs/
+brainstorms/
+*-design.md
+*-plan.md
+*-brainstorm.md
+*implementation-plan.md
+*-implementation-plan.md
+
