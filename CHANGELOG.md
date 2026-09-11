@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-11
+
 ### Added
 
 - Format v3 streaming AEAD (age-style STREAM) with constant-memory encrypt/decrypt
@@ -177,7 +179,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Package manager support (Homebrew, Scoop, APT) coming soon
 - Some edge cases may need additional testing
 
-[Unreleased]: https://github.com/jimididit/nokvault/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/jimididit/nokvault/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/jimididit/nokvault/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/jimididit/nokvault/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/jimididit/nokvault/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/jimididit/nokvault/compare/v0.2.0...v0.3.0
