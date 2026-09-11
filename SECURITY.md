@@ -67,7 +67,7 @@ We will coordinate with you on the disclosure timeline. Once a fix is available:
 
 Nokvault implements several security measures:
 
-- **Authenticated Encryption**: AES-256-GCM provides confidentiality and authenticity for the encrypted **payload** (header/metadata are not AEAD-bound; see Threat Model and [`docs/format-v2.md`](docs/format-v2.md))
+- **Authenticated Encryption**: AES-256-GCM provides confidentiality and authenticity for encrypted payloads; format v3 also authenticates the exact header and metadata bytes as AAD (legacy v1/v2 do not)
 - **Key Derivation**: Argon2id with configurable parameters prevents brute-force attacks
 - **Memory Safety**: Sensitive data is zeroized after use
 - **Timing Attack Protection**: Constant-time operations for key comparisons
@@ -115,8 +115,8 @@ NokVault does **not** claim to defeat attackers with full live memory access, co
 
 Claims that match current code:
 
-- AES-256-GCM confidentiality and authenticity of the **payload** ciphertext (nonce prepended; GCM tag verifies the sealed blob)
-- Argon2id key derivation; format v2 persists KDF parameters in the header; v1 files use built-in defaults
+- AES-256-GCM confidentiality and authenticity of payload ciphertext; v3 uses age-style 64 KiB STREAM chunks and binds the exact header plus metadata bytes as AAD
+- Argon2id key derivation; formats v2 and v3 persist KDF parameters in the header; v1 files use built-in defaults
 - CLI refuses `--password` / `-p`; keyfiles must not be group/world-readable and must not be symlinks
 - Encrypt and `rotate-key` use atomic writes (temp file, fsync, rename)
 - Decrypt restores modes clamped to owner-only unless `--preserve-mode`
@@ -135,7 +135,7 @@ NokVault does not provide or claim:
 - Race-proof protection against privileged concurrent path replacement between validation and open (TOCTOU)
 - Guaranteed erasure on SSD, flash, or TRIM-backed storage
 - Locked memory or immunity to hibernation / crash dumps (possible future work)
-- AEAD binding of the file header or optional metadata — **GCM additional data is empty today**
+- AEAD binding of the file header or optional metadata for legacy v1/v2 vaults; v3 provides this binding, but metadata remains visible in plaintext
 
 ## Residual Risks
 
@@ -150,17 +150,17 @@ Known limits and footguns. Reviewers should treat these as intentional honesty, 
 3. **Secure deletion on modern media**  
    Multi-pass overwrite before unlink is oriented toward traditional HDDs. On many SSDs and flash devices (TRIM, wear leveling), overwritten data may remain recoverable. Do not treat `secure-delete` as cryptographic erase.
 
-4. **Empty GCM AAD**  
-   Header fields (magic, version, salt, KDF parameters, offsets) are **not** bound into AES-GCM. An attacker who can modify the header without the key may change version/KDF interpretation; payload ciphertext still fails closed on tag mismatch. Details: [`docs/format-v2.md`](docs/format-v2.md) §8 and §12.
+4. **Empty GCM AAD in legacy v1/v2 vaults**
+   Legacy header fields and metadata are not bound into AES-GCM. New v3 vaults bind the exact 58-byte header and metadata bytes to every STREAM chunk. Existing v1/v2 files remain unchanged until re-encrypted or rotated. Details: [`docs/format-v2.md`](docs/format-v2.md) §9 and §14.
 
 5. **Unauthenticated plaintext metadata**  
-   Optional JSON metadata sits on disk immediately after the header and is not covered by AEAD. Treat metadata as public adjacent data.
+   Optional JSON metadata is always visible on disk. It is unauthenticated in v1/v2 and authenticated as AAD in v3; authentication does not provide metadata confidentiality.
 
-6. **Whole-file-in-RAM encrypt/decrypt**  
-   Current encrypt and decrypt paths load entire files into memory. Very large artifacts may be impractical until streaming AEAD lands.
+6. **Whole-file-in-RAM legacy decrypt**
+   New v3 vaults use bounded-memory STREAM encryption and decryption. Decrypting legacy v1/v2 payloads still buffers the whole encrypted payload in memory, so very large legacy vaults may be impractical until rewritten as v3.
 
-7. **Compression sniff after decrypt**  
-   There is no compress flag in the header. After successful decryption, the CLI may attempt gzip decompression if plaintext begins with magic `1f 8b`. Legitimate plaintext that starts with those bytes can be mis-handled.
+7. **Legacy compression sniff after decrypt**
+   V1/v2 have no compress flag, so the CLI may attempt gzip decompression when decrypted plaintext begins with magic `1f 8b`; legitimate plaintext starting with those bytes can be mis-handled. V3 stores an explicit authenticated `Compress` flag.
 
 8. **Path policy timing**  
    Symlink/junction checks and output containment run before prompts and mutation, but validation-then-open is not race-proof against a privileged concurrent replacement of a path component.

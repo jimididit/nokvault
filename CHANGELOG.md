@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Format v3 streaming AEAD (age-style STREAM) with constant-memory encrypt/decrypt
+- Explicit compress flag in v3 headers; exact header and metadata bytes are bound as GCM AAD
+
+### Changed
+
+- New encryptions write format v3; v1/v2 vaults remain decryptable
+
 ## [0.4.1] - 2026-09-10
 
 ### Changed
