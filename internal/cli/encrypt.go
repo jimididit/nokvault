@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -148,20 +149,13 @@ func runEncrypt(cmd *cobra.Command, args []string) error {
 func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, encryptionService *core.EncryptionService, compress bool) (result EncryptResult, err error) {
 	result = EncryptResult{
 		Input: inputPath, Output: outputPath, TargetKind: "file",
-		Processed: 1, Compression: compress, Force: encryptForce,
+		Processed: 1, Force: encryptForce,
 	}
 	defer func() {
 		if err != nil {
 			result.Failed = 1
 		}
 	}()
-	if encryptVerbose {
-		PrintInfo(fmt.Sprintf("Encrypting file: %s", inputPath))
-		if compress {
-			PrintInfo("Compression enabled")
-		}
-	}
-
 	// Read file metadata
 	fileHandler := core.NewFileHandler()
 	metadata, err := fileHandler.ReadMetadata(inputPath)
@@ -169,41 +163,24 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 		return result, fmt.Errorf("failed to read metadata: %w", err)
 	}
 
-	// Read file data
-	// #nosec G304 -- runEncrypt validates the user-selected input path before this read.
-	data, err := os.ReadFile(inputPath)
-	if err != nil {
-		return result, fmt.Errorf("failed to read file: %w", err)
-	}
-
-	// Compress if enabled
+	compressFlag := uint8(0)
+	compressionService := core.NewCompressionService()
 	if compress {
-		compressionService := core.NewCompressionService()
-		if compressionService.ShouldCompress(data, 1024) { // Compress if > 1KB
-			compressed, err := compressionService.Compress(data)
-			if err != nil {
-				return result, fmt.Errorf("compression failed: %w", err)
-			}
-			if encryptVerbose {
-				PrintInfo(fmt.Sprintf("Compressed: %d -> %d bytes (%.1f%%)", len(data), len(compressed), float64(len(compressed))/float64(len(data))*100))
-			}
-			data = compressed
+		shouldCompress, err := compressionService.ShouldCompressFile(inputPath, 1024)
+		if err != nil {
+			return result, fmt.Errorf("failed to inspect input for compression: %w", err)
+		}
+		if shouldCompress {
+			compressFlag = 1
 		}
 	}
+	result.Compression = compressFlag == 1
 
-	// Note: For single file operations, we process everything at once,
-	// so progress bars aren't very useful. We'll skip them for now.
-	// Progress bars work better for directory operations.
-	// Show progress for large files (disabled - not useful for single file ops)
-	// var progressBar *utils.ProgressBar
-	// if originalSize > 1024*1024 {
-	// 	progressBar = utils.NewProgressBar(originalSize, "Encrypting")
-	// }
-
-	// Encrypt data
-	ciphertext, err := encryptionService.EncryptData(data, key)
-	if err != nil {
-		return result, utils.NewError(utils.ErrEncryptionFailed.Code, "Encryption failed", err)
+	if encryptVerbose {
+		PrintInfo(fmt.Sprintf("Encrypting file: %s", inputPath))
+		if compressFlag == 1 {
+			PrintInfo("Compression enabled")
+		}
 	}
 
 	// Ensure output directory exists (only if not root directory)
@@ -223,11 +200,21 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 		atomicWrite = utils.AtomicWriteFunc
 	}
 	err = atomicWrite(outputPath, 0o600, func(outputFile *os.File) error {
-		if _, err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params(), 0); err != nil {
-			return fmt.Errorf("failed to write header: %w", err)
+		// #nosec G304 -- runEncrypt validates the user-selected input path before this open.
+		inputFile, err := os.Open(inputPath)
+		if err != nil {
+			return fmt.Errorf("failed to open input file: %w", err)
 		}
-		if _, err := outputFile.Write(ciphertext); err != nil {
-			return fmt.Errorf("failed to write encrypted data: %w", err)
+		defer inputFile.Close()
+
+		if compressFlag == 0 {
+			if err := encryptionService.EncryptVault(outputFile, inputFile, key, salt, metadata, 0); err != nil {
+				return utils.NewError(utils.ErrEncryptionFailed.Code, "Encryption failed", err)
+			}
+			return nil
+		}
+		if err := encryptVaultWithGzip(outputFile, inputFile, key, salt, metadata, encryptionService, compressionService); err != nil {
+			return utils.NewError(utils.ErrEncryptionFailed.Code, "Encryption failed", err)
 		}
 		return nil
 	})
@@ -237,6 +224,39 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 
 	result.Succeeded = 1
 	return result, nil
+}
+
+func encryptVaultWithGzip(
+	output io.Writer,
+	plaintext io.Reader,
+	key, salt []byte,
+	metadata *core.FileMetadata,
+	encryptionService *core.EncryptionService,
+	compressionService *core.CompressionService,
+) error {
+	compressedReader, compressedWriter := io.Pipe()
+	compressDone := make(chan error, 1)
+	go func() {
+		gzipWriter := compressionService.GzipWriter(compressedWriter)
+		_, copyErr := io.Copy(gzipWriter, plaintext)
+		closeErr := gzipWriter.Close()
+		if copyErr == nil {
+			copyErr = closeErr
+		}
+		_ = compressedWriter.CloseWithError(copyErr)
+		compressDone <- copyErr
+	}()
+
+	encryptErr := encryptionService.EncryptVault(output, compressedReader, key, salt, metadata, 1)
+	_ = compressedReader.CloseWithError(encryptErr)
+	compressErr := <-compressDone
+	if encryptErr != nil {
+		return encryptErr
+	}
+	if compressErr != nil {
+		return fmt.Errorf("compression failed: %w", compressErr)
+	}
+	return nil
 }
 
 func shouldCompress() bool {

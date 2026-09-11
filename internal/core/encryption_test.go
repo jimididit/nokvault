@@ -31,13 +31,13 @@ func TestEncryptVault_RoundTrip_V3(t *testing.T) {
 	))
 
 	fh := NewFileHandler()
-	header, gotMetadata, err := fh.ReadHeaderWithMetadata(bytes.NewReader(vault.Bytes()))
+	header, gotMetadata, aad, err := fh.ReadHeaderWithMetadata(bytes.NewReader(vault.Bytes()))
 	require.NoError(t, err)
 	require.Equal(t, Version3, header.Version)
 	require.Equal(t, uint8(1), header.Compress)
 	require.Equal(t, metadata, gotMetadata)
 
-	aad := vault.Bytes()[:header.DataOffset]
+	require.Equal(t, vault.Bytes()[:header.DataOffset], aad)
 	payload := bytes.NewReader(vault.Bytes()[header.DataOffset:])
 	var out bytes.Buffer
 	require.NoError(t, es.DecryptVaultPayload(

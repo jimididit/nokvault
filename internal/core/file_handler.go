@@ -328,11 +328,14 @@ func (fh *FileHandler) ReadHeader(reader io.Reader) (*NokvaultHeader, error) {
 	return h, nil
 }
 
-// ReadHeaderWithMetadata reads header and metadata from a file
-func (fh *FileHandler) ReadHeaderWithMetadata(reader io.Reader) (*NokvaultHeader, *FileMetadata, error) {
-	header, err := fh.ReadHeader(reader)
+// ReadHeaderWithMetadata reads header and metadata from a file. For v3 it also
+// returns the exact consumed header and metadata bytes used as payload AAD.
+// Legacy formats return nil AAD.
+func (fh *FileHandler) ReadHeaderWithMetadata(reader io.Reader) (*NokvaultHeader, *FileMetadata, []byte, error) {
+	var consumed bytes.Buffer
+	header, err := fh.ReadHeader(io.TeeReader(reader, &consumed))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Read metadata if present
@@ -340,16 +343,21 @@ func (fh *FileHandler) ReadHeaderWithMetadata(reader io.Reader) (*NokvaultHeader
 	if header.MetadataSize > 0 {
 		metadataJSON := make([]byte, header.MetadataSize)
 		if _, err := io.ReadFull(reader, metadataJSON); err != nil {
-			return nil, nil, fmt.Errorf("failed to read metadata: %w", err)
+			return nil, nil, nil, fmt.Errorf("failed to read metadata: %w", err)
 		}
+		consumed.Write(metadataJSON)
 
 		metadata = &FileMetadata{}
 		if err := json.Unmarshal(metadataJSON, metadata); err != nil {
-			return nil, nil, fmt.Errorf("failed to deserialize metadata: %w", err)
+			return nil, nil, nil, fmt.Errorf("failed to deserialize metadata: %w", err)
 		}
 	}
 
-	return header, metadata, nil
+	var aad []byte
+	if header.Version == Version3 {
+		aad = append([]byte(nil), consumed.Bytes()...)
+	}
+	return header, metadata, aad, nil
 }
 
 // EnsureDirectory ensures a directory exists

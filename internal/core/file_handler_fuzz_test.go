@@ -38,7 +38,7 @@ func FuzzReadHeaderWithMetadata(f *testing.F) {
 			t.Skip()
 		}
 
-		header, metadata, err := NewFileHandler().ReadHeaderWithMetadata(bytes.NewReader(data))
+		header, metadata, _, err := NewFileHandler().ReadHeaderWithMetadata(bytes.NewReader(data))
 		if err != nil {
 			return
 		}
@@ -97,7 +97,7 @@ func FuzzEncryptedContainer(f *testing.F) {
 			t.Skip()
 		}
 
-		header, _, err := NewFileHandler().ReadHeaderWithMetadata(bytes.NewReader(data))
+		header, _, _, err := NewFileHandler().ReadHeaderWithMetadata(bytes.NewReader(data))
 		if err != nil {
 			return
 		}

@@ -149,8 +149,9 @@ func TestFileHandler_WriteHeader(t *testing.T) {
 	assert.Len(t, aad, HeaderWireSize(Version3)+len(metadataJSON))
 
 	// Verify header can be read back
-	header, readMetadata, err := fh.ReadHeaderWithMetadata(&buf)
+	header, readMetadata, readAAD, err := fh.ReadHeaderWithMetadata(&buf)
 	require.NoError(t, err, "Failed to read header")
+	assert.Equal(t, aad, readAAD)
 
 	assert.Equal(t, NokvaultMagic, string(header.Magic[:]), "Magic should match")
 	assert.Equal(t, Version3, header.Version, "Version should match")
@@ -176,8 +177,9 @@ func TestFileHandler_WriteHeader_NoMetadata(t *testing.T) {
 	assert.Equal(t, buf.Bytes(), aad)
 
 	// Verify header can be read back
-	header, metadata, err := fh.ReadHeaderWithMetadata(&buf)
+	header, metadata, readAAD, err := fh.ReadHeaderWithMetadata(&buf)
 	require.NoError(t, err, "Failed to read header")
+	assert.Equal(t, aad, readAAD)
 
 	assert.Equal(t, NokvaultMagic, string(header.Magic[:]), "Magic should match")
 	assert.Nil(t, metadata, "Expected no metadata when none was written")
@@ -213,7 +215,7 @@ func TestFileHandler_ReadHeader_RejectsOversizedMetadataBeforeAllocation(t *test
 	binary.LittleEndian.PutUint32(raw[26:30], maxMetadataSize+1)
 	binary.LittleEndian.PutUint64(raw[30:38], uint64(HeaderWireSize(Version3))+maxMetadataSize+1)
 
-	_, _, err = fh.ReadHeaderWithMetadata(bytes.NewReader(raw))
+	_, _, _, err = fh.ReadHeaderWithMetadata(bytes.NewReader(raw))
 	require.ErrorContains(t, err, "metadata size")
 }
 
@@ -231,7 +233,7 @@ func TestFileHandler_ReadHeader_RejectsInconsistentDataOffset(t *testing.T) {
 			raw := append([]byte(nil), buf.Bytes()...)
 			binary.LittleEndian.PutUint64(raw[30:38], offset)
 
-			_, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(raw))
+			_, _, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(raw))
 			require.ErrorContains(t, err, "invalid data offset")
 		})
 	}
@@ -271,13 +273,13 @@ func TestFileHandler_ReadHeader_RejectsEveryTruncatedPrefix(t *testing.T) {
 	for name, valid := range fixtures {
 		t.Run(name, func(t *testing.T) {
 			for length := 0; length < len(valid); length++ {
-				_, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(valid[:length]))
+				_, _, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(valid[:length]))
 				if err == nil {
 					t.Fatalf("prefix length %d of %d unexpectedly parsed", length, len(valid))
 				}
 			}
 
-			_, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(valid))
+			_, _, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(valid))
 			require.NoError(t, err)
 		})
 	}
@@ -347,7 +349,7 @@ func TestFileHandler_ReadHeader_RejectsMalformedFields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(tt.data))
+			_, _, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(tt.data))
 			require.Error(t, err)
 		})
 	}
@@ -622,7 +624,7 @@ func TestFileHandler_WriteHeader_V3IncludesKDFParams(t *testing.T) {
 	_, err := fh.WriteHeader(&buf, salt, nil, params, 1)
 	require.NoError(t, err)
 
-	header, meta, err := fh.ReadHeaderWithMetadata(&buf)
+	header, meta, _, err := fh.ReadHeaderWithMetadata(&buf)
 	require.NoError(t, err)
 	assert.Nil(t, meta)
 	assert.Equal(t, Version3, header.Version)
@@ -764,9 +766,10 @@ func TestFileHandler_V1DecryptRoundTrip(t *testing.T) {
 	fileBuf.Write(ciphertext)
 
 	fh := NewFileHandler()
-	header, _, err := fh.ReadHeaderWithMetadata(bytes.NewReader(fileBuf.Bytes()))
+	header, _, aad, err := fh.ReadHeaderWithMetadata(bytes.NewReader(fileBuf.Bytes()))
 	require.NoError(t, err)
 	assert.Equal(t, uint16(1), header.Version)
+	assert.Nil(t, aad)
 
 	km2 := NewKeyManager()
 	km2.SetArgon2Params(header.Argon2Params())

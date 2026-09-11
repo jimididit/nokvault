@@ -2,7 +2,7 @@ package core
 
 import (
 	"fmt"
-	"math"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -127,45 +127,62 @@ func (de *DirectoryEncryptor) encryptFileWithMetadata(inputPath, outputPath stri
 	// Set relative path
 	metadata.RelativePath = filepath.Base(inputPath)
 
-	// Read file data
-	// #nosec G304 -- directory walking and output preflight validate this caller-selected path.
-	data, err := os.ReadFile(inputPath)
-	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
-	}
-
-	// Compress if enabled
-	if de.compress && de.compressionService.ShouldCompress(data, 1024) {
-		compressed, err := de.compressionService.Compress(data)
+	compressFlag := uint8(0)
+	if de.compress {
+		shouldCompress, err := de.compressionService.ShouldCompressFile(inputPath, 1024)
 		if err != nil {
-			return fmt.Errorf("compression failed: %w", err)
+			return err
 		}
-		data = compressed
+		if shouldCompress {
+			compressFlag = 1
+		}
 	}
 
-	// Encrypt data
-	ciphertext, err := de.encryptionService.EncryptData(data, key)
-	if err != nil {
-		return fmt.Errorf("encryption failed: %w", err)
-	}
-
-	// Create output file
 	atomicWrite := utils.AtomicWriteFuncNoReplace
 	if de.overwrite {
 		atomicWrite = utils.AtomicWriteFunc
 	}
 	if err := atomicWrite(outputPath, 0o600, func(outputFile *os.File) error {
-		if _, err := de.fileHandler.WriteHeader(outputFile, salt, metadata, de.encryptionService.GetKeyManager().Params(), 0); err != nil {
-			return fmt.Errorf("failed to write header: %w", err)
+		// #nosec G304 -- directory walking validates this caller-selected path.
+		inputFile, err := os.Open(inputPath)
+		if err != nil {
+			return fmt.Errorf("failed to open input file: %w", err)
 		}
-		if _, err := outputFile.Write(ciphertext); err != nil {
-			return fmt.Errorf("failed to write encrypted data: %w", err)
+		defer inputFile.Close()
+		if compressFlag == 0 {
+			return de.encryptionService.EncryptVault(outputFile, inputFile, key, salt, metadata, 0)
 		}
-		return nil
+		return encryptVaultGzip(outputFile, inputFile, key, salt, metadata, de.encryptionService, de.compressionService)
 	}); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func encryptVaultGzip(output io.Writer, plaintext io.Reader, key, salt []byte, metadata *FileMetadata, es *EncryptionService, cs *CompressionService) error {
+	compressedReader, compressedWriter := io.Pipe()
+	done := make(chan error, 1)
+	go func() {
+		gzipWriter := cs.GzipWriter(compressedWriter)
+		_, copyErr := io.Copy(gzipWriter, plaintext)
+		closeErr := gzipWriter.Close()
+		if copyErr == nil {
+			copyErr = closeErr
+		}
+		_ = compressedWriter.CloseWithError(copyErr)
+		done <- copyErr
+	}()
+
+	encryptErr := es.EncryptVault(output, compressedReader, key, salt, metadata, 1)
+	_ = compressedReader.CloseWithError(encryptErr)
+	compressErr := <-done
+	if encryptErr != nil {
+		return encryptErr
+	}
+	if compressErr != nil {
+		return fmt.Errorf("compression failed: %w", compressErr)
+	}
 	return nil
 }
 
@@ -278,7 +295,7 @@ func (dd *DirectoryDecryptor) decryptFileWithMetadata(inputPath, outputPath stri
 	defer inputFile.Close()
 
 	// Read header with metadata
-	header, metadata, err := dd.fileHandler.ReadHeaderWithMetadata(inputFile)
+	header, metadata, aad, err := dd.fileHandler.ReadHeaderWithMetadata(inputFile)
 	if err != nil {
 		return fmt.Errorf("failed to read header: %w", err)
 	}
@@ -292,40 +309,10 @@ func (dd *DirectoryDecryptor) decryptFileWithMetadata(inputPath, outputPath stri
 	}
 	defer utils.ZeroizeKey(key)
 
-	// Read encrypted data
-	// #nosec G304 -- directory walking and output preflight validate this caller-selected path.
-	ciphertext, err := os.ReadFile(inputPath)
-	if err != nil {
-		return fmt.Errorf("failed to read encrypted data: %w", err)
-	}
-
-	// Skip header and metadata
-	if header.DataOffset > math.MaxInt {
-		return fmt.Errorf("encrypted data offset %d exceeds platform limit", header.DataOffset)
-	}
-	dataStart := int(header.DataOffset)
-	if dataStart > len(ciphertext) {
-		return fmt.Errorf("encrypted data offset %d exceeds file size %d", header.DataOffset, len(ciphertext))
-	}
-	ciphertext = ciphertext[dataStart:]
-
-	// Decrypt data
-	plaintext, err := dd.encryptionService.DecryptData(ciphertext, key)
-	if err != nil {
-		return fmt.Errorf("decryption failed: %w", err)
-	}
-
-	// Try to decompress if data appears to be compressed
-	if len(plaintext) >= 2 && plaintext[0] == 0x1f && plaintext[1] == 0x8b {
-		decompressed, err := dd.compressionService.Decompress(plaintext)
-		if err == nil {
-			plaintext = decompressed
-		}
-	}
-
-	// Write decrypted data
-	if err := utils.AtomicWrite(outputPath, plaintext, 0o600); err != nil {
-		return fmt.Errorf("failed to write output file: %w", err)
+	if err := utils.AtomicWriteFunc(outputPath, 0o600, func(outputFile *os.File) error {
+		return decryptVaultPayloadToFile(outputFile, inputFile, key, header, aad, dd.encryptionService, dd.compressionService)
+	}); err != nil {
+		return fmt.Errorf("failed to decrypt output file: %w", err)
 	}
 
 	// Restore metadata if available
@@ -339,4 +326,69 @@ func (dd *DirectoryDecryptor) decryptFileWithMetadata(inputPath, outputPath stri
 	}
 
 	return nil
+}
+
+func decryptVaultPayloadToFile(outputFile *os.File, payload io.Reader, key []byte, header *NokvaultHeader, aad []byte, es *EncryptionService, cs *CompressionService) error {
+	if header.Version == Version3 && header.Compress == 0 {
+		return es.DecryptVaultPayload(outputFile, payload, key, header.Version, aad)
+	}
+
+	staging, err := os.CreateTemp(filepath.Dir(outputFile.Name()), ".nokvault-plaintext-*.tmp")
+	if err != nil {
+		return err
+	}
+	stagingName := staging.Name()
+	defer func() {
+		_ = staging.Close()
+		_ = os.Remove(stagingName)
+	}()
+	if err := es.DecryptVaultPayload(staging, payload, key, header.Version, aad); err != nil {
+		return err
+	}
+	if _, err := staging.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+
+	if header.Version == Version3 {
+		gzipReader, err := cs.GzipReader(staging)
+		if err != nil {
+			return err
+		}
+		_, copyErr := io.Copy(outputFile, gzipReader)
+		closeErr := gzipReader.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+		return closeErr
+	}
+
+	var magic [2]byte
+	n, readErr := io.ReadFull(staging, magic[:])
+	if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
+		return readErr
+	}
+	if _, err := staging.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+	if n == 2 && magic[0] == 0x1f && magic[1] == 0x8b {
+		gzipReader, gzipErr := cs.GzipReader(staging)
+		if gzipErr == nil {
+			_, copyErr := io.Copy(outputFile, gzipReader)
+			closeErr := gzipReader.Close()
+			if copyErr == nil && closeErr == nil {
+				return nil
+			}
+		}
+		if err := outputFile.Truncate(0); err != nil {
+			return err
+		}
+		if _, err := outputFile.Seek(0, io.SeekStart); err != nil {
+			return err
+		}
+		if _, err := staging.Seek(0, io.SeekStart); err != nil {
+			return err
+		}
+	}
+	_, err = io.Copy(outputFile, staging)
+	return err
 }
