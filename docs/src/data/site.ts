@@ -1,6 +1,6 @@
 export const SITE = {
   name: 'NokVault',
-  version: '0.4.0',
+  version: '0.4.1',
   description: 'Local-first encryption for files, folders, and repeatable workflows.',
   url: 'https://nokvault.xyz',
   repository: 'https://github.com/jimididit/nokvault',
@@ -44,8 +44,8 @@ export const DOCS_NAV = ['Start', 'Core Operations', 'Automation', 'Security', '
 export const INSTALL_OPTIONS = [
   { id: 'homebrew', label: 'Homebrew', command: 'brew install jimididit/nokvault/nokvault' },
   { id: 'scoop', label: 'Scoop', command: 'scoop install https://raw.githubusercontent.com/jimididit/nokvault/main/scoop/nokvault.json' },
-  { id: 'release', label: 'Release binary', command: 'gh release download v0.4.0 --repo jimididit/nokvault' },
-  { id: 'source', label: 'Source', command: 'go install github.com/jimididit/nokvault/cmd/nokvault@v0.4.0' },
+  { id: 'release', label: 'Release binary', command: 'gh release download v0.4.1 --repo jimididit/nokvault' },
+  { id: 'source', label: 'Source', command: 'go install github.com/jimididit/nokvault/cmd/nokvault@v0.4.1' },
 ] as const;
 
 export function normalizePath(pathname: string) {
