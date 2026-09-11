@@ -94,14 +94,27 @@ desktop.ini
 # *.nokvault
 
 # Internal / planning docs (local only — do not force-add)
+# Published product docs stay tracked (e.g. docs/format-v2.md, Astro pages).
+# Escape hatch if you truly need one of these in git: git add -f <path>
 HELP_DOCS/
 ROADMAP.md
 AUDIT_REPORT.md
 .superpowers/
 docs/superpowers/
-docs/specs/
-docs/plans/
 .worktrees/
+
+# Design / plan scratch trees (any depth)
+specs/
+plans/
+designs/
+brainstorms/
+
+# Common design/plan filenames (writing-plans, brainstorming, etc.)
+*-design.md
+*-plan.md
+*-brainstorm.md
+*implementation-plan.md
+*-implementation-plan.md
 
 # Config files with sensitive data (if any)
 # config.local.toml
