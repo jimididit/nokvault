@@ -118,7 +118,7 @@ for file in *.txt; do
   nokvault encrypt "$file" --keyfile ~/.keys/master.key --no-prompt
 done
 
-# Decrypt all .nokvault files
+# Decrypt all .nokv files
 for file in *.nokv; do
   nokvault decrypt "$file" --keyfile ~/.keys/master.key --no-prompt
 done`}
