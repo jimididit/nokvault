@@ -136,7 +136,7 @@ jobs:
 
       - name: Verify package
         run: |
-          nokvault --version | grep 'v0.4.0'
+          nokvault --version | grep 'v0.4.1'
           brew test jimididit/nokvault/nokvault
 
   package-scoop:
