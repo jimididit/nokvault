@@ -361,17 +361,6 @@ func encryptFileAuto(filePath string, encryptionService *core.EncryptionService,
 		return "", fmt.Errorf("failed to read metadata for %s: %w", filePath, err)
 	}
 
-	compressionService := core.NewCompressionService()
-	shouldCompress, err := compressionService.ShouldCompressFile(filePath, 1024)
-	if err != nil {
-		return "", fmt.Errorf("failed to inspect file %s for compression: %w", filePath, err)
-	}
-
-	compressFlag := uint8(0)
-	if shouldCompress {
-		compressFlag = 1
-	}
-
 	if err := utils.AtomicWriteFunc(outputPath, 0o600, func(outputFile *os.File) error {
 		// #nosec G304 -- watch validates filePath and its components before this open.
 		inputFile, err := os.Open(filePath)
@@ -380,12 +369,7 @@ func encryptFileAuto(filePath string, encryptionService *core.EncryptionService,
 		}
 		defer inputFile.Close()
 
-		if compressFlag == 0 {
-			return encryptionService.EncryptVault(outputFile, inputFile, key, salt, metadata, 0)
-		}
-		return encryptVaultWithGzip(
-			outputFile, inputFile, key, salt, metadata, encryptionService, compressionService,
-		)
+		return encryptionService.EncryptVault(outputFile, inputFile, key, salt, metadata, 0)
 	}); err != nil {
 		return "", fmt.Errorf("failed to encrypt file %s to %s: %w", filePath, outputPath, err)
 	}
