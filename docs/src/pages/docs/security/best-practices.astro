@@ -56,7 +56,7 @@ chmod 600 ~/.keys/master.key
 nokvault encrypt file.txt --keyfile ~/.keys/master.key
 
 # Re-key after compromise or access change
-nokvault rotate-key file.nokvault \\
+nokvault rotate-key file.nokv \\
   --old-keyfile ~/.keys/old.key \\
   --new-keyfile ~/.keys/new.key`}
       lang="bash"

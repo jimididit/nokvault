@@ -60,7 +60,7 @@ func TestDirectoryEncryptor_EncryptDirectory(t *testing.T) {
 
 	// Verify encrypted files exist
 	for relPath := range files {
-		encryptedPath := filepath.Join(outputDir, relPath+".nokvault")
+		encryptedPath := filepath.Join(outputDir, relPath+".nokv")
 		_, err := os.Stat(encryptedPath)
 		assert.NoError(t, err, "Encrypted file should exist: %s", encryptedPath)
 	}

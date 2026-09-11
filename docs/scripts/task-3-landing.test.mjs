@@ -54,7 +54,7 @@ test('landing hero uses approved Cipher Editorial copy and actions', async () =>
   assert.match(html, /href="[^"]*docs\/"[^>]*>\s*Read the docs\s*</);
   assert.match(html, /PS&gt; nokvault encrypt \.\\archive/);
   assert.match(html, /✓ Encryption completed successfully|&#10003; Encryption completed successfully/);
-  assert.match(html, /PS&gt; nokvault decrypt \.\\archive\.nokvault/);
+  assert.match(html, /PS&gt; nokvault decrypt \.\\\\archive.nokv/);
   assert.match(html, /✓ Decryption completed successfully|&#10003; Decryption completed successfully/);
   assert.doesNotMatch(html, /files encrypted|file counts|N files/i);
 });

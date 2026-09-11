@@ -12,7 +12,7 @@ A modern, feature-rich CLI tool for encrypting local files and folders. Built wi
 ## Features
 
 - **🔒 Strong Encryption**: AES-256-GCM authenticated encryption with Argon2id key derivation
-- **📋 Format v2**: KDF parameters stored in each `.nokvault` header (v1 files still decrypt). Wire layout: [`docs/format-v2.md`](docs/format-v2.md)
+- **📋 Format v2**: KDF parameters stored in each vault header (v1 files still decrypt). Default extension is `.nokv` (legacy `.nokvault` still decrypts). Wire layout: [`docs/format-v2.md`](docs/format-v2.md)
 - **📁 Directory Support**: Encrypt entire directories recursively with metadata preservation
 - **🔑 Flexible Authentication**: Interactive password, keyfile, or `NOKVAULT_PASSWORD` (CLI `--password` refused)
 - **⚡ Auto-Encryption**: Watch directories and automatically encrypt files on change
@@ -80,7 +80,7 @@ attested binary for their architecture from GitHub Releases.
 nokvault encrypt document.txt
 
 # Decrypt a file
-nokvault decrypt document.txt.nokvault
+nokvault decrypt document.txt.nokv
 
 # Encrypt a directory
 nokvault encrypt ./documents
@@ -95,7 +95,7 @@ nokvault watch ./documents --auto-encrypt --keyfile ~/.keys/master.key
 nokvault schedule encrypt ./backups --interval 1h
 
 # Rotate encryption key
-nokvault rotate-key file.nokvault
+nokvault rotate-key file.nokv
 
 # Securely delete a file (non-interactive needs --yes)
 nokvault secure-delete sensitive-file.txt --yes

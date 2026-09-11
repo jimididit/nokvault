@@ -28,7 +28,7 @@ func TestCLI_EncryptDecrypt_File(t *testing.T) {
 	tmpFile.Close()
 
 	inputPath := tmpFile.Name()
-	encryptedPath := inputPath + ".nokvault"
+	encryptedPath := inputPath + ".nokv"
 	defer os.Remove(encryptedPath)
 
 	// Test encrypt command
@@ -116,7 +116,7 @@ func TestCLI_EncryptDecrypt_Directory(t *testing.T) {
 
 	// Verify encrypted files exist
 	for relPath := range testFiles {
-		encryptedPath := filepath.Join(encryptedDir, relPath+".nokvault")
+		encryptedPath := filepath.Join(encryptedDir, relPath+".nokv")
 		if _, err := os.Stat(encryptedPath); err != nil {
 			t.Errorf("Encrypted file %s does not exist: %v", encryptedPath, err)
 		}
@@ -156,7 +156,7 @@ func TestCLI_Encrypt_NonExistentFile(t *testing.T) {
 
 func TestCLI_Decrypt_NonExistentFile(t *testing.T) {
 	rootCmd := freshRootCmd(t)
-	rootCmd.SetArgs([]string{"decrypt", "/nonexistent/file.nokvault", "--no-prompt"})
+	rootCmd.SetArgs([]string{"decrypt", "/nonexistent/file.nokv", "--no-prompt"})
 
 	err := rootCmd.Execute()
 	if err == nil {
@@ -182,7 +182,7 @@ func TestCLI_Encrypt_DryRun(t *testing.T) {
 	}
 
 	// Verify encrypted file was NOT created
-	encryptedPath := tmpFile.Name() + ".nokvault"
+	encryptedPath := tmpFile.Name() + ".nokv"
 	if _, err := os.Stat(encryptedPath); err == nil {
 		t.Error("Encrypted file should not be created in dry-run mode")
 	}
@@ -209,7 +209,7 @@ func TestCLI_Encrypt_WithCompression(t *testing.T) {
 	tmpFile.Close()
 
 	inputPath := tmpFile.Name()
-	encryptedPath := inputPath + ".nokvault"
+	encryptedPath := inputPath + ".nokv"
 	defer os.Remove(encryptedPath)
 
 	// Test encrypt with compression

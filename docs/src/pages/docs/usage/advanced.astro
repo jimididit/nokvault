@@ -25,7 +25,7 @@ const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL :
 nokvault encrypt large-file.txt --compress
 
 # Compression is automatically detected during decryption
-nokvault decrypt large-file.txt.nokvault`}
+nokvault decrypt large-file.txt.nokv`}
       lang="bash"
     />
     <p>
@@ -75,10 +75,10 @@ nokvault schedule encrypt ./backups --interval 1h --keyfile ~/.keys/backup.key
     </p>
     <CodeBlock
       code={`# Rotate key for a file
-nokvault rotate-key file.nokvault
+nokvault rotate-key file.nokv
 
 # Rotate with specific keyfiles
-nokvault rotate-key file.nokvault \\
+nokvault rotate-key file.nokv \\
   --old-keyfile ~/.keys/old.key \\
   --new-keyfile ~/.keys/new.key`}
       lang="bash"
@@ -118,8 +118,8 @@ for file in *.txt; do
   nokvault encrypt "$file" --keyfile ~/.keys/master.key --no-prompt
 done
 
-# Decrypt all .nokvault files
-for file in *.nokvault; do
+# Decrypt all .nokv files
+for file in *.nokv; do
   nokvault decrypt "$file" --keyfile ~/.keys/master.key --no-prompt
 done`}
       lang="bash"

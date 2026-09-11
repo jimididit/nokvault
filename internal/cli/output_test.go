@@ -26,7 +26,7 @@ func TestJSONReporterResultEnvelope(t *testing.T) {
 	t.Cleanup(resetReporter)
 
 	require.NoError(t, EmitResult("encrypt", EncryptResult{
-		Input: "plain.txt", Output: "plain.txt.nokvault",
+		Input: "plain.txt", Output: "plain.txt.nokv",
 		TargetKind: "file", Processed: 1, Succeeded: 1,
 	}))
 

@@ -18,7 +18,7 @@ var decryptCmd = &cobra.Command{
 	Short: "Decrypt a file or directory",
 	Long: `Decrypt a nokvault encrypted file or directory.
 
-The decrypted output will be saved to the original location (without .nokvault extension)
+The decrypted output will be saved to the original location (without .nokv / legacy .nokvault extension)
 by default, or to the path specified by --output flag.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runDecrypt,
@@ -69,11 +69,11 @@ func runDecrypt(cmd *cobra.Command, args []string) error {
 	// Determine output path
 	outputPath := decryptOutput
 	if outputPath == "" {
-		// Remove .nokvault extension if present
-		if filepath.Ext(inputPath) == ".nokvault" {
-			outputPath = inputPath[:len(inputPath)-len(".nokvault")]
+		cleaned := filepath.Clean(inputPath)
+		if stripped, ok := utils.StripVaultExt(cleaned); ok {
+			outputPath = stripped
 		} else {
-			outputPath = inputPath + ".decrypted"
+			outputPath = cleaned + ".decrypted"
 		}
 	}
 
@@ -97,7 +97,7 @@ func runDecrypt(cmd *cobra.Command, args []string) error {
 				if walkErr != nil {
 					return walkErr
 				}
-				if !entry.IsDir() && filepath.Ext(path) == ".nokvault" {
+				if !entry.IsDir() && utils.IsVaultPath(path) {
 					processed++
 				}
 				return nil
@@ -251,13 +251,13 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		Force: decryptForce, Strict: decryptStrict,
 	}
 
-	// Count .nokvault files for progress
+	// Count vault files for progress
 	totalFiles := 0
 	err := fileHandler.WalkDirectory(inputPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() && filepath.Ext(path) == ".nokvault" {
+		if !info.IsDir() && utils.IsVaultPath(path) {
 			totalFiles++
 		}
 		return nil
@@ -274,7 +274,7 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 		if JSONEnabled() {
 			return EmitResult("decrypt", result)
 		}
-		PrintInfo("No .nokvault files found in directory")
+		PrintInfo("No .nokv / .nokvault files found in directory")
 		return nil
 	}
 
@@ -318,8 +318,8 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 			return nil
 		}
 
-		// Skip directories and non-.nokvault files
-		if info.IsDir() || filepath.Ext(path) != ".nokvault" {
+		// Skip directories and non-vault files
+		if info.IsDir() || !utils.IsVaultPath(path) {
 			return nil
 		}
 
@@ -329,8 +329,10 @@ func decryptDirectory(inputPath, outputPath string, password []byte, encryptionS
 			return recordFailure(path, err)
 		}
 
-		// Remove .nokvault extension
-		outputRelPath := relPath[:len(relPath)-len(".nokvault")]
+		outputRelPath, ok := utils.StripVaultExt(relPath)
+		if !ok {
+			return recordFailure(relPath, fmt.Errorf("not a vault path: %s", relPath))
+		}
 		outputFilePath, joinErr := utils.SafeJoin(outputPath, outputRelPath)
 		if joinErr != nil {
 			if isPathPolicyError(joinErr) {

@@ -239,7 +239,7 @@ func (m *watchCallbackManager) Callback(filePath string, fsEvent fsnotify.Event)
 		m.reportError(filePath, err)
 		return
 	}
-	if info.IsDir() || filepath.Ext(filePath) == ".nokvault" {
+	if info.IsDir() || utils.IsVaultPath(filePath) {
 		return
 	}
 	if !m.emit("file.detected", EventData{Path: filePath, FilesystemOp: fsEvent.Op.String()}) {
@@ -268,7 +268,7 @@ func (m *watchCallbackManager) Callback(filePath string, fsEvent fsnotify.Event)
 		PrintInfo(fmt.Sprintf("Scheduled encryption: %s (after %v)", filePath, m.delay))
 	}
 	m.emit("encryption.scheduled", EventData{
-		Path: filePath, Output: filePath + ".nokvault", Delay: m.delay.String(),
+		Path: filePath, Output: utils.WithVaultExt(filePath), Delay: m.delay.String(),
 	})
 }
 
@@ -350,7 +350,7 @@ func encryptFileAuto(filePath string, encryptionService *core.EncryptionService,
 		return "", err
 	}
 
-	outputPath := filePath + ".nokvault"
+	outputPath := utils.WithVaultExt(filePath)
 	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
 		return "", err
 	}

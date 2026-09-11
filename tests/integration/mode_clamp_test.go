@@ -26,7 +26,7 @@ func TestCLI_Decrypt_ClampsRestoredMode(t *testing.T) {
 		t.Fatalf("encrypt: %v", err)
 	}
 
-	encrypted := inputPath + ".nokvault"
+	encrypted := inputPath + ".nokv"
 	decrypted := filepath.Join(tmpDir, "out.txt")
 	rootCmd = freshRootCmd(t)
 	rootCmd.SetArgs([]string{

@@ -97,7 +97,7 @@ func TestCLI_Encrypt_RejectsSymlinkOutput(t *testing.T) {
 
 func TestCLI_Decrypt_RejectsSymlinkOutput(t *testing.T) {
 	dir := t.TempDir()
-	input := filepath.Join(dir, "cipher.nokvault")
+	input := filepath.Join(dir, "cipher.nokv")
 	if err := os.WriteFile(input, []byte("not-a-real-cipher"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -124,11 +124,11 @@ func TestCLI_Decrypt_RejectsSymlinkOutput(t *testing.T) {
 func TestCLI_RotateKey_RejectsSymlinkInput(t *testing.T) {
 	t.Setenv("NOKVAULT_PASSWORD", "")
 	dir := t.TempDir()
-	target := filepath.Join(dir, "cipher.nokvault")
+	target := filepath.Join(dir, "cipher.nokv")
 	if err := os.WriteFile(target, []byte("not-a-real-cipher"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	link := filepath.Join(dir, "rotate-link.nokvault")
+	link := filepath.Join(dir, "rotate-link.nokv")
 	trySymlink(t, target, link)
 
 	rootCmd := freshRootCmd(t)

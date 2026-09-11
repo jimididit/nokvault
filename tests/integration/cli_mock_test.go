@@ -147,7 +147,7 @@ func TestCLI_Encrypt_File_WithPassword(t *testing.T) {
 	defer os.Remove(testFile)
 
 	// Create output path
-	outputFile := testFile + ".nokvault"
+	outputFile := testFile + ".nokv"
 	defer os.Remove(outputFile)
 
 	rootCmd := freshRootCmd(t)
@@ -174,7 +174,7 @@ func TestCLI_Decrypt_File_WithPassword(t *testing.T) {
 	testFile := createTempTestFile(t, "test content for decryption")
 	defer os.Remove(testFile)
 
-	encryptedFile := testFile + ".nokvault"
+	encryptedFile := testFile + ".nokv"
 	defer os.Remove(encryptedFile)
 
 	rootCmd := freshRootCmd(t)
@@ -244,11 +244,11 @@ func TestCLI_Encrypt_Directory(t *testing.T) {
 	assert.NoError(t, err, "Encrypt directory should succeed")
 
 	// Verify encrypted files exist
-	encryptedFile1 := filepath.Join(outputDir, "file1.txt.nokvault")
+	encryptedFile1 := filepath.Join(outputDir, "file1.txt.nokv")
 	_, err = os.Stat(encryptedFile1)
 	assert.NoError(t, err, "Encrypted file1 should exist")
 
-	encryptedFile2 := filepath.Join(outputDir, "file2.txt.nokvault")
+	encryptedFile2 := filepath.Join(outputDir, "file2.txt.nokv")
 	_, err = os.Stat(encryptedFile2)
 	assert.NoError(t, err, "Encrypted file2 should exist")
 }
@@ -259,7 +259,7 @@ func TestCLI_Encrypt_WrongPassword(t *testing.T) {
 	testFile := createTempTestFile(t, "test content")
 	defer os.Remove(testFile)
 
-	encryptedFile := testFile + ".nokvault"
+	encryptedFile := testFile + ".nokv"
 	defer os.Remove(encryptedFile)
 
 	rootCmd := freshRootCmd(t)

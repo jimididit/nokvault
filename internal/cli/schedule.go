@@ -68,7 +68,10 @@ func runScheduleEncrypt(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	outputPath := path + ".nokvault"
+	outputPath, derErr := utils.DefaultVaultOutput(path)
+	if derErr != nil {
+		return utils.NewError(utils.ErrInvalidPath.Code, derErr.Error(), derErr)
+	}
 	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
 		return err
 	}
@@ -182,8 +185,7 @@ func performScheduledEncrypt(path string, encryptionService *core.EncryptionServ
 
 func performScheduledEncryptResult(path string, encryptionService *core.EncryptionService, key, salt []byte) (EncryptResult, error) {
 	result := EncryptResult{
-		Input: path, Output: path + ".nokvault",
-		Compression: scheduleCompress,
+		Input: path, Compression: scheduleCompress,
 	}
 	if err := utils.ValidateNoSymlinkComponents(path); err != nil {
 		return result, err
@@ -195,7 +197,11 @@ func performScheduledEncryptResult(path string, encryptionService *core.Encrypti
 	}
 	result.TargetKind = targetKind(info)
 
-	outputPath := path + ".nokvault"
+	outputPath, derErr := utils.DefaultVaultOutput(path)
+	if derErr != nil {
+		return result, derErr
+	}
+	result.Output = outputPath
 	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
 		return result, err
 	}

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Default vault filename suffix is `.nokv` (was `.nokvault`); decrypt still accepts legacy `.nokvault` paths
+- Directory encrypt default output cleans trailing separators so `encrypt test/` writes sibling `test.nokv`, not `test/.nokvault`
+
 ## [0.4.0] - 2026-09-09
 
 ### Added

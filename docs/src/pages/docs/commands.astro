@@ -79,7 +79,7 @@ nokvault watch ./incoming --auto-encrypt --keyfile ./key --no-prompt --json \\
     </p>
     <h3>Options</h3>
     <ul>
-      <li><code>--output, -o</code>: Specify output file path (default: &lt;path&gt;.nokvault)</li>
+      <li><code>--output, -o</code>: Specify output file path (default: &lt;path&gt;.nokv)</li>
       <li><code>--keyfile, -k</code>: Path to keyfile for encryption (mode 0600 required on Unix; symlinks refused)</li>
       <li><code>--password, -p</code>: Removed - refused at runtime (use keyfile, <code>NOKVAULT_PASSWORD</code>, or prompt)</li>
       <li><code>--no-prompt</code>: Don't prompt for password</li>
@@ -131,10 +131,10 @@ nokvault encrypt file.txt --keyfile ~/.keys/master.key`}
     <h3>Examples</h3>
     <CodeBlock
       code={`# Decrypt a file
-nokvault decrypt document.txt.nokvault
+nokvault decrypt document.txt.nokv
 
 # Decrypt with keyfile
-nokvault decrypt file.nokvault --keyfile ~/.keys/master.key
+nokvault decrypt file.nokv --keyfile ~/.keys/master.key
 
 # Decrypt directory
 nokvault decrypt ./encrypted-documents`}
@@ -212,10 +212,10 @@ nokvault schedule encrypt ./documents --interval 24h`}
     <h3>Examples</h3>
     <CodeBlock
       code={`# Rotate key for a file
-nokvault rotate-key file.nokvault
+nokvault rotate-key file.nokv
 
 # Rotate with specific keyfiles
-nokvault rotate-key file.nokvault \\
+nokvault rotate-key file.nokv \\
   --old-keyfile ~/.keys/old.key \\
   --new-keyfile ~/.keys/new.key`}
       lang="bash"

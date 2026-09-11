@@ -135,7 +135,7 @@ func TestEncrypt_RejectsSymlinkOutput(t *testing.T) {
 
 func TestDecrypt_RejectsSymlinkOutput(t *testing.T) {
 	dir := t.TempDir()
-	input := writeRegularFile(t, dir, "cipher.nokvault", "not-a-real-cipher")
+	input := writeRegularFile(t, dir, "cipher.nokv", "not-a-real-cipher")
 	target := writeRegularFile(t, dir, "out-target.txt", "keep")
 	outLink := filepath.Join(dir, "out-link.txt")
 	trySymlink(t, target, outLink)
@@ -150,8 +150,8 @@ func TestDecrypt_RejectsSymlinkOutput(t *testing.T) {
 func TestRotateKey_RejectsSymlinkBeforePassword(t *testing.T) {
 	t.Setenv("NOKVAULT_PASSWORD", "")
 	dir := t.TempDir()
-	target := writeRegularFile(t, dir, "cipher.nokvault", "not-a-real-cipher")
-	link := filepath.Join(dir, "rotate-link.nokvault")
+	target := writeRegularFile(t, dir, "cipher.nokv", "not-a-real-cipher")
+	link := filepath.Join(dir, "rotate-link.nokv")
 	trySymlink(t, target, link)
 
 	err := execCLI(t, "rotate-key", link, "--no-prompt")
@@ -200,7 +200,7 @@ func TestDecrypt_Directory_RejectsNestedOutputSymlinkBeforePassword(t *testing.T
 	dir := t.TempDir()
 	inDir := filepath.Join(dir, "in")
 	require.NoError(t, os.MkdirAll(filepath.Join(inDir, "nested"), 0o700))
-	writeRegularFile(t, filepath.Join(inDir, "nested"), "file.nokvault", "not-a-real-cipher")
+	writeRegularFile(t, filepath.Join(inDir, "nested"), "file.nokv", "not-a-real-cipher")
 
 	outDir := filepath.Join(dir, "out")
 	require.NoError(t, os.Mkdir(outDir, 0o700))
@@ -219,7 +219,7 @@ func TestSchedule_RejectsGeneratedOutputBeforePassword(t *testing.T) {
 	dir := t.TempDir()
 	input := writeRegularFile(t, dir, "secret.txt", "secret")
 	target := writeRegularFile(t, dir, "out-target.txt", "keep")
-	outLink := input + ".nokvault"
+	outLink := input + ".nokv"
 	trySymlink(t, target, outLink)
 
 	err := execCLI(t, "schedule", "encrypt", input, "--no-prompt")
@@ -234,8 +234,8 @@ func TestDecrypt_Directory_NonStrictPreservesSymlinkDisallowed(t *testing.T) {
 	dir := t.TempDir()
 	inDir := filepath.Join(dir, "vault")
 	require.NoError(t, os.MkdirAll(filepath.Join(inDir, "nested"), 0o700))
-	writeRegularFile(t, filepath.Join(inDir, "nested"), "file.nokvault", "not-a-real-cipher")
-	writeRegularFile(t, inDir, "other.nokvault", "also-not-a-cipher")
+	writeRegularFile(t, filepath.Join(inDir, "nested"), "file.nokv", "not-a-real-cipher")
+	writeRegularFile(t, inDir, "other.nokv", "also-not-a-cipher")
 
 	outDir := filepath.Join(dir, "out")
 	require.NoError(t, os.Mkdir(outDir, 0o700))
@@ -277,7 +277,7 @@ func TestSchedule_PerformScheduledEncrypt_RejectsSymlink(t *testing.T) {
 
 	err = performScheduledEncrypt(link, svc, key, salt)
 	requireSymlinkDisallowed(t, err, link)
-	_, statErr := os.Lstat(link + ".nokvault")
+	_, statErr := os.Lstat(link + ".nokv")
 	require.True(t, os.IsNotExist(statErr))
 	got, readErr := os.ReadFile(target)
 	require.NoError(t, readErr)
@@ -291,9 +291,9 @@ func TestSchedule_PerformScheduledEncrypt_RePreflightsNestedOutputs(t *testing.T
 	writeRegularFile(t, inDir, "a.txt", "payload-a")
 	writeRegularFile(t, filepath.Join(inDir, "nested"), "z.txt", "payload-z")
 
-	outRoot := inDir + ".nokvault"
+	outRoot := inDir + ".nokv"
 	require.NoError(t, os.MkdirAll(filepath.Join(outRoot, "nested"), 0o700))
-	sentinel := filepath.Join(outRoot, "a.txt.nokvault")
+	sentinel := filepath.Join(outRoot, "a.txt.nokv")
 	require.NoError(t, os.WriteFile(sentinel, []byte("keep-me"), 0o600))
 
 	target := filepath.Join(dir, "target")
@@ -313,7 +313,7 @@ func TestSchedule_PerformScheduledEncrypt_RePreflightsNestedOutputs(t *testing.T
 	require.NoError(t, readErr)
 	require.Equal(t, "keep-me", string(got), "earlier lexical output must not be rewritten")
 
-	_, statErr := os.Lstat(filepath.Join(target, "z.txt.nokvault"))
+	_, statErr := os.Lstat(filepath.Join(target, "z.txt.nokv"))
 	require.True(t, os.IsNotExist(statErr), "must not write through the symlink")
 	info, lerr := os.Lstat(link)
 	require.NoError(t, lerr)
@@ -327,7 +327,7 @@ func TestSchedule_Directory_RejectsNestedOutputBeforePassword(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(inDir, "nested"), 0o700))
 	writeRegularFile(t, filepath.Join(inDir, "nested"), "file.txt", "secret")
 
-	outRoot := inDir + ".nokvault"
+	outRoot := inDir + ".nokv"
 	require.NoError(t, os.Mkdir(outRoot, 0o700))
 	target := filepath.Join(dir, "target")
 	require.NoError(t, os.Mkdir(target, 0o700))
@@ -413,8 +413,8 @@ func TestDecrypt_Directory_NonStrictPreservesPathEscape(t *testing.T) {
 	dir := t.TempDir()
 	inDir := filepath.Join(dir, "vault")
 	require.NoError(t, os.Mkdir(inDir, 0o700))
-	writeRegularFile(t, inDir, "...nokvault", "not-a-real-cipher")
-	writeRegularFile(t, inDir, "other.nokvault", "also-not-a-cipher")
+	writeRegularFile(t, inDir, "...nokv", "not-a-real-cipher")
+	writeRegularFile(t, inDir, "other.nokv", "also-not-a-cipher")
 	outDir := filepath.Join(dir, "out")
 	require.NoError(t, os.Mkdir(outDir, 0o700))
 
@@ -551,7 +551,7 @@ func TestWatch_CallbackReportsPolicyWithoutVerbose(t *testing.T) {
 
 	require.Contains(t, output, link)
 	requireReportedPolicyHint(t, output, "SYMLINK_DISALLOWED", "Use a regular file or directory path. Symlinks are not followed.")
-	_, statErr := os.Lstat(link + ".nokvault")
+	_, statErr := os.Lstat(link + ".nokv")
 	require.True(t, os.IsNotExist(statErr), "symlink event must not be scheduled for encryption")
 }
 
@@ -575,7 +575,7 @@ func TestWatch_DelayedEncryptReportsPolicyWithoutVerbose(t *testing.T) {
 	output := readStderr()
 
 	requireReportedPolicyHint(t, output, "SYMLINK_DISALLOWED", "Use a regular file or directory path. Symlinks are not followed.")
-	_, statErr := os.Lstat(regular + ".nokvault")
+	_, statErr := os.Lstat(regular + ".nokv")
 	require.True(t, os.IsNotExist(statErr))
 }
 
@@ -593,7 +593,7 @@ func TestWatch_CallbackRejectsSymlinkEvent(t *testing.T) {
 	cb(link, fsnotify.Event{Name: link, Op: fsnotify.Write})
 	time.Sleep(80 * time.Millisecond)
 
-	_, statErr := os.Lstat(link + ".nokvault")
+	_, statErr := os.Lstat(link + ".nokv")
 	require.True(t, os.IsNotExist(statErr), "symlink event must not be scheduled for encryption")
 	got, readErr := os.ReadFile(target)
 	require.NoError(t, readErr)
@@ -617,7 +617,7 @@ func TestWatch_DelayedEncryptRejectsSymlink(t *testing.T) {
 
 	time.Sleep(250 * time.Millisecond)
 
-	_, statErr := os.Lstat(regular + ".nokvault")
+	_, statErr := os.Lstat(regular + ".nokv")
 	require.True(t, os.IsNotExist(statErr), "delayed encrypt must revalidate and refuse a swapped symlink")
 	got, readErr := os.ReadFile(target)
 	require.NoError(t, readErr)

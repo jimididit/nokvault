@@ -52,10 +52,10 @@ func TestCLI_DirectoryEncrypt_NestedFileSymlinkAbortsWithoutCiphertext(t *testin
 	rootCmd.SetArgs([]string{"encrypt", input, "--output", output, "--keyfile", keyfile, "--no-prompt"})
 	requireSymlinkDisallowed(t, rootCmd.Execute(), link)
 
-	if _, err := os.Lstat(filepath.Join(output, "nested.link.nokvault")); !os.IsNotExist(err) {
+	if _, err := os.Lstat(filepath.Join(output, "nested.link.nokv")); !os.IsNotExist(err) {
 		t.Fatalf("nested symlink must not produce ciphertext: %v", err)
 	}
-	if _, err := os.Lstat(filepath.Join(output, "keep.txt.nokvault")); !os.IsNotExist(err) {
+	if _, err := os.Lstat(filepath.Join(output, "keep.txt.nokv")); !os.IsNotExist(err) {
 		t.Fatalf("aborted directory encrypt must not write sibling ciphertext: %v", err)
 	}
 }
@@ -70,7 +70,7 @@ func TestCLI_DirectoryDecrypt_RejectsSymlinkedOutputParent(t *testing.T) {
 		t.Fatal(err)
 	}
 	keyfile := writeTempKeyfile(t, "containment-decrypt-password")
-	encrypted := filepath.Join(dir, "plain-tree.nokvault")
+	encrypted := filepath.Join(dir, "plain-tree.nokv")
 
 	rootCmd := freshRootCmd(t)
 	rootCmd.SetArgs([]string{"encrypt", input, "--output", encrypted, "--keyfile", keyfile, "--no-prompt"})
