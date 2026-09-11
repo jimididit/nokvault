@@ -6,8 +6,8 @@ We actively support the following versions of Nokvault with security updates:
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.4.x   | :white_check_mark: |
-| ≤ 0.3.x | :x:                |
+| 0.5.x   | :white_check_mark: |
+| ≤ 0.4.x | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -153,7 +153,7 @@ Known limits and footguns. Reviewers should treat these as intentional honesty, 
 4. **Empty GCM AAD in legacy v1/v2 vaults**
    Legacy header fields and metadata are not bound into AES-GCM. New v3 vaults bind the exact 58-byte header and metadata bytes to every STREAM chunk. Existing v1/v2 files remain unchanged until re-encrypted or rotated. Details: [`docs/format-v2.md`](docs/format-v2.md) §9 and §14.
 
-5. **Unauthenticated plaintext metadata**  
+5. **Plaintext metadata (unauthenticated in v1/v2, AAD-bound in v3)**  
    Optional JSON metadata is always visible on disk. It is unauthenticated in v1/v2 and authenticated as AAD in v3; authentication does not provide metadata confidentiality.
 
 6. **Whole-file-in-RAM legacy decrypt**
