@@ -134,6 +134,7 @@ func decryptDirectoryWithIdentities(inputPath, outputPath string, identities []*
 	}); err != nil {
 		return fmt.Errorf("failed to count vault files: %w", err)
 	}
+	result.Processed = totalFiles
 
 	if totalFiles == 0 {
 		if JSONEnabled() {
@@ -148,213 +149,40 @@ func decryptDirectoryWithIdentities(inputPath, outputPath string, identities []*
 		PrintInfo(fmt.Sprintf("Found %d vault files", totalFiles))
 	}
 
-	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
-		return err
-	}
-
-	if err := fileHandler.EnsureDirectory(outputPath); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
-	}
-
-	if err := utils.ValidateNoSymlinkComponents(outputPath); err != nil {
-		return err
-	}
-
 	progressBar := newOperationProgressBar(int64(totalFiles), "Decrypting files")
-	currentFile := 0
-	compressionService := core.NewCompressionService()
 
-	walkErr := fileHandler.WalkDirectory(inputPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return fmt.Errorf("error accessing %s: %w", path, err)
-		}
+	decryptor := core.NewDirectoryDecryptor(encryptionService, decryptVerbose)
+	decryptor.SetPreserveMode(decryptPreserveMode)
 
-		if info.IsDir() {
-			return nil
-		}
-
-		if !utils.IsVaultPath(path) {
-			return nil
-		}
-
-		currentFile++
-		result.Processed++
-
-		relPath, err := fileHandler.GetRelativePath(inputPath, path)
-		if err != nil {
-			progressBar.Increment(1)
-			if decryptStrict {
-				return fmt.Errorf("failed to get relative path for %s: %w", path, err)
-			}
-			if decryptVerbose {
-				PrintInfo(fmt.Sprintf("Warning: Skipping %s: %v", path, err))
-			}
-			return nil
-		}
-
-		stripped, ok := utils.StripVaultExt(relPath)
-		if !ok {
-			stripped = relPath + ".decrypted"
-		}
-
-		outPath, err := utils.SafeJoin(outputPath, stripped)
-		if err != nil {
-			progressBar.Increment(1)
-			if decryptStrict {
-				return fmt.Errorf("failed to construct output path for %s: %w", relPath, err)
-			}
-			if decryptVerbose {
-				PrintInfo(fmt.Sprintf("Warning: Skipping %s: %v", relPath, err))
-			}
-			return nil
-		}
-
-		outDir := filepath.Dir(outPath)
-		if err := fileHandler.EnsureDirectory(outDir); err != nil {
-			progressBar.Increment(1)
-			if decryptStrict {
-				return fmt.Errorf("failed to create output directory for %s: %w", relPath, err)
-			}
-			if decryptVerbose {
-				PrintInfo(fmt.Sprintf("Warning: Skipping %s: %v", relPath, err))
-			}
-			return nil
-		}
-
-		// Decrypt the file
-		// #nosec G304 -- CLI validates the discovered vault path before this open.
-		inputFile, err := os.Open(path)
-		if err != nil {
-			progressBar.Increment(1)
-			if decryptStrict {
-				return fmt.Errorf("failed to open %s: %w", path, err)
-			}
-			if decryptVerbose {
-				PrintInfo(fmt.Sprintf("Warning: Skipping %s: %v", relPath, err))
-			}
-			return nil
-		}
-
-		header, metadata, aad, stanzas, err := fileHandler.ReadHeaderWithMetadata(inputFile)
-		if err != nil {
-			inputFile.Close()
-			progressBar.Increment(1)
-			if decryptStrict {
-				return fmt.Errorf("invalid vault format for %s: %w", relPath, err)
-			}
-			if decryptVerbose {
-				PrintInfo(fmt.Sprintf("Warning: Skipping %s: invalid format", relPath))
-			}
-			return nil
-		}
-
-		if header.Version != core.Version4 {
-			inputFile.Close()
-			progressBar.Increment(1)
-			if decryptStrict {
-				return fmt.Errorf("expected v4 recipient vault for %s, got v%d", relPath, header.Version)
-			}
-			if decryptVerbose {
-				PrintInfo(fmt.Sprintf("Warning: Skipping %s: not a v4 vault", relPath))
-			}
-			return nil
-		}
-
-		fileKey, err := crypto.UnwrapFileKey(stanzas, identities)
-		if err != nil {
-			inputFile.Close()
-			progressBar.Increment(1)
-			if decryptStrict {
-				return fmt.Errorf("no identity could decrypt %s: %w", relPath, err)
-			}
-			if decryptVerbose {
-				PrintInfo(fmt.Sprintf("Warning: Skipping %s: no matching identity", relPath))
-			}
-			return nil
-		}
-
-		dataOffset, err := checkedDataOffset(header.DataOffset)
-		if err != nil {
-			utils.ZeroizeKey(fileKey)
-			inputFile.Close()
-			progressBar.Increment(1)
-			if decryptStrict {
-				return fmt.Errorf("invalid data offset for %s: %w", relPath, err)
-			}
-			if decryptVerbose {
-				PrintInfo(fmt.Sprintf("Warning: Skipping %s: %v", relPath, err))
-			}
-			return nil
-		}
-
-		if _, err := inputFile.Seek(dataOffset, io.SeekStart); err != nil {
-			utils.ZeroizeKey(fileKey)
-			inputFile.Close()
-			progressBar.Increment(1)
-			if decryptStrict {
-				return fmt.Errorf("failed to seek data in %s: %w", relPath, err)
-			}
-			if decryptVerbose {
-				PrintInfo(fmt.Sprintf("Warning: Skipping %s: %v", relPath, err))
-			}
-			return nil
-		}
-
-		atomicWrite := utils.AtomicWriteFuncNoReplace
-		if decryptForce {
-			atomicWrite = utils.AtomicWriteFunc
-		}
-
-		writeErr := atomicWrite(outPath, 0o600, func(outputFile *os.File) error {
-			defer utils.ZeroizeKey(fileKey)
-			return decryptVaultToOutput(outputFile, inputFile, fileKey, header, aad, encryptionService, compressionService)
-		})
-		inputFile.Close()
-
-		if writeErr != nil {
-			progressBar.Increment(1)
-			if decryptStrict {
-				return fmt.Errorf("decryption failed for %s: %w", relPath, writeErr)
-			}
-			if decryptVerbose {
-				PrintInfo(fmt.Sprintf("Warning: Failed to decrypt %s: %v", relPath, writeErr))
-			}
-			return nil
-		}
-
-		if metadata != nil {
-			if err := fileHandler.WriteMetadata(outPath, metadata, decryptPreserveMode); err != nil {
-				if decryptVerbose {
-					PrintInfo(fmt.Sprintf("Warning: Could not restore metadata for %s: %v", relPath, err))
-				}
-			}
-		}
-
-		result.Succeeded++
+	err := decryptor.DecryptDirectoryWithIdentities(inputPath, outputPath, identities, func(current, total int, currentFile string) {
 		progressBar.Increment(1)
 		if decryptVerbose {
-			PrintInfo(fmt.Sprintf("[%d/%d] %s", currentFile, totalFiles, relPath))
+			PrintInfo(fmt.Sprintf("[%d/%d] %s", current, total, currentFile))
 		}
-
-		return nil
 	})
 
 	progressBar.Wait()
 
-	if walkErr != nil {
-		PrintError(fmt.Sprintf("Directory decryption failed: %v", walkErr))
-		return walkErr
+	if err != nil {
+		if decryptStrict {
+			PrintError(fmt.Sprintf("Directory decryption failed: %v", err))
+			return err
+		}
+		// Non-strict mode: partial success
+		PrintError(fmt.Sprintf("Directory decryption completed with errors: %v", err))
+		result.Failed = result.Processed - result.Succeeded
+		if JSONEnabled() {
+			return EmitResult("decrypt", result)
+		}
+		PrintInfo(fmt.Sprintf("Decrypted some files: %s -> %s", inputPath, outputPath))
+		return err
 	}
 
-	result.Failed = result.Processed - result.Succeeded
+	result.Succeeded = totalFiles
+	result.Failed = 0
 
 	if JSONEnabled() {
 		return EmitResult("decrypt", result)
-	}
-
-	if result.Failed > 0 {
-		PrintInfo(fmt.Sprintf("Decrypted %d/%d files: %s -> %s", result.Succeeded, result.Processed, inputPath, outputPath))
-		return fmt.Errorf("failed to decrypt %d files", result.Failed)
 	}
 
 	PrintSuccess(fmt.Sprintf("Decrypted %d files: %s -> %s", result.Succeeded, inputPath, outputPath))

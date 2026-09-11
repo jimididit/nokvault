@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/jimididit/nokvault/internal/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -280,4 +281,78 @@ func TestDirectoryDecryptor_DecryptDirectory_RejectedInputDoesNotCreateOutputRoo
 	requireSymlinkDisallowed(t, err, link)
 	_, statErr := os.Lstat(outputDir)
 	assert.True(t, os.IsNotExist(statErr), "rejected input must not create output root")
+}
+
+func TestDirectoryRecipientRoundTrip(t *testing.T) {
+	encryptionService := NewEncryptionService()
+	encryptor := NewDirectoryEncryptor(encryptionService, false)
+	decryptor := NewDirectoryDecryptor(encryptionService, false)
+
+	// Generate two identities
+	id1, rec1, err := crypto.GenerateIdentity()
+	require.NoError(t, err, "Failed to generate identity 1")
+	id2, rec2, err := crypto.GenerateIdentity()
+	require.NoError(t, err, "Failed to generate identity 2")
+
+	recipients := []*crypto.Recipient{rec1, rec2}
+
+	// Create temporary directories
+	inputDir := t.TempDir()
+	encryptedDir := t.TempDir()
+	decryptedDir1 := t.TempDir()
+	decryptedDir2 := t.TempDir()
+
+	// Create test files
+	files := map[string][]byte{
+		"file1.txt":        []byte("content of file 1"),
+		"file2.txt":        []byte("content of file 2"),
+		"subdir/file3.txt": []byte("content of file 3"),
+	}
+
+	for relPath, content := range files {
+		filePath := filepath.Join(inputDir, relPath)
+		err := os.MkdirAll(filepath.Dir(filePath), 0755)
+		require.NoError(t, err, "Failed to create subdirectory")
+		err = os.WriteFile(filePath, content, 0644)
+		require.NoError(t, err, "Failed to create test file")
+	}
+
+	// Encrypt directory with recipients
+	progressCount := 0
+	err = encryptor.EncryptDirectoryWithRecipients(inputDir, encryptedDir, recipients, func(current, total int, currentFile string) {
+		progressCount++
+	})
+	require.NoError(t, err, "Failed to encrypt directory with recipients")
+	assert.Equal(t, len(files), progressCount, "Progress callback should be called for each file")
+
+	// Verify encrypted files exist
+	for relPath := range files {
+		encryptedPath := filepath.Join(encryptedDir, relPath+".nokv")
+		_, err := os.Stat(encryptedPath)
+		assert.NoError(t, err, "Encrypted file should exist: %s", encryptedPath)
+	}
+
+	// Decrypt with identity 1
+	err = decryptor.DecryptDirectoryWithIdentities(encryptedDir, decryptedDir1, []*crypto.Identity{id1}, nil)
+	require.NoError(t, err, "Failed to decrypt directory with identity 1")
+
+	// Verify decrypted content matches original (identity 1)
+	for relPath, expectedContent := range files {
+		decryptedPath := filepath.Join(decryptedDir1, relPath)
+		actualContent, err := os.ReadFile(decryptedPath)
+		require.NoError(t, err, "Failed to read decrypted file: %s", decryptedPath)
+		assert.Equal(t, expectedContent, actualContent, "Content mismatch for file: %s", relPath)
+	}
+
+	// Decrypt with identity 2
+	err = decryptor.DecryptDirectoryWithIdentities(encryptedDir, decryptedDir2, []*crypto.Identity{id2}, nil)
+	require.NoError(t, err, "Failed to decrypt directory with identity 2")
+
+	// Verify decrypted content matches original (identity 2)
+	for relPath, expectedContent := range files {
+		decryptedPath := filepath.Join(decryptedDir2, relPath)
+		actualContent, err := os.ReadFile(decryptedPath)
+		require.NoError(t, err, "Failed to read decrypted file: %s", decryptedPath)
+		assert.Equal(t, expectedContent, actualContent, "Content mismatch for file: %s", relPath)
+	}
 }

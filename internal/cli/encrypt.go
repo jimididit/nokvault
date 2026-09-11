@@ -523,9 +523,6 @@ func encryptDirectoryWithRecipientsAndCompression(inputPath, outputPath string, 
 		Input: inputPath, Output: outputPath, TargetKind: "directory",
 		Force: encryptForce,
 	}
-	defer func() {
-		result.Failed = result.Processed - result.Succeeded
-	}()
 
 	if encryptVerbose {
 		PrintInfo(fmt.Sprintf("Encrypting directory with %d recipient(s): %s", len(recipients), inputPath))
@@ -539,7 +536,9 @@ func encryptDirectoryWithRecipientsAndCompression(inputPath, outputPath string, 
 	if err != nil {
 		return result, fmt.Errorf("failed to count files: %w", err)
 	}
+	result.Processed = totalFiles
 
+	// Preflight: refuse existing outputs unless --force
 	if err := fileHandler.WalkDirectory(inputPath, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -566,74 +565,15 @@ func encryptDirectoryWithRecipientsAndCompression(inputPath, outputPath string, 
 
 	progressBar := newOperationProgressBar(int64(totalFiles), "Encrypting files")
 
-	currentFile := 0
-	compressionService := core.NewCompressionService()
+	encryptor := core.NewDirectoryEncryptor(encryptionService, encryptVerbose)
+	encryptor.SetCompression(compress)
+	encryptor.SetOverwrite(encryptForce)
 
-	err = fileHandler.WalkDirectory(inputPath, func(path string, info os.FileInfo, walkErr error) error {
-		if walkErr != nil {
-			return fmt.Errorf("error accessing %s: %w", path, walkErr)
-		}
-		if info.IsDir() {
-			return nil
-		}
-
-		currentFile++
-		result.Processed++
-
-		relPath, err := fileHandler.GetRelativePath(inputPath, path)
-		if err != nil {
-			return fmt.Errorf("failed to get relative path: %w", err)
-		}
-
-		outputPath, err := utils.SafeJoin(outputPath, utils.WithVaultExt(relPath))
-		if err != nil {
-			return fmt.Errorf("failed to construct output path for %s: %w", relPath, err)
-		}
-
-		outputFileDir := filepath.Dir(outputPath)
-		if err := os.MkdirAll(outputFileDir, 0700); err != nil {
-			return fmt.Errorf("failed to create output directory: %w", err)
-		}
-
-		metadata, err := fileHandler.ReadMetadata(path)
-		if err != nil {
-			return fmt.Errorf("failed to read metadata for %s: %w", path, err)
-		}
-
-		compressFlag := uint8(0)
-		if compress {
-			shouldCompressFile, err := compressionService.ShouldCompressFile(path, 1024)
-			if err == nil && shouldCompressFile {
-				compressFlag = 1
-			}
-		}
-
-		atomicWrite := utils.AtomicWriteFuncNoReplace
-		if encryptForce {
-			atomicWrite = utils.AtomicWriteFunc
-		}
-
-		encryptErr := atomicWrite(outputPath, 0o600, func(outputFile *os.File) error {
-			plaintext, err := os.Open(path)
-			if err != nil {
-				return fmt.Errorf("failed to open input file: %w", err)
-			}
-			defer plaintext.Close()
-
-			return encryptionService.EncryptVaultWithRecipients(outputFile, plaintext, recipients, metadata, compressFlag)
-		})
-
-		if encryptErr != nil {
-			return fmt.Errorf("failed to encrypt %s: %w", relPath, encryptErr)
-		}
-
-		result.Succeeded++
+	err = encryptor.EncryptDirectoryWithRecipients(inputPath, outputPath, recipients, func(current, total int, currentFile string) {
 		progressBar.Increment(1)
 		if encryptVerbose {
-			PrintInfo(fmt.Sprintf("[%d/%d] %s", currentFile, totalFiles, relPath))
+			PrintInfo(fmt.Sprintf("[%d/%d] %s", current, total, currentFile))
 		}
-
-		return nil
 	})
 
 	progressBar.Wait()
@@ -643,5 +583,7 @@ func encryptDirectoryWithRecipientsAndCompression(inputPath, outputPath string, 
 		return result, err
 	}
 
+	result.Succeeded = totalFiles
+	result.Failed = 0
 	return result, nil
 }
