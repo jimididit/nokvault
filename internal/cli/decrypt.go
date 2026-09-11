@@ -34,6 +34,7 @@ var (
 	decryptPreserveMode bool
 	decryptForce        bool
 	decryptStrict       bool
+	decryptIdentities   []string
 )
 
 func init() {
@@ -46,6 +47,7 @@ func init() {
 	decryptCmd.Flags().BoolVarP(&decryptForce, "force", "f", false, "Overwrite existing output path")
 	decryptCmd.Flags().BoolVar(&decryptStrict, "strict", false, "Abort directory decrypt on the first failure")
 	decryptCmd.Flags().BoolVarP(&decryptVerbose, "verbose", "v", false, "Verbose output")
+	decryptCmd.Flags().StringArrayVar(&decryptIdentities, "identity", nil, "X25519 identity file for recipient-mode vaults (repeatable)")
 
 	rootCmd.AddCommand(decryptCmd)
 }
@@ -115,6 +117,74 @@ func runDecrypt(cmd *cobra.Command, args []string) error {
 		}
 		PrintInfo(fmt.Sprintf("Would decrypt: %s -> %s", inputPath, outputPath))
 		return nil
+	}
+
+	// Check if using identity mode
+	usingIdentities := len(decryptIdentities) > 0
+	
+	// For directories with identities, go directly to identity-based decrypt
+	if info.IsDir() && usingIdentities {
+		// Check for passphrase material exclusivity
+		if decryptPassword != "" || decryptKeyfile != "" || os.Getenv("NOKVAULT_PASSWORD") != "" {
+			return fmt.Errorf("cannot mix --identity with password/keyfile/NOKVAULT_PASSWORD")
+		}
+		identities, err := loadIdentities(decryptIdentities)
+		if err != nil {
+			return err
+		}
+		encryptionService := core.NewEncryptionService()
+		return decryptDirectoryWithIdentities(inputPath, outputPath, identities, encryptionService)
+	}
+	
+	// For single files, peek at the vault header to determine version/requirements
+	if !info.IsDir() {
+		fileHandler := core.NewFileHandler()
+		// Read the version to determine mode requirements
+		// #nosec G304 -- runDecrypt validates the user-selected input path
+		peekFile, err := os.Open(inputPath)
+		if err != nil {
+			return fmt.Errorf("failed to open input file: %w", err)
+		}
+		header, _, _, _, err := fileHandler.ReadHeaderWithMetadata(peekFile)
+		peekFile.Close()
+		if err != nil {
+			// If header read fails and we're not using identities, fall through to password flow
+			// which will give a better error (INVALID_PASSWORD instead of INVALID_FORMAT)
+			if !usingIdentities {
+				goto passphraseFlow
+			}
+			return utils.NewError(utils.ErrInvalidFormat.Code, "Invalid nokvault file format", err)
+		}
+		vaultVersion := header.Version
+
+		// Version 4 (recipient mode) requirements
+		if vaultVersion == core.Version4 {
+			if !usingIdentities {
+				return fmt.Errorf("recipient vault (v4) requires --identity flag")
+			}
+			// v4 refuses passphrase material
+			if decryptPassword != "" || decryptKeyfile != "" || os.Getenv("NOKVAULT_PASSWORD") != "" {
+				return fmt.Errorf("recipient vault (v4) cannot use passphrase material (password/keyfile/NOKVAULT_PASSWORD); use --identity only")
+			}
+			// Decrypt with identities
+			identities, err := loadIdentities(decryptIdentities)
+			if err != nil {
+				return err
+			}
+			encryptionService := core.NewEncryptionService()
+			return decryptFileWithIdentities(inputPath, outputPath, identities, encryptionService)
+		}
+
+		// v1-v3 passphrase mode with --identity is an error
+		if usingIdentities {
+			return fmt.Errorf("--identity can only be used with recipient vaults (v4); this is a passphrase vault (v%d)", vaultVersion)
+		}
+	}
+
+passphraseFlow:
+	// Passphrase mode - check exclusivity
+	if usingIdentities {
+		return fmt.Errorf("cannot mix --identity with password/keyfile/NOKVAULT_PASSWORD")
 	}
 
 	// Get password first (needed for both file and directory)

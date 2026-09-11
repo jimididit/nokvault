@@ -92,6 +92,11 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 		return utils.NewError(utils.ErrInvalidFormat.Code, "Invalid nokvault file format", err)
 	}
 
+	// Reject v4 (recipient vaults)
+	if header.Version == core.Version4 {
+		return fmt.Errorf("rotate-key does not support recipient vaults (v4); use encrypt/decrypt workflow instead")
+	}
+
 	// Derive old key using header KDF parameters
 	keyManager.SetArgon2Params(header.Argon2Params())
 	oldKey, err := keyManager.DeriveKeyFromPasswordAndSalt(oldPassword, header.Salt[:])

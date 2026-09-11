@@ -95,4 +95,11 @@ func ResetCLIStateForTest() {
 	configShow = false
 	configInit = false
 	configGet = ""
+
+	keygenOut = "nokvault-identity.txt"
+	keygenPublicOut = ""
+	keygenForce = false
+
+	encryptRecipients = nil
+	decryptIdentities = nil
 }
