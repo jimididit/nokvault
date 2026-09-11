@@ -2,6 +2,9 @@ package core
 
 import (
 	"bytes"
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -118,4 +121,104 @@ func TestCompressionService_RoundTrip(t *testing.T) {
 			assert.Equal(t, original, decompressed, "Round trip should preserve original data")
 		})
 	}
+}
+
+func TestCompressionService_ShouldCompressFile(t *testing.T) {
+	cs := NewCompressionService()
+	dir := t.TempDir()
+
+	writeFile := func(name string, data []byte) string {
+		path := filepath.Join(dir, name)
+		require.NoError(t, os.WriteFile(path, data, 0644))
+		return path
+	}
+
+	smallPath := writeFile("small.txt", []byte("small"))
+	largePath := writeFile("large.bin", make([]byte, 200))
+	gzipPath := writeFile("already.gz", []byte{0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00})
+	missingPath := filepath.Join(dir, "missing.txt")
+
+	tests := []struct {
+		name     string
+		path     string
+		minSize  int
+		expected bool
+		wantErr  bool
+	}{
+		{
+			name:     "Small file below threshold",
+			path:     smallPath,
+			minSize:  100,
+			expected: false,
+		},
+		{
+			name:     "Large uncompressed file",
+			path:     largePath,
+			minSize:  100,
+			expected: true,
+		},
+		{
+			name:     "Already gzip compressed",
+			path:     gzipPath,
+			minSize:  10,
+			expected: false,
+		},
+		{
+			name:    "Missing file",
+			path:    missingPath,
+			minSize: 10,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := cs.ShouldCompressFile(tt.path, tt.minSize)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestCompressionService_ShouldCompressFile_PeeksOnlyHeader(t *testing.T) {
+	cs := NewCompressionService()
+	dir := t.TempDir()
+
+	// Large file with gzip magic at start — ShouldCompressFile must not read entire file.
+	path := filepath.Join(dir, "large-gzip.bin")
+	f, err := os.Create(path)
+	require.NoError(t, err)
+	_, err = f.Write([]byte{0x1f, 0x8b})
+	require.NoError(t, err)
+	_, err = f.Write(make([]byte, 1024*1024))
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
+	result, err := cs.ShouldCompressFile(path, 100)
+	require.NoError(t, err)
+	assert.False(t, result, "gzip magic should be detected from peek without full read")
+}
+
+func TestCompressionService_GzipWriter_GzipReader(t *testing.T) {
+	cs := NewCompressionService()
+
+	original := bytes.Repeat([]byte("streaming gzip test "), 100)
+	var compressed bytes.Buffer
+
+	writer := cs.GzipWriter(&compressed)
+	_, err := io.Copy(writer, bytes.NewReader(original))
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+
+	reader, err := cs.GzipReader(&compressed)
+	require.NoError(t, err)
+	defer reader.Close()
+
+	decompressed, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, original, decompressed)
 }
