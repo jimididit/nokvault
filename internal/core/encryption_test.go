@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/jimididit/nokvault/internal/crypto"
+	"github.com/jimididit/nokvault/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -130,4 +132,26 @@ func TestEncryptionServiceWrongKey(t *testing.T) {
 	// Decryption should fail - GCM will detect authentication failure
 	_, err = service.DecryptData(ciphertext, key2)
 	assert.Error(t, err, "Decryption with wrong key should fail")
+}
+
+func TestEncryptDecrypt_WithRecipients(t *testing.T) {
+	id, rec, err := crypto.GenerateIdentity()
+	require.NoError(t, err)
+	es := NewEncryptionService()
+	var vault bytes.Buffer
+	plain := []byte("recipient-vault-plaintext")
+	require.NoError(t, es.EncryptVaultWithRecipients(&vault, bytes.NewReader(plain), []*crypto.Recipient{rec}, &FileMetadata{Name: "x"}, 0))
+
+	fh := NewFileHandler()
+	h, _, aad, stanzas, err := fh.ReadHeaderWithMetadata(bytes.NewReader(vault.Bytes()))
+	require.NoError(t, err)
+	require.Equal(t, Version4, h.Version)
+	key, err := crypto.UnwrapFileKey(stanzas, []*crypto.Identity{id})
+	require.NoError(t, err)
+	defer utils.ZeroizeKey(key)
+
+	payload := bytes.NewReader(vault.Bytes()[int(h.DataOffset):])
+	var out bytes.Buffer
+	require.NoError(t, es.DecryptVaultPayload(&out, payload, key, h.Version, aad))
+	require.Equal(t, plain, out.Bytes())
 }

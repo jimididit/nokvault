@@ -1,6 +1,7 @@
 package core
 
 import (
+	"crypto/rand"
 	"fmt"
 	"io"
 	"os"
@@ -57,6 +58,32 @@ func (es *EncryptionService) EncryptVault(
 	return nil
 }
 
+// EncryptVaultWithRecipients writes a v4 vault header with recipient stanzas followed by a chunked STREAM payload.
+func (es *EncryptionService) EncryptVaultWithRecipients(
+	w io.Writer,
+	plaintext io.Reader,
+	recipients []*crypto.Recipient,
+	metadata *FileMetadata,
+	compress uint8,
+) error {
+	fileKey := make([]byte, 32)
+	if _, err := rand.Read(fileKey); err != nil {
+		return err
+	}
+	defer utils.ZeroizeKey(fileKey)
+
+	stanzas, err := crypto.WrapFileKey(fileKey, recipients)
+	if err != nil {
+		return err
+	}
+	fh := NewFileHandler()
+	aad, err := fh.WriteRecipientHeader(w, metadata, compress, stanzas)
+	if err != nil {
+		return err
+	}
+	return crypto.EncryptSTREAMWithKey(w, plaintext, fileKey, aad)
+}
+
 // DecryptVaultPayload decrypts a vault payload according to its format version.
 func (es *EncryptionService) DecryptVaultPayload(
 	w io.Writer,
@@ -79,7 +106,7 @@ func (es *EncryptionService) DecryptVaultPayload(
 			return fmt.Errorf("failed to write decrypted vault payload: %w", err)
 		}
 		return nil
-	case Version3:
+	case Version3, Version4:
 		if err := crypto.DecryptSTREAMWithKey(w, payload, key, aad); err != nil {
 			return fmt.Errorf("failed to decrypt vault payload: %w", err)
 		}
