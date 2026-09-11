@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"encoding/binary"
+	"io"
 	"testing"
 	"time"
 
@@ -11,23 +12,25 @@ import (
 
 func FuzzReadHeaderWithMetadata(f *testing.F) {
 	v1 := fuzzV1Header()
-	v2 := fuzzV2Header(nil)
-	v2Metadata := fuzzV2Header(&FileMetadata{
+	v2 := fuzzV2Header()
+	v3 := fuzzV3Vault(nil, []byte("known v3 fuzz plaintext"))
+	v3Metadata := fuzzV3Vault(&FileMetadata{
 		Name:         "evidence.txt",
 		Size:         42,
 		Mode:         0o600,
 		ModTime:      time.Unix(1_700_000_000, 0).UTC(),
 		RelativePath: "case/evidence.txt",
-	})
+	}, []byte("metadata corpus"))
 
-	invalidMetadata := append([]byte(nil), v2...)
+	invalidMetadata := append([]byte(nil), v3...)
 	binary.LittleEndian.PutUint32(invalidMetadata[26:30], 1)
 	binary.LittleEndian.PutUint64(invalidMetadata[30:38], uint64(HeaderWireSize(Version3)+1))
-	invalidMetadata = append(invalidMetadata, '{')
+	invalidMetadata = append(invalidMetadata[:HeaderWireSize(Version3)], '{')
 
 	f.Add(v1)
 	f.Add(v2)
-	f.Add(v2Metadata)
+	f.Add(v3)
+	f.Add(v3Metadata)
 	f.Add(v2[:len(v2)-1])
 	f.Add(invalidMetadata)
 	f.Add([]byte("not a nokvault file"))
@@ -80,15 +83,17 @@ func FuzzEncryptedContainer(f *testing.F) {
 		panic(err)
 	}
 
-	valid := append(fuzzV2Header(nil), ciphertext...)
+	valid := append(fuzzV2Header(), ciphertext...)
+	validV3 := fuzzV3Vault(nil, []byte("known v3 fuzz plaintext"))
 	truncated := append([]byte(nil), valid[:len(valid)-1]...)
 	corrupted := append([]byte(nil), valid...)
 	corrupted[len(corrupted)-1] ^= 0xff
 
 	f.Add(valid)
+	f.Add(validV3)
 	f.Add(truncated)
 	f.Add(corrupted)
-	f.Add(fuzzV2Header(nil))
+	f.Add(fuzzV2Header())
 	f.Add([]byte("not a nokvault file"))
 	f.Add([]byte{})
 
@@ -97,7 +102,8 @@ func FuzzEncryptedContainer(f *testing.F) {
 			t.Skip()
 		}
 
-		header, _, _, err := NewFileHandler().ReadHeaderWithMetadata(bytes.NewReader(data))
+		reader := bytes.NewReader(data)
+		header, _, aad, err := NewFileHandler().ReadHeaderWithMetadata(reader)
 		if err != nil {
 			return
 		}
@@ -105,7 +111,7 @@ func FuzzEncryptedContainer(f *testing.F) {
 			return
 		}
 
-		_, _ = service.DecryptData(data[int(header.DataOffset):], key)
+		_ = service.DecryptVaultPayload(io.Discard, reader, key, header.Version, aad)
 	})
 }
 
@@ -121,9 +127,35 @@ func fuzzV1Header() []byte {
 	return buf.Bytes()
 }
 
-func fuzzV2Header(metadata *FileMetadata) []byte {
+func fuzzV2Header() []byte {
 	var buf bytes.Buffer
-	if _, err := NewFileHandler().WriteHeader(&buf, make([]byte, 16), metadata, crypto.DefaultArgon2Params(), 0); err != nil {
+	magic := [8]byte{}
+	copy(magic[:], NokvaultMagic)
+	params := crypto.DefaultArgon2Params()
+	mustBinaryWrite(&buf, magic)
+	mustBinaryWrite(&buf, Version2)
+	mustBinaryWrite(&buf, [16]byte{})
+	mustBinaryWrite(&buf, uint32(0))
+	mustBinaryWrite(&buf, uint64(HeaderWireSize(Version2)))
+	mustBinaryWrite(&buf, params.Memory)
+	mustBinaryWrite(&buf, params.Time)
+	mustBinaryWrite(&buf, params.Parallelism)
+	mustBinaryWrite(&buf, [3]byte{})
+	mustBinaryWrite(&buf, params.KeyLength)
+	return buf.Bytes()
+}
+
+func fuzzV3Vault(metadata *FileMetadata, plaintext []byte) []byte {
+	var buf bytes.Buffer
+	key := bytes.Repeat([]byte{0x42}, crypto.DefaultKeyLength)
+	if err := NewEncryptionService().EncryptVault(
+		&buf,
+		bytes.NewReader(plaintext),
+		key,
+		make([]byte, 16),
+		metadata,
+		0,
+	); err != nil {
 		panic(err)
 	}
 	return buf.Bytes()
