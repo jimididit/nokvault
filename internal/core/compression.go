@@ -78,7 +78,7 @@ func (cs *CompressionService) ShouldCompressFile(path string, minSize int) (bool
 		return false, nil
 	}
 
-	f, err := os.Open(path)
+		f, err := os.Open(path) // #nosec G304 -- caller supplies a validated path for a 2-byte magic peek
 	if err != nil {
 		return false, fmt.Errorf("failed to open file: %w", err)
 	}

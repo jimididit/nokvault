@@ -92,7 +92,7 @@ func TestEncryptDecryptFile(t *testing.T) {
 	}
 
 	// Verify content matches
-	if string(plaintext.Bytes()) != string(testContent) {
+	if plaintext.String() != string(testContent) {
 		t.Errorf("Decrypted content doesn't match. Expected %s, got %s",
 			string(testContent), plaintext.String())
 	}
