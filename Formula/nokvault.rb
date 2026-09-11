@@ -1,18 +1,18 @@
 class Nokvault < Formula
   desc "Local file and directory encryption CLI"
   homepage "https://github.com/jimididit/nokvault"
-  version "0.4.1"
+  version "0.5.0"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/jimididit/nokvault/releases/download/v0.4.1/nokvault-darwin-arm64",
+      url "https://github.com/jimididit/nokvault/releases/download/v0.5.0/nokvault-darwin-arm64",
           using: :nounzip
-      sha256 "af4533807102ad57489d7929d73b8995a7db966a73ae1de34a18e93bca2b7c47"
+      sha256 "55aee3751aa977670fad2b29a8603e750f21d907946112900aadfd42ddbf6153"
     else
-      url "https://github.com/jimididit/nokvault/releases/download/v0.4.1/nokvault-darwin-amd64",
+      url "https://github.com/jimididit/nokvault/releases/download/v0.5.0/nokvault-darwin-amd64",
           using: :nounzip
-      sha256 "be2406d05fb82c3719b9806da36b42db0063c59fd862dd592aa9905395cc05c8"
+      sha256 "5509277aedb1373e0178e646f16369ef8b5690d09ccc28d460d2aaaa2f30425e"
     end
   end
 
