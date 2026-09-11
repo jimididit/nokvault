@@ -156,7 +156,7 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 
 	// Create temporary output via atomic write helper
 	if err := utils.AtomicWriteFunc(inputPath, 0o600, func(outputFile *os.File) error {
-		if err := fileHandler.WriteHeader(outputFile, newSalt, metadata, keyManager.Params()); err != nil {
+		if _, err := fileHandler.WriteHeader(outputFile, newSalt, metadata, keyManager.Params(), 0); err != nil {
 			return fmt.Errorf("failed to write header: %w", err)
 		}
 		if _, err := outputFile.Write(newCiphertext); err != nil {

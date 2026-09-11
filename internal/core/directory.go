@@ -155,7 +155,7 @@ func (de *DirectoryEncryptor) encryptFileWithMetadata(inputPath, outputPath stri
 		atomicWrite = utils.AtomicWriteFunc
 	}
 	if err := atomicWrite(outputPath, 0o600, func(outputFile *os.File) error {
-		if err := de.fileHandler.WriteHeader(outputFile, salt, metadata, de.encryptionService.GetKeyManager().Params()); err != nil {
+		if _, err := de.fileHandler.WriteHeader(outputFile, salt, metadata, de.encryptionService.GetKeyManager().Params(), 0); err != nil {
 			return fmt.Errorf("failed to write header: %w", err)
 		}
 		if _, err := outputFile.Write(ciphertext); err != nil {

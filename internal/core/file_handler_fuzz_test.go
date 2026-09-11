@@ -22,7 +22,7 @@ func FuzzReadHeaderWithMetadata(f *testing.F) {
 
 	invalidMetadata := append([]byte(nil), v2...)
 	binary.LittleEndian.PutUint32(invalidMetadata[26:30], 1)
-	binary.LittleEndian.PutUint64(invalidMetadata[30:38], uint64(HeaderWireSize(Version2)+1))
+	binary.LittleEndian.PutUint64(invalidMetadata[30:38], uint64(HeaderWireSize(Version3)+1))
 	invalidMetadata = append(invalidMetadata, '{')
 
 	f.Add(v1)
@@ -123,7 +123,7 @@ func fuzzV1Header() []byte {
 
 func fuzzV2Header(metadata *FileMetadata) []byte {
 	var buf bytes.Buffer
-	if err := NewFileHandler().WriteHeader(&buf, make([]byte, 16), metadata, crypto.DefaultArgon2Params()); err != nil {
+	if _, err := NewFileHandler().WriteHeader(&buf, make([]byte, 16), metadata, crypto.DefaultArgon2Params(), 0); err != nil {
 		panic(err)
 	}
 	return buf.Bytes()

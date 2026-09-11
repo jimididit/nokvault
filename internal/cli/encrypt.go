@@ -223,7 +223,7 @@ func encryptFileWithCompression(inputPath, outputPath string, key, salt []byte, 
 		atomicWrite = utils.AtomicWriteFunc
 	}
 	err = atomicWrite(outputPath, 0o600, func(outputFile *os.File) error {
-		if err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params()); err != nil {
+		if _, err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params(), 0); err != nil {
 			return fmt.Errorf("failed to write header: %w", err)
 		}
 		if _, err := outputFile.Write(ciphertext); err != nil {

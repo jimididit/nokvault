@@ -376,7 +376,7 @@ func encryptFileAuto(filePath string, encryptionService *core.EncryptionService,
 
 	// Create output file
 	if err := utils.AtomicWriteFunc(outputPath, 0o600, func(outputFile *os.File) error {
-		if err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params()); err != nil {
+		if _, err := fileHandler.WriteHeader(outputFile, salt, metadata, encryptionService.GetKeyManager().Params(), 0); err != nil {
 			return err
 		}
 		_, err := outputFile.Write(ciphertext)
