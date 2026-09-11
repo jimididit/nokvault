@@ -1,11 +1,71 @@
 package core
 
 import (
+	"bytes"
+	"crypto/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestEncryptVault_RoundTrip_V3(t *testing.T) {
+	es := NewEncryptionService()
+	key := make([]byte, 32)
+	salt := make([]byte, 16)
+	_, err := rand.Read(key)
+	require.NoError(t, err)
+	_, err = rand.Read(salt)
+	require.NoError(t, err)
+	plain := bytes.Repeat([]byte("x"), 70_000)
+	metadata := &FileMetadata{Name: "large.bin", Size: int64(len(plain))}
+
+	var vault bytes.Buffer
+	require.NoError(t, es.EncryptVault(
+		&vault,
+		bytes.NewReader(plain),
+		key,
+		salt,
+		metadata,
+		1,
+	))
+
+	fh := NewFileHandler()
+	header, gotMetadata, err := fh.ReadHeaderWithMetadata(bytes.NewReader(vault.Bytes()))
+	require.NoError(t, err)
+	require.Equal(t, Version3, header.Version)
+	require.Equal(t, uint8(1), header.Compress)
+	require.Equal(t, metadata, gotMetadata)
+
+	aad := vault.Bytes()[:header.DataOffset]
+	payload := bytes.NewReader(vault.Bytes()[header.DataOffset:])
+	var out bytes.Buffer
+	require.NoError(t, es.DecryptVaultPayload(
+		&out,
+		payload,
+		key,
+		header.Version,
+		aad,
+	))
+	require.Equal(t, plain, out.Bytes())
+}
+
+func TestEncryptVault_InvalidKeyWritesNothing(t *testing.T) {
+	es := NewEncryptionService()
+	var vault bytes.Buffer
+
+	err := es.EncryptVault(
+		&vault,
+		bytes.NewReader([]byte("secret")),
+		make([]byte, 31),
+		make([]byte, 16),
+		nil,
+		0,
+	)
+
+	require.Error(t, err)
+	require.Empty(t, vault.Bytes())
+}
 
 func TestEncryptionServiceEncryptDecrypt(t *testing.T) {
 	service := NewEncryptionService()

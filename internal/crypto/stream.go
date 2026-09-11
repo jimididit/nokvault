@@ -14,6 +14,26 @@ const (
 	streamLastChunkFlag      = uint32(1 << 31)
 )
 
+// EncryptSTREAMWithKey constructs AES-256-GCM from key and encrypts r as a
+// chunked STREAM.
+func EncryptSTREAMWithKey(w io.Writer, r io.Reader, key, aad []byte) error {
+	aesGCM, err := NewAESGCM(key)
+	if err != nil {
+		return err
+	}
+	return EncryptSTREAM(w, r, aesGCM.aead, aad)
+}
+
+// DecryptSTREAMWithKey constructs AES-256-GCM from key and decrypts a chunked
+// STREAM from r.
+func DecryptSTREAMWithKey(w io.Writer, r io.Reader, key, aad []byte) error {
+	aesGCM, err := NewAESGCM(key)
+	if err != nil {
+		return err
+	}
+	return DecryptSTREAM(w, r, aesGCM.aead, aad)
+}
+
 // EncryptSTREAM encrypts r as an age-style chunked STREAM.
 func EncryptSTREAM(w io.Writer, r io.Reader, aead cipher.AEAD, aad []byte) error {
 	if err := validateSTREAMAEAD(aead); err != nil {

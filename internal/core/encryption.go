@@ -28,6 +28,67 @@ func NewEncryptionServiceWithParams(p *crypto.Argon2Params) *EncryptionService {
 	return es
 }
 
+// EncryptVault writes a v3 vault header followed by a chunked STREAM payload.
+func (es *EncryptionService) EncryptVault(
+	w io.Writer,
+	plaintext io.Reader,
+	key, salt []byte,
+	metadata *FileMetadata,
+	compress uint8,
+) error {
+	if _, err := crypto.NewAESGCM(key); err != nil {
+		return fmt.Errorf("failed to create AES-GCM cipher: %w", err)
+	}
+
+	fh := NewFileHandler()
+	aad, err := fh.WriteHeader(
+		w,
+		salt,
+		metadata,
+		es.keyManager.Params(),
+		compress,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to write vault header: %w", err)
+	}
+	if err := crypto.EncryptSTREAMWithKey(w, plaintext, key, aad); err != nil {
+		return fmt.Errorf("failed to encrypt vault payload: %w", err)
+	}
+	return nil
+}
+
+// DecryptVaultPayload decrypts a vault payload according to its format version.
+func (es *EncryptionService) DecryptVaultPayload(
+	w io.Writer,
+	payload io.Reader,
+	key []byte,
+	version uint16,
+	aad []byte,
+) error {
+	switch version {
+	case Version1, Version2:
+		ciphertext, err := io.ReadAll(payload)
+		if err != nil {
+			return fmt.Errorf("failed to read vault payload: %w", err)
+		}
+		plaintext, err := es.DecryptData(ciphertext, key)
+		if err != nil {
+			return err
+		}
+		if _, err := w.Write(plaintext); err != nil {
+			return fmt.Errorf("failed to write decrypted vault payload: %w", err)
+		}
+		return nil
+	case Version3:
+		if err := crypto.DecryptSTREAMWithKey(w, payload, key, aad); err != nil {
+			return fmt.Errorf("failed to decrypt vault payload: %w", err)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported vault version: %d", version)
+	}
+}
+
 // EncryptData encrypts data using AES-256-GCM
 func (es *EncryptionService) EncryptData(data []byte, key []byte) ([]byte, error) {
 	aesGCM, err := crypto.NewAESGCM(key)
