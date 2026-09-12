@@ -66,15 +66,20 @@ func convertBits(data []byte, fromBits, toBits uint, pad bool) ([]byte, error) {
 		bits += fromBits
 		for bits >= toBits {
 			bits -= toBits
-			ret = append(ret, byte((acc>>bits)&uint(maxv)))
+			v := (acc >> bits) & uint(maxv)
+			ret = append(ret, byte(v)) // #nosec G115 -- v masked by maxv (toBits<=8).
 		}
 	}
 	if pad {
 		if bits > 0 {
-			ret = append(ret, byte((acc<<(toBits-bits))&uint(maxv)))
+			v := (acc << (toBits - bits)) & uint(maxv)
+			ret = append(ret, byte(v)) // #nosec G115 -- v masked by maxv (toBits<=8).
 		}
-	} else if bits >= fromBits || byte((acc<<(toBits-bits))&uint(maxv)) != 0 {
-		return nil, fmt.Errorf("invalid padding")
+	} else {
+		padResidue := (acc << (toBits - bits)) & uint(maxv)
+		if bits >= fromBits || byte(padResidue) != 0 { // #nosec G115 -- padResidue masked by maxv.
+			return nil, fmt.Errorf("invalid padding")
+		}
 	}
 	return ret, nil
 }
@@ -117,9 +122,10 @@ func bech32Decode(s string) (hrp string, data []byte, err error) {
 	values := make([]byte, len(s)-one-1)
 	for i, c := range s[one+1:] {
 		idx := strings.IndexRune(bech32Charset, c)
-		if idx < 0 {
+		if idx < 0 || idx > 31 {
 			return "", nil, fmt.Errorf("invalid bech32 character")
 		}
+		// #nosec G115 -- idx is bounded to 0..31 by the charset length check above.
 		values[i] = byte(idx)
 	}
 	if !bech32VerifyChecksum(hrp, values) {

@@ -282,6 +282,7 @@ func (fh *FileHandler) WriteRecipientHeader(w io.Writer, metadata *FileMetadata,
 	metadataLength := uint32(len(metadataJSON))
 	headerSize := HeaderWireSize(Version4)
 	stanzaBytes := crypto.MarshalStanzas(stanzas)
+	// #nosec G115 -- headerSize is fixed (62), metadataLength is capped, stanza count <= MaxRecipients.
 	dataOffset := uint64(headerSize) + uint64(metadataLength) + uint64(len(stanzaBytes))
 
 	var magic [8]byte

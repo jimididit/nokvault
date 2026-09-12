@@ -502,6 +502,7 @@ func encryptFileWithRecipientsAndCompression(inputPath, outputPath string, recip
 	}
 
 	if err := atomicWrite(outputPath, 0o600, func(outputFile *os.File) error {
+		// #nosec G304 -- runEncrypt validates the user-selected input path before this open.
 		plaintext, err := os.Open(inputPath)
 		if err != nil {
 			return fmt.Errorf("failed to open input file: %w", err)

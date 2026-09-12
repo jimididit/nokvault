@@ -146,7 +146,8 @@ func runDecrypt(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to open input file: %w", err)
 		}
 		header, _, _, _, err := fileHandler.ReadHeaderWithMetadata(peekFile)
-		peekFile.Close()
+		// #nosec G104 -- best-effort close after peek; header err is checked next.
+		_ = peekFile.Close()
 		if err != nil {
 			// If header read fails and we're not using identities, fall through to password flow
 			// which will give a better error (INVALID_PASSWORD instead of INVALID_FORMAT)
