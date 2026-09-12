@@ -86,10 +86,15 @@ func runRotateKey(cmd *cobra.Command, args []string) error {
 
 	// Read header
 	fileHandler := core.NewFileHandler()
-	header, metadata, aad, err := fileHandler.ReadHeaderWithMetadata(inputFile)
+	header, metadata, aad, _, err := fileHandler.ReadHeaderWithMetadata(inputFile)
 	if err != nil {
 		PrintError("Invalid nokvault file format")
 		return utils.NewError(utils.ErrInvalidFormat.Code, "Invalid nokvault file format", err)
+	}
+
+	// Reject v4 (recipient vaults)
+	if header.Version == core.Version4 {
+		return fmt.Errorf("rotate-key does not support recipient vaults (v4); use encrypt/decrypt workflow instead")
 	}
 
 	// Derive old key using header KDF parameters

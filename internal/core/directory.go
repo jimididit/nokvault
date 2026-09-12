@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/jimididit/nokvault/internal/crypto"
 	"github.com/jimididit/nokvault/internal/utils"
 )
 
@@ -160,6 +161,100 @@ func (de *DirectoryEncryptor) encryptFileWithMetadata(inputPath, outputPath stri
 	return nil
 }
 
+// EncryptDirectoryWithRecipients encrypts all files in a directory with X25519 recipients (v4 vaults)
+func (de *DirectoryEncryptor) EncryptDirectoryWithRecipients(inputDir, outputDir string, recipients []*crypto.Recipient, onProgress func(current, total int, currentFile string)) error {
+	totalFiles, err := de.fileHandler.CountFiles(inputDir)
+	if err != nil {
+		return fmt.Errorf("failed to count files: %w", err)
+	}
+
+	if err := ensureContainedOutputRoot(de.fileHandler, outputDir); err != nil {
+		return err
+	}
+
+	currentFile := 0
+
+	err = de.fileHandler.WalkDirectory(inputDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("error accessing %s: %w", path, err)
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		currentFile++
+
+		relPath, err := de.fileHandler.GetRelativePath(inputDir, path)
+		if err != nil {
+			return fmt.Errorf("failed to get relative path: %w", err)
+		}
+
+		outputPath, err := utils.SafeJoin(outputDir, utils.WithVaultExt(relPath))
+		if err != nil {
+			return fmt.Errorf("failed to construct output path for %s: %w", relPath, err)
+		}
+
+		outputFileDir := filepath.Dir(outputPath)
+		if err := de.fileHandler.EnsureDirectory(outputFileDir); err != nil {
+			return fmt.Errorf("failed to create output directory: %w", err)
+		}
+
+		if onProgress != nil {
+			onProgress(currentFile, totalFiles, relPath)
+		}
+
+		if err := de.encryptFileWithRecipients(path, outputPath, recipients); err != nil {
+			return fmt.Errorf("failed to encrypt %s: %w", relPath, err)
+		}
+
+		return nil
+	})
+
+	return err
+}
+
+// encryptFileWithRecipients encrypts a file using X25519 recipients (v4 vault)
+func (de *DirectoryEncryptor) encryptFileWithRecipients(inputPath, outputPath string, recipients []*crypto.Recipient) error {
+	metadata, err := de.fileHandler.ReadMetadata(inputPath)
+	if err != nil {
+		return err
+	}
+
+	metadata.RelativePath = filepath.Base(inputPath)
+
+	compressFlag := uint8(0)
+	if de.compress {
+		shouldCompress, err := de.compressionService.ShouldCompressFile(inputPath, 1024)
+		if err != nil {
+			return err
+		}
+		if shouldCompress {
+			compressFlag = 1
+		}
+	}
+
+	atomicWrite := utils.AtomicWriteFuncNoReplace
+	if de.overwrite {
+		atomicWrite = utils.AtomicWriteFunc
+	}
+
+	if err := atomicWrite(outputPath, 0o600, func(outputFile *os.File) error {
+		// #nosec G304 -- directory walking validates this caller-selected path.
+		inputFile, err := os.Open(inputPath)
+		if err != nil {
+			return fmt.Errorf("failed to open input file: %w", err)
+		}
+		defer inputFile.Close()
+
+		return de.encryptionService.EncryptVaultWithRecipients(outputFile, inputFile, recipients, metadata, compressFlag)
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func encryptVaultGzip(output io.Writer, plaintext io.Reader, key, salt []byte, metadata *FileMetadata, es *EncryptionService, cs *CompressionService) error {
 	compressedReader, compressedWriter := io.Pipe()
 	done := make(chan error, 1)
@@ -295,7 +390,7 @@ func (dd *DirectoryDecryptor) decryptFileWithMetadata(inputPath, outputPath stri
 	defer inputFile.Close()
 
 	// Read header with metadata
-	header, metadata, aad, err := dd.fileHandler.ReadHeaderWithMetadata(inputFile)
+	header, metadata, aad, _, err := dd.fileHandler.ReadHeaderWithMetadata(inputFile)
 	if err != nil {
 		return fmt.Errorf("failed to read header: %w", err)
 	}
@@ -319,6 +414,113 @@ func (dd *DirectoryDecryptor) decryptFileWithMetadata(inputPath, outputPath stri
 	if metadata != nil {
 		if err := dd.fileHandler.WriteMetadata(outputPath, metadata, dd.preserveMode); err != nil {
 			// Log warning but don't fail
+			if dd.verbose {
+				fmt.Fprintf(os.Stderr, "Warning: Could not restore metadata for %s: %v\n", outputPath, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// DecryptDirectoryWithIdentities decrypts all v4 vault files in a directory using X25519 identities
+func (dd *DirectoryDecryptor) DecryptDirectoryWithIdentities(inputDir, outputDir string, identities []*crypto.Identity, onProgress func(current, total int, currentFile string)) error {
+	totalFiles := 0
+	err := dd.fileHandler.WalkDirectory(inputDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && utils.IsVaultPath(path) {
+			totalFiles++
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to count files: %w", err)
+	}
+
+	if err := ensureContainedOutputRoot(dd.fileHandler, outputDir); err != nil {
+		return err
+	}
+
+	currentFile := 0
+
+	err = dd.fileHandler.WalkDirectory(inputDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("error accessing %s: %w", path, err)
+		}
+
+		if info.IsDir() || !utils.IsVaultPath(path) {
+			return nil
+		}
+
+		currentFile++
+
+		relPath, err := dd.fileHandler.GetRelativePath(inputDir, path)
+		if err != nil {
+			return fmt.Errorf("failed to get relative path: %w", err)
+		}
+
+		outputRelPath, ok := utils.StripVaultExt(relPath)
+		if !ok {
+			return fmt.Errorf("not a vault path: %s", relPath)
+		}
+		outputPath, err := utils.SafeJoin(outputDir, outputRelPath)
+		if err != nil {
+			return fmt.Errorf("failed to construct output path for %s: %w", outputRelPath, err)
+		}
+
+		outputFileDir := filepath.Dir(outputPath)
+		if err := dd.fileHandler.EnsureDirectory(outputFileDir); err != nil {
+			return fmt.Errorf("failed to create output directory: %w", err)
+		}
+
+		if onProgress != nil {
+			onProgress(currentFile, totalFiles, outputRelPath)
+		}
+
+		if err := dd.decryptFileWithIdentities(path, outputPath, identities); err != nil {
+			return fmt.Errorf("failed to decrypt %s: %w", relPath, err)
+		}
+
+		return nil
+	})
+
+	return err
+}
+
+// decryptFileWithIdentities decrypts a v4 vault file using X25519 identities
+func (dd *DirectoryDecryptor) decryptFileWithIdentities(inputPath, outputPath string, identities []*crypto.Identity) error {
+	// #nosec G304 -- directory walking and output preflight validate this caller-selected path.
+	inputFile, err := os.Open(inputPath)
+	if err != nil {
+		return fmt.Errorf("failed to open input file: %w", err)
+	}
+	defer inputFile.Close()
+
+	header, metadata, aad, stanzas, err := dd.fileHandler.ReadHeaderWithMetadata(inputFile)
+	if err != nil {
+		return fmt.Errorf("failed to read header: %w", err)
+	}
+
+	if header.Version != Version4 {
+		return fmt.Errorf("expected v4 recipient vault, got v%d", header.Version)
+	}
+
+	fileKey, err := crypto.UnwrapFileKey(stanzas, identities)
+	if err != nil {
+		return fmt.Errorf("no identity could decrypt this vault: %w", err)
+	}
+	defer utils.ZeroizeKey(fileKey)
+
+	if err := utils.AtomicWriteFunc(outputPath, 0o600, func(outputFile *os.File) error {
+		return decryptVaultPayloadToFile(outputFile, inputFile, fileKey, header, aad, dd.encryptionService, dd.compressionService)
+	}); err != nil {
+		return fmt.Errorf("failed to decrypt output file: %w", err)
+	}
+
+	if metadata != nil {
+		if err := dd.fileHandler.WriteMetadata(outputPath, metadata, dd.preserveMode); err != nil {
 			if dd.verbose {
 				fmt.Fprintf(os.Stderr, "Warning: Could not restore metadata for %s: %v\n", outputPath, err)
 			}

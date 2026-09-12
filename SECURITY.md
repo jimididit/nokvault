@@ -82,12 +82,12 @@ This section describes what NokVault protects, against whom, and what it explici
 
 ### Product scope
 
-NokVault is a local CLI for encrypting files and directories, with optional watch, schedule, and secure-delete helpers. It is **not** a backup system, network sync service, full-disk encryptor, or multi-recipient sharing tool.
+NokVault is a local CLI for encrypting files and directories, with optional watch, schedule, and secure-delete helpers. Format **v4** adds optional **multi-recipient** sharing: any one of N X25519 recipients can decrypt the same `.nokv` ciphertext. Passphrase/keyfile vaults (v3) remain single-secret. NokVault is **not** a backup system, network sync service, or full-disk encryptor.
 
 ### Assets
 
 - User plaintext (source files and transient plaintext during encrypt, decrypt, and `rotate-key`)
-- Secrets: interactive passwords, keyfile bytes, and `NOKVAULT_PASSWORD`
+- Secrets: interactive passwords, keyfile bytes, `NOKVAULT_PASSWORD`, and X25519 identity files (32-byte scalars; same permission policy as keyfiles)
 - Derived AES-256 keys and salts in process memory
 - On-disk `.nokv` containers (legacy `.nokvault` filenames still decrypt; header, optional plaintext JSON metadata, ciphertext payload)
 - Released binaries and their checksum / attestation metadata
@@ -96,7 +96,7 @@ NokVault is a local CLI for encrypting files and directories, with optional watc
 
 | Class | What we model |
 | --- | --- |
-| Offline vault thief | Possesses `.nokv` / legacy `.nokvault` file(s) but not the password or keyfile |
+| Offline vault thief | Possesses `.nokv` / legacy `.nokvault` file(s) but not the password, keyfile, or any recipient identity |
 | Same-user local process | Can read environment variables, process listings, and files the user can open |
 | Hostile directory tree | Symlinks, Windows junctions, other reparse points, and path-escape attempts |
 | Supply-chain / wrong binary | Unverified download or tampered artifact |
@@ -115,7 +115,8 @@ NokVault does **not** claim to defeat attackers with full live memory access, co
 
 Claims that match current code:
 
-- AES-256-GCM confidentiality and authenticity of payload ciphertext; v3 uses age-style 64 KiB STREAM chunks and binds the exact header plus metadata bytes as AAD
+- AES-256-GCM confidentiality and authenticity of payload ciphertext; v3/v4 use age-style 64 KiB STREAM chunks and bind the exact header plus metadata bytes as AAD (v4 also binds the recipient section)
+- Format v4 X25519 recipient wrap (HKDF domain `nokvault.org/v4/X25519` + ChaCha20-Poly1305) so any one of N recipients can unwrap the file key; passphrase and recipient modes are mutually exclusive per vault
 - Argon2id key derivation; formats v2 and v3 persist KDF parameters in the header; v1 files use built-in defaults
 - CLI refuses `--password` / `-p`; keyfiles must not be group/world-readable and must not be symlinks
 - Encrypt and `rotate-key` use atomic writes (temp file, fsync, rename)
@@ -131,7 +132,8 @@ NokVault does not provide or claim:
 
 - Full-disk or volume encryption
 - Remote backup, sync, or deduplicating repository semantics
-- Cryptographic author identity or multi-recipient / age-style sharing (possible future work)
+- Age/rage file interop or SSH-key recipients (NokVault-native v4 only; SSH keys are L3.2 backlog)
+- Dual unlock (passphrase **and** recipients on the same vault) — deferred to L3.2
 - Race-proof protection against privileged concurrent path replacement between validation and open (TOCTOU)
 - Guaranteed erasure on SSD, flash, or TRIM-backed storage
 - Locked memory or immunity to hibernation / crash dumps (possible future work)
@@ -151,16 +153,16 @@ Known limits and footguns. Reviewers should treat these as intentional honesty, 
    Multi-pass overwrite before unlink is oriented toward traditional HDDs. On many SSDs and flash devices (TRIM, wear leveling), overwritten data may remain recoverable. Do not treat `secure-delete` as cryptographic erase.
 
 4. **Empty GCM AAD in legacy v1/v2 vaults**
-   Legacy header fields and metadata are not bound into AES-GCM. New v3 vaults bind the exact 58-byte header and metadata bytes to every STREAM chunk. Existing v1/v2 files remain unchanged until re-encrypted or rotated. Details: [`docs/format-v2.md`](docs/format-v2.md) §9 and §14.
+   Legacy header fields and metadata are not bound into AES-GCM. New v3/v4 vaults bind the exact header and metadata bytes to every STREAM chunk (v4 also binds the recipient section). Existing v1/v2 files remain unchanged until re-encrypted or rotated. Details: [`docs/format-v2.md`](docs/format-v2.md) §10 and §11.
 
-5. **Plaintext metadata (unauthenticated in v1/v2, AAD-bound in v3)**  
-   Optional JSON metadata is always visible on disk. It is unauthenticated in v1/v2 and authenticated as AAD in v3; authentication does not provide metadata confidentiality.
+5. **Plaintext metadata (unauthenticated in v1/v2, AAD-bound in v3/v4)**  
+   Optional JSON metadata is always visible on disk. It is unauthenticated in v1/v2 and authenticated as AAD in v3/v4; authentication does not provide metadata confidentiality.
 
 6. **Whole-file-in-RAM legacy decrypt**
-   New v3 vaults use bounded-memory STREAM encryption and decryption. Decrypting legacy v1/v2 payloads still buffers the whole encrypted payload in memory, so very large legacy vaults may be impractical until rewritten as v3.
+   New v3/v4 vaults use bounded-memory STREAM encryption and decryption. Decrypting legacy v1/v2 payloads still buffers the whole encrypted payload in memory, so very large legacy vaults may be impractical until rewritten as v3.
 
 7. **Legacy compression sniff after decrypt**
-   V1/v2 have no compress flag, so the CLI may attempt gzip decompression when decrypted plaintext begins with magic `1f 8b`; legitimate plaintext starting with those bytes can be mis-handled. V3 stores an explicit authenticated `Compress` flag.
+   V1/v2 have no compress flag, so the CLI may attempt gzip decompression when decrypted plaintext begins with magic `1f 8b`; legitimate plaintext starting with those bytes can be mis-handled. v3/v4 store an explicit authenticated `Compress` flag.
 
 8. **Path policy timing**  
    Symlink/junction checks and output containment run before prompts and mutation, but validation-then-open is not race-proof against a privileged concurrent replacement of a path component.
@@ -176,6 +178,18 @@ Known limits and footguns. Reviewers should treat these as intentional honesty, 
 
 12. **Argon2id cost on low-resource devices**  
     Default parameters (and stricter custom parameters) can be slow on constrained hardware. That is a usability tradeoff for offline-guessing resistance, not a bypass of the KDF.
+
+13. **Identity file theft (v4)**  
+    A stolen X25519 identity decrypts every v4 vault wrapped to that recipient. Treat identity files like keyfiles: `0600` permissions, no symlinks, never commit to VCS.
+
+14. **No cross-file forward secrecy (v4)**  
+    Each vault uses an independent random file key, but a long-lived recipient identity does not rotate automatically. Past ciphertext remains readable if the identity is later compromised.
+
+15. **Not age-interop (v4)**  
+    v4 mirrors age’s X25519 wrap construction with distinct HKDF info, but `.nokv` files are not readable by age/rage. Recipients need NokVault or another implementer of this spec.
+
+16. **v4 automation gaps**  
+    `rotate-key`, `watch`, and `schedule` reject v4 vaults in L3.1. Recipient-mode workflows are encrypt/decrypt only.
 
 ## Security Audit
 

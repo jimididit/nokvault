@@ -21,6 +21,7 @@ func FuzzReadHeaderWithMetadata(f *testing.F) {
 		ModTime:      time.Unix(1_700_000_000, 0).UTC(),
 		RelativePath: "case/evidence.txt",
 	}, []byte("metadata corpus"))
+	v4 := fuzzV4Header()
 
 	invalidMetadata := append([]byte(nil), v3...)
 	binary.LittleEndian.PutUint32(invalidMetadata[26:30], 1)
@@ -31,6 +32,7 @@ func FuzzReadHeaderWithMetadata(f *testing.F) {
 	f.Add(v2)
 	f.Add(v3)
 	f.Add(v3Metadata)
+	f.Add(v4)
 	f.Add(v2[:len(v2)-1])
 	f.Add(invalidMetadata)
 	f.Add([]byte("not a nokvault file"))
@@ -41,7 +43,7 @@ func FuzzReadHeaderWithMetadata(f *testing.F) {
 			t.Skip()
 		}
 
-		header, metadata, _, err := NewFileHandler().ReadHeaderWithMetadata(bytes.NewReader(data))
+		header, metadata, _, _, err := NewFileHandler().ReadHeaderWithMetadata(bytes.NewReader(data))
 		if err != nil {
 			return
 		}
@@ -57,14 +59,20 @@ func FuzzReadHeaderWithMetadata(f *testing.F) {
 			t.Fatalf("metadata size %d exceeds limit", header.MetadataSize)
 		}
 		expectedOffset := uint64(headerSize) + uint64(header.MetadataSize)
+		if header.Version == Version4 {
+			expectedOffset += uint64(header.RecipientCount) * uint64(crypto.X25519StanzaSize)
+		}
 		if header.DataOffset != expectedOffset {
 			t.Fatalf("data offset %d, expected %d", header.DataOffset, expectedOffset)
 		}
 		if header.DataOffset > uint64(len(data)) {
 			t.Fatalf("successful parse offset %d exceeds input %d", header.DataOffset, len(data))
 		}
-		if err := ValidateKDFParams(header.Argon2Params()); err != nil {
-			t.Fatalf("successful parse returned invalid KDF params: %v", err)
+		// Skip KDF validation for v4 (recipient mode has zero KDF params)
+		if header.Version != Version4 {
+			if err := ValidateKDFParams(header.Argon2Params()); err != nil {
+				t.Fatalf("successful parse returned invalid KDF params: %v", err)
+			}
 		}
 		if header.MetadataSize == 0 && metadata != nil {
 			t.Fatal("metadata returned when encoded size is zero")
@@ -103,7 +111,7 @@ func FuzzEncryptedContainer(f *testing.F) {
 		}
 
 		reader := bytes.NewReader(data)
-		header, _, aad, err := NewFileHandler().ReadHeaderWithMetadata(reader)
+		header, _, aad, _, err := NewFileHandler().ReadHeaderWithMetadata(reader)
 		if err != nil {
 			return
 		}
@@ -158,6 +166,29 @@ func fuzzV3Vault(metadata *FileMetadata, plaintext []byte) []byte {
 	); err != nil {
 		panic(err)
 	}
+	return buf.Bytes()
+}
+
+func fuzzV4Header() []byte {
+	var buf bytes.Buffer
+	magic := [8]byte{}
+	copy(magic[:], NokvaultMagic)
+	mustBinaryWrite(&buf, magic)
+	mustBinaryWrite(&buf, Version4)
+	mustBinaryWrite(&buf, [16]byte{})           // zero salt
+	mustBinaryWrite(&buf, uint32(0))            // zero metadata size
+	mustBinaryWrite(&buf, uint64(HeaderWireSize(Version4)+crypto.X25519StanzaSize)) // dataOffset includes 1 stanza
+	mustBinaryWrite(&buf, uint32(0))            // zero memory
+	mustBinaryWrite(&buf, uint32(0))            // zero time
+	mustBinaryWrite(&buf, uint8(0))             // zero parallelism
+	mustBinaryWrite(&buf, [3]byte{})            // pad
+	mustBinaryWrite(&buf, uint32(crypto.DefaultKeyLength)) // keyLength
+	mustBinaryWrite(&buf, uint8(0))             // compress
+	mustBinaryWrite(&buf, [3]byte{})            // pad
+	mustBinaryWrite(&buf, uint16(1))            // recipientCount
+	mustBinaryWrite(&buf, [2]byte{})            // pad2
+	// Add one zero stanza (80 bytes)
+	buf.Write(make([]byte, crypto.X25519StanzaSize))
 	return buf.Bytes()
 }
 
