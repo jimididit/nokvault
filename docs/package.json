@@ -20,6 +20,6 @@
     "shiki": "^3.21.0"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.10"
+    "@astrojs/check": "^0.9.12"
   }
 }
